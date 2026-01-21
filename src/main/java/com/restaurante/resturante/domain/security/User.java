@@ -93,6 +93,7 @@ public class User extends Auditable implements UserDetails {
     @JoinColumn(name = "role_id")
     private Role role;
 
+
     // ------METODO DE SPRING SECURITY------
 
     @Override
