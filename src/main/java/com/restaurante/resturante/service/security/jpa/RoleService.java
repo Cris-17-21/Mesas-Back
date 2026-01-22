@@ -55,7 +55,7 @@ public class RoleService implements IRoleService{
         // Convertir los IDs ofuscados en IDs reales usando IdEncryptionService
         Set<Permission> permissions = dto.permissionIds().stream()
                 .map(pid -> {
-                    long id = idEncryptionService.decrypt(pid);
+                    String id = pid;
                     return permissionRepository.findById(id)
                             .orElseThrow(() -> new EntityNotFoundException("Permission no encontrada: " + pid));
                 })
@@ -80,7 +80,7 @@ public class RoleService implements IRoleService{
         // Convertir los IDs ofuscados en IDs reales usando IdEncryptionService
         Set<Permission> permissions = dto.permissionIds().stream()
                 .map(pid -> {
-                    long id = idEncryptionService.decrypt(pid);
+                    String id = pid;
                     return permissionRepository.findById(id)
                             .orElseThrow(() -> new EntityNotFoundException("Permission no encontrada: " + pid));
                 })
@@ -101,7 +101,7 @@ public class RoleService implements IRoleService{
     }
 
     private Role getRoleOrThrow(String obfuscatedId) {
-        long id = idEncryptionService.decrypt(obfuscatedId);
+        String id = obfuscatedId;
         return roleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Role no encontrado"));
     }

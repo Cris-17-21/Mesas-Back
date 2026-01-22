@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,6 +20,8 @@ import lombok.Setter;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public class Auditable {
+
+    // ----- AUDITORIA -----
 
     @CreatedBy
     @Column(name = "created_by", nullable = false, updatable = false)
@@ -35,4 +38,12 @@ public class Auditable {
     @LastModifiedDate
     @Column(name = "last_modified_date", insertable = false)
     private Instant lastModifiedDate;
+
+    // ----- SINCRONIZACION ------
+
+    @Column(name = "sincronizado_cloud", nullable = false)
+    private boolean sincronizadoCloud = false;
+
+    @Version
+    private Long version;
 }

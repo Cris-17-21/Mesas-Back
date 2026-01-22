@@ -55,10 +55,7 @@ public class UserService implements IUserService{
                 user.getApellidoMaterno(),
                 user.getTipoDocumento() != null ? user.getTipoDocumento().getName() : null,
                 user.getNumeroDocumento(),
-                user.getSexo() != null ? user.getSexo().name() : null,
-                user.getFechaNacimiento() != null ? user.getFechaNacimiento().toString() : null,
                 user.getTelefono(),
-                user.getDireccion(),
                 user.getEmail(),
                 user.getRole().getName()
         );
@@ -70,10 +67,7 @@ public class UserService implements IUserService{
     @Transactional(readOnly = true)
     @Override
     public UserDto getUserById(String obfuscatedId) {
-        long id = idEncryptionService.decrypt(obfuscatedId);
-        if (id <= 0) {
-            throw new IllegalArgumentException("ID inválido o manipulado");
-        }
+        String id = obfuscatedId;
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado"));
@@ -98,7 +92,7 @@ public class UserService implements IUserService{
             throw new IllegalStateException("Ya existe un usuario con nombre '" + dto.username() + "'");
         }
 
-        long roleId = idEncryptionService.decrypt(dto.role());
+        String roleId = dto.role();
         Role rol = roleRepository.findById(roleId)
             .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + dto.role()));
 
@@ -122,7 +116,7 @@ public class UserService implements IUserService{
             throw new IllegalStateException("Ya existe otro usuario con nombre '" + dto.username() + "'");
         }
 
-        long roleId = idEncryptionService.decrypt(dto.role());
+        String roleId = dto.role();
         Role rol = roleRepository.findById(roleId)
             .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + dto.role()));
 
@@ -131,19 +125,9 @@ public class UserService implements IUserService{
         existing.setApellidoPaterno(dto.apellidoPaterno());
         existing.setApellidoMaterno(dto.apellidoMaterno());
         existing.setTelefono(dto.telefono());
-        existing.setDireccion(dto.direccion());
         existing.setEmail(dto.email());
         existing.setRole(rol);
 
-        if (dto.fechaNacimiento() != null && !dto.fechaNacimiento().isEmpty()) {
-            try {
-                // Forma moderna y correcta: String (yyyy-MM-dd) -> LocalDate
-                existing.setFechaNacimiento(LocalDate.parse(dto.fechaNacimiento()));
-            } catch (Exception e) {
-                // DateTimeParseException
-                throw new RuntimeException("Formato de fecha inválido. Usa yyyy-MM-dd", e);
-            }
-        }
 
         // Guardar y devolver DTO
         User updated = userRepository.save(existing);
@@ -158,7 +142,7 @@ public class UserService implements IUserService{
     }
 
     private User getUserOrThrow(String obfuscatedId) {
-        long id = idEncryptionService.decrypt(obfuscatedId);
+        String id = obfuscatedId;
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User no encontrado"));
     }

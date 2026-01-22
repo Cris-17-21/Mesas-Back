@@ -53,7 +53,7 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void deleteByUserId(Long userId) {
+    public void deleteByUserId(String userId) {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
         refreshTokenRepository.deleteByUser(user);

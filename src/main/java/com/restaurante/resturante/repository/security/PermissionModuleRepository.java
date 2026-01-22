@@ -9,15 +9,15 @@ import org.springframework.stereotype.Repository;
 import com.restaurante.resturante.domain.security.PermissionModule;
 
 @Repository
-public interface PermissionModuleRepository extends JpaRepository<PermissionModule, Long>{
+public interface PermissionModuleRepository extends JpaRepository<PermissionModule, String>{
 
     Optional<PermissionModule> findByName(String name);
 
     boolean existsByName(String name);
 
-    boolean existsByPermissions_Module_Id(Long moduleId);
+    boolean existsByPermissions_Module_Id(String moduleId);
 
-    boolean existsByParent_Id(Long parentId);
+    boolean existsByParent_Id(String parentId);
 
     List<PermissionModule> findByChildrenIsEmpty();
 }

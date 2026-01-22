@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.restaurante.resturante.domain.security.TipoDocumento;
 
 @Repository
-public interface TipoDocumentoRepository extends JpaRepository<TipoDocumento, Long>{
+public interface TipoDocumentoRepository extends JpaRepository<TipoDocumento, String>{
 
     Optional<TipoDocumento> findByName(String name);
 }

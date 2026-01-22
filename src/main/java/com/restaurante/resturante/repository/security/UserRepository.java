@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import com.restaurante.resturante.domain.security.User;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long>{
+public interface UserRepository extends JpaRepository<User, String>{
 
     Optional<User> findByUsername(String username); //Encontrar usuario por el username
 

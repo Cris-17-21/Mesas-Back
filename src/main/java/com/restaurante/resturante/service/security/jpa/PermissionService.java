@@ -52,7 +52,7 @@ public class PermissionService implements IPermissionService{
         }
 
         // Usar IdEncryptionService para desofuscar el módulo
-        long moduleId = idEncryptionService.decrypt(dto.moduleId());
+        String moduleId = dto.moduleId();
         PermissionModule module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Module no encontrado: " + dto.moduleId()));
 
@@ -73,7 +73,7 @@ public class PermissionService implements IPermissionService{
         }
 
         // Desofuscar módulo también aquí
-        long moduleId = idEncryptionService.decrypt(dto.moduleId());
+        String moduleId = dto.moduleId();
         PermissionModule module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Module no encontrado: " + dto.moduleId()));
 
@@ -93,7 +93,7 @@ public class PermissionService implements IPermissionService{
     }
 
     private Permission getPermissionOrThrow(String obfuscatedId) {
-        long id = idEncryptionService.decrypt(obfuscatedId);
+        String id = obfuscatedId;
         return permissionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Permission no encontrada"));
     }

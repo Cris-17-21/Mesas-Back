@@ -14,7 +14,6 @@ import com.restaurante.resturante.domain.security.PermissionModule;
 import com.restaurante.resturante.domain.security.Role;
 import com.restaurante.resturante.domain.security.TipoDocumento;
 import com.restaurante.resturante.domain.security.User;
-import static com.restaurante.resturante.domain.security.enums.Sexo.MASCULINO;
 import com.restaurante.resturante.repository.security.PermissionModuleRepository;
 import com.restaurante.resturante.repository.security.PermissionRepository;
 import com.restaurante.resturante.repository.security.RoleRepository;
@@ -66,15 +65,6 @@ public class DataSeeder implements CommandLineRunner {
         PermissionModule rolesModule = createModuleIfNotExists("Roles", "/roles", "heroShieldCheck", 2, configModule);
         PermissionModule userModule = createModuleIfNotExists("Gestión de Usuarios", "/users", "heroUser", 3, configModule);
 
-        // Módulo padre "Maestros"
-        PermissionModule maestroModule = createModuleIfNotExists("Maestros", "/maestro", "heroWrench", 2, null);
-        // Módulos hijo 
-        PermissionModule zonasModule = createModuleIfNotExists("Zonas", "/zonas", "heroMapPin", 1, maestroModule);
-        PermissionModule almacenesModule = createModuleIfNotExists("Almacenes", "/almacen", "heroArchiveBox", 2, maestroModule);
-        PermissionModule clientesModule = createModuleIfNotExists("Clientes", "/cliente", "heroUsers", 3, maestroModule);
-        PermissionModule repuestosModule = createModuleIfNotExists("Repuestos", "/repuesto", "heroPuzzlePiece", 4, maestroModule);
-        PermissionModule equiposModule = createModuleIfNotExists("Equipos", "/equipo", "heroComputerDesktop", 5, maestroModule);
-
         // Permisos de Configuración -> Roles
         createPermissionIfNotExists("READ_ROLE", "Ver roles y permisos", rolesModule);
         createPermissionIfNotExists("CREATE_ROLE", "Crear nuevos roles", rolesModule);
@@ -86,37 +76,7 @@ public class DataSeeder implements CommandLineRunner {
         createPermissionIfNotExists("READ_USER", "Ver usuarios", userModule);
         createPermissionIfNotExists("UPDATE_USER", "Editar usuarios", userModule);
 
-        // Permisos de Maestros -> Zonas
-        createPermissionIfNotExists("READ_ZONA", "Ver zonas", zonasModule);
-        createPermissionIfNotExists("CREATE_ZONA", "Crear zonas", zonasModule);
-        createPermissionIfNotExists("UPDATE_ZONA", "Editar zonas", zonasModule);
-        createPermissionIfNotExists("DELETE_ZONA", "Eliminar zonas", zonasModule);
-
-        // Permisos de Maestros -> Almacenes
-        createPermissionIfNotExists("READ_ALMACEN", "Ver almacenes", almacenesModule);
-        createPermissionIfNotExists("CREATE_ALMACEN", "Crear almacenes", almacenesModule);
-        createPermissionIfNotExists("UPDATE_ALMACEN", "Editar almacenes", almacenesModule);
-        createPermissionIfNotExists("DELETE_ALMACEN", "Eliminar almacenes", almacenesModule);
-        createPermissionIfNotExists("READ_TIPO_ALMACEN", "Ver almacenes", almacenesModule);
-
-        // Permisos de Maestros -> Clientes
-        createPermissionIfNotExists("READ_CLIENTE", "Ver clientes", clientesModule);
-        createPermissionIfNotExists("CREATE_CLIENTE", "Crear clientes", clientesModule);
-        createPermissionIfNotExists("UPDATE_CLIENTE", "Editar clientes", clientesModule);
-        createPermissionIfNotExists("DELETE_CLIENTE", "Eliminar clientes", clientesModule);
-
-        // Permisos de Maestros -> Repuestos
-        createPermissionIfNotExists("READ_REPUESTO", "Ver repuestos", repuestosModule);
-        createPermissionIfNotExists("CREATE_REPUESTO", "Crear repuestos", repuestosModule);
-        createPermissionIfNotExists("UPDATE_REPUESTO", "Editar repuestos", repuestosModule);
-        createPermissionIfNotExists("DELETE_REPUESTO", "Eliminar repuestos", repuestosModule);
-        createPermissionIfNotExists("READ_ESTADO_REPUESTO", "Ver repuestos", repuestosModule);
-
-        // Permisos de Maestros -> Equipos
-        createPermissionIfNotExists("READ_EQUIPO", "Ver equipos", equiposModule);
-        createPermissionIfNotExists("CREATE_EQUIPO", "Crear equipos", equiposModule);
-        createPermissionIfNotExists("UPDATE_EQUIPO", "Editar equipos", equiposModule);
-        createPermissionIfNotExists("DELETE_EQUIPO", "Eliminar equipos", equiposModule);
+        
 
         // --- 3. Crear el Rol "SUPER_ADMIN" y asignarle los permisos de prueba ---
         if(roleRepository.findByName("ROLE_SUPER_ADMIN").isEmpty()) {
@@ -152,9 +112,6 @@ public class DataSeeder implements CommandLineRunner {
                 .apellidoMaterno("User")
                 .tipoDocumento(dniTipo)
                 .numeroDocumento("00000000")
-                .sexo(MASCULINO)
-                .fechaNacimiento(LocalDate.now())
-                .direccion("Av. Siempre Viva 742")
                 .telefono("943316756")
                 .email("superadmin@sgrncr.com")
                 .active(true)

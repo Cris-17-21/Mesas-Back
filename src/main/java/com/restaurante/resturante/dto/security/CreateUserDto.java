@@ -8,10 +8,7 @@ public record CreateUserDto(
     String apellidoMaterno,
     String tipoDocumento,
     String numeroDocumento,
-    String sexo,
-    String fechaNacimiento,
     String telefono,
-    String direccion,
     String email,
     String role
 ) {}

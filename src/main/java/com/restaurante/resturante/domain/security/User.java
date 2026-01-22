@@ -1,6 +1,5 @@
 package com.restaurante.resturante.domain.security;
 
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
@@ -12,12 +11,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
-import com.restaurante.resturante.domain.security.enums.Sexo;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -42,8 +38,9 @@ import lombok.ToString;
 public class User extends Auditable implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     @Column(nullable = false, unique = true)
     private String username;
@@ -69,18 +66,8 @@ public class User extends Auditable implements UserDetails {
     @Column(name="numero_documento", nullable = false, unique = true)
     private String numeroDocumento;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "sexo", nullable = false)
-    private Sexo sexo;
-
-    @Column(name = "fecha_nacimiento", nullable = false)
-    private LocalDate fechaNacimiento;
-
     @Column(name = "telefono", nullable = false)
     private String telefono;
-
-    @Column(name = "direccion", nullable = false)
-    private String direccion;
 
     @Column(nullable = false, unique = true)
     private String email;

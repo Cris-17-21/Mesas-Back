@@ -50,7 +50,7 @@ public class PermissionModuleService implements IPermissionModuleService{
 
         PermissionModule parent = null;
         if (dto.parentId() != null && !dto.parentId().isBlank()) {
-            long parentId = idEncryptionService.decrypt(dto.parentId());
+            String parentId = dto.parentId();
             parent = moduleRepository.findById(parentId)
                     .orElseThrow(() -> new EntityNotFoundException("Módulo padre no encontrado: " + dto.parentId()));
         }
@@ -73,7 +73,7 @@ public class PermissionModuleService implements IPermissionModuleService{
 
         PermissionModule parent = null;
         if (dto.parentId() != null && !dto.parentId().isBlank()) {
-            long parentId = idEncryptionService.decrypt(dto.parentId());
+            String parentId = dto.parentId();
             parent = moduleRepository.findById(parentId)
                     .orElseThrow(() -> new EntityNotFoundException("Módulo padre no encontrado: " + dto.parentId()));
         }
@@ -113,7 +113,7 @@ public class PermissionModuleService implements IPermissionModuleService{
     }
 
     private PermissionModule getModuleOrThrow(String obfuscatedId) {
-        long id = idEncryptionService.decrypt(obfuscatedId);
+        String id = obfuscatedId;
         return moduleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PermissionModule no encontrado"));
     }

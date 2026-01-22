@@ -28,7 +28,7 @@ public class RoleDtoMapper {
                 .collect(Collectors.toSet());
 
         return new RoleDto(
-                Long.valueOf(role.getId()),
+                role.getId(),
                 role.getName(),
                 role.getDescription(),
                 permissions

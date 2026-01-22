@@ -11,7 +11,7 @@ import com.restaurante.resturante.domain.security.RefreshToken;
 import com.restaurante.resturante.domain.security.User;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long>{
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, String>{
 
     Optional<RefreshToken> findByToken (String token);
 
