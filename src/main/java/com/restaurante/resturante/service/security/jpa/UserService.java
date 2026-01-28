@@ -19,7 +19,6 @@ import com.restaurante.resturante.repository.security.RoleRepository;
 import com.restaurante.resturante.repository.security.TipoDocumentoRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.service.security.IUserService;
-import com.restaurante.resturante.service.security.IdEncryptionService;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ public class UserService implements IUserService{
 
     private final UserRepository userRepository;
     private final MenuService menuService;
-    private final IdEncryptionService idEncryptionService;
     private final UserDtoMapper userDtoMapper;
     private final RoleRepository roleRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;

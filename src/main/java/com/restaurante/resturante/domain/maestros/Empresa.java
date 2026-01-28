@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.security.UserAccess;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,8 +33,9 @@ import lombok.ToString;
 public class Empresa extends Auditable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     @Column(nullable = false, unique = true)
     private String ruc;
@@ -79,4 +81,9 @@ public class Empresa extends Auditable {
     @ToString.Exclude
     @JsonBackReference
     private Set<HistorialPago> historialPagos;
+
+    @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<UserAccess> usersAccess;
 }

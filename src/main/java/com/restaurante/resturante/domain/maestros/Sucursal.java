@@ -1,7 +1,10 @@
 package com.restaurante.resturante.domain.maestros;
 
+import java.util.Set;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.security.UserAccess;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,8 +33,9 @@ import lombok.ToString;
 public class Sucursal extends Auditable{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     @Column(nullable = false)
     private String nombre;
@@ -51,4 +56,9 @@ public class Sucursal extends Auditable{
     @ToString.Exclude
     @JsonBackReference
     private Empresa empresa;
+
+    @OneToMany(mappedBy = "sucursal", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<UserAccess> usersAccess;
 }

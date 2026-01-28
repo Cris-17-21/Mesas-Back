@@ -1,6 +1,5 @@
 package com.restaurante.resturante.config;
 
-import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,27 +42,27 @@ public class DataSeeder implements CommandLineRunner {
 
         System.out.println("🌱 Iniciando DataSeeder...");
 
-        PermissionModule dashboardModule = createModuleIfNotExists("Dashboard", "/dashboard", "heroHome", 0, null);
+        PermissionModule dashboardModule = createModuleIfNotExists("Dashboard", "/dashboard", "bi bi-house", 0, null);
         createPermissionIfNotExists("VIEW_DASHBOARD", "Ver el dashboard", dashboardModule);
 
-        PermissionModule configModule = createModuleIfNotExists("Configuración", "/config", "heroCog6Tooth", 1, null);
+        PermissionModule configModule = createModuleIfNotExists("Configuración", "/config", "bi bi-gear", 1, null);
         // Módulos hijo
-        PermissionModule modulosModule = createModuleIfNotExists("Módulos", "/modules", "heroFire", 0, configModule);
+        PermissionModule modulosModule = createModuleIfNotExists("Módulos", "/modules", "bi bi-fire", 0, configModule);
 
         createPermissionIfNotExists("READ_MODULE", "Ver módulos", modulosModule);
         createPermissionIfNotExists("CREATE_MODULE", "Crear nuevos módulos", modulosModule);
         createPermissionIfNotExists("UPDATE_MODULE", "Editar módulos", modulosModule);
         createPermissionIfNotExists("DELETE_MODULE", "Eliminar módulos", modulosModule);
 
-        PermissionModule permisosModule = createModuleIfNotExists("Permisos", "/permission", "heroArrowRightEndOnRectangle", 0, configModule);
+        PermissionModule permisosModule = createModuleIfNotExists("Permisos", "/permission", "bi bi-shield-lock", 0, configModule);
 
         createPermissionIfNotExists("READ_PERMISSION", "Ver permisos", permisosModule);
         createPermissionIfNotExists("CREATE_PERMISSION", "Crear nuevos permisos", permisosModule);
         createPermissionIfNotExists("UPDATE_PERMISSION", "Editar permisos", permisosModule);
         createPermissionIfNotExists("DELETE_PERMISSION", "Eliminar permisos", permisosModule);
 
-        PermissionModule rolesModule = createModuleIfNotExists("Roles", "/roles", "heroShieldCheck", 2, configModule);
-        PermissionModule userModule = createModuleIfNotExists("Gestión de Usuarios", "/users", "heroUser", 3, configModule);
+        PermissionModule rolesModule = createModuleIfNotExists("Roles", "/roles", "bi bi-shield-check", 2, configModule);
+        PermissionModule userModule = createModuleIfNotExists("Usuarios", "/users", "bi bi-people", 3, configModule);
 
         // Permisos de Configuración -> Roles
         createPermissionIfNotExists("READ_ROLE", "Ver roles y permisos", rolesModule);
@@ -76,7 +75,21 @@ public class DataSeeder implements CommandLineRunner {
         createPermissionIfNotExists("READ_USER", "Ver usuarios", userModule);
         createPermissionIfNotExists("UPDATE_USER", "Editar usuarios", userModule);
 
-        
+        // Modulo de creacion de maestros
+        PermissionModule maestrosModule = createModuleIfNotExists("Maestros", "/maestros", "bi bi-wrench-adjustable", 2, null);
+        PermissionModule empresaModule = createModuleIfNotExists("Empresas", "/empresas", "bi bi-building", 1, maestrosModule);
+        PermissionModule sucursalesModule = createModuleIfNotExists("Sucursales", "/sucursales", "bi bi-buildings", 2, maestrosModule);
+
+        // Permisos de Maestros -> empresas
+        createPermissionIfNotExists("READ_EMPRESA", "Ver empresas", empresaModule);
+
+        // Permisos de Maestros -> sucursales
+        createPermissionIfNotExists("READ_SUCURSAL", "Ver sucursales", sucursalesModule);
+
+        // Modulo de creacion de ventas
+        PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "null", 3, null);
+        PermissionModule comandaModule = createModuleIfNotExists("Pedido", "/pedido", "null", 1, ventasModule);
+        createPermissionIfNotExists("READ_PEDIDO", "Ver pedido", comandaModule);
 
         // --- 3. Crear el Rol "SUPER_ADMIN" y asignarle los permisos de prueba ---
         if(roleRepository.findByName("ROLE_SUPER_ADMIN").isEmpty()) {

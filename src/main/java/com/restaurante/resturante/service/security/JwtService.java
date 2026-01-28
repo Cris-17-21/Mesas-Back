@@ -31,6 +31,8 @@ public class JwtService {
 
     private static final String CLAIM_IP_ADDRESS = "ip";
     private static final String CLAIM_AUTHORITIES = "authorities";
+    private static final String CLAIM_EMPRESA_ID = "empresaId";
+    private static final String CLAIM_SUCURSAL_ID = "sucursalId";
 
     @Value("${security.jwt.secret-key}")
     private String secretKey;
@@ -49,9 +51,13 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
     
-    public String generateAccessToken(UserDetails userDetails, String ipAddress) {
+    public String generateAccessToken(UserDetails userDetails, String ipAddress, String empresaId, String sucursalId) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put(CLAIM_IP_ADDRESS, ipAddress);
+
+        // Inyectamos los IDs de contexto en el token
+        if (empresaId != null) extraClaims.put(CLAIM_EMPRESA_ID, empresaId);
+        if (sucursalId != null) extraClaims.put(CLAIM_SUCURSAL_ID, sucursalId);
         
         extraClaims.put(CLAIM_AUTHORITIES, userDetails.getAuthorities()
                 .stream()
