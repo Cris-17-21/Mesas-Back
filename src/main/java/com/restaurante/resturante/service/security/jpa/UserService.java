@@ -3,20 +3,25 @@ package com.restaurante.resturante.service.security.jpa;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurante.resturante.domain.security.Role;
 import com.restaurante.resturante.domain.security.TipoDocumento;
 import com.restaurante.resturante.domain.security.User;
+import com.restaurante.resturante.domain.security.UserAccess;
 import com.restaurante.resturante.dto.security.CreateUserDto;
 import com.restaurante.resturante.dto.security.MeResponseDto;
 import com.restaurante.resturante.dto.security.MeUserDto;
 import com.restaurante.resturante.dto.security.MenuModuleDto;
 import com.restaurante.resturante.dto.security.UserDto;
 import com.restaurante.resturante.mapper.security.UserDtoMapper;
+import com.restaurante.resturante.repository.maestro.EmpresaRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.RoleRepository;
 import com.restaurante.resturante.repository.security.TipoDocumentoRepository;
+import com.restaurante.resturante.repository.security.UserAccessRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.service.security.IUserService;
 
@@ -28,6 +33,10 @@ import lombok.RequiredArgsConstructor;
 public class UserService implements IUserService{
 
     private final UserRepository userRepository;
+    private final UserAccessRepository userAccessRepository;
+    private final EmpresaRepository empresaRepository;
+    private final SucursalRepository sucursalRepository;
+    private final PasswordEncoder passwordEncoder;
     private final MenuService menuService;
     private final UserDtoMapper userDtoMapper;
     private final RoleRepository roleRepository;
@@ -99,9 +108,27 @@ public class UserService implements IUserService{
                 .orElseThrow(() -> new EntityNotFoundException("Tipo de documento no encontrado: " + dto.tipoDocumento()));
 
         User user = userDtoMapper.toEntity(dto, rol, tipoDoc);
-        User saved = userRepository.save(user);
+        user.setPassword(passwordEncoder.encode(dto.password()));
+        User savedUser = userRepository.save(user);
 
-        return userDtoMapper.toUserDto(saved);
+        // 3. ASIGNACIÓN DE ACCESO (Lógica 1 a 1)
+        if (dto.empresaId() != null && dto.sucursalId() != null) {
+            var empresa = empresaRepository.findById(dto.empresaId())
+                .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+            var sucursal = sucursalRepository.findById(dto.sucursalId())
+                .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+
+            UserAccess access = UserAccess.builder()
+                .user(savedUser)
+                .empresa(empresa)
+                .sucursal(sucursal)
+                .active(true)
+                .build();
+            
+            userAccessRepository.save(access);
+        }
+
+        return userDtoMapper.toUserDto(savedUser);
     }
 
     @Override

@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin("*")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -52,51 +54,41 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> authenticateUser(@RequestBody LoginRequest loginRequest,
             HttpServletRequest request) {
+
+        // 1. Autenticación estándar de Spring Security
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password()));
+
         User user = (User) authentication.getPrincipal();
         String clientIp = getClientIp(request);
 
-        List<UserAccess> accesos = userAccessRepository.findByUserIdAndActiveTrue(user.getId());
+        // 2. Buscamos su acceso (Relación 1 a 1 que definimos)
+        // Usamos findFirst() porque bajo tu nueva regla, solo esperamos uno activo.
+        UserAccess acceso = userAccessRepository.findByUserIdAndActiveTrue(user.getId())
+                .stream()
+                .findFirst()
+                .orElse(null); // Si es null, podría ser un SuperAdmin sin sede asignada
 
-        if (accesos.isEmpty()) {
-            return ResponseEntity.ok(createAuthResponse(user, clientIp, null, null));
-        }
+        String empresaId = (acceso != null) ? acceso.getEmpresa().getId() : null;
+        String sucursalId = (acceso != null) ? acceso.getSucursal().getId() : null;
 
-        // CASO A: Múltiples sucursales (Requiere selección)
-        if (accesos.size() > 1) {
-            List<SucursalDto> sucursales = accesos.stream()
-                    .map(acc -> sucursalDtoMapper.toDto(acc.getSucursal()))
-                    .toList();
-
-            return ResponseEntity.ok(new AuthResponse(
-                    null, null, null, null,
-                    true,
-                    sucursales));
-        }
-
-        // CASO B: Acceso directo (1 sucursal o ninguna si es SuperAdmin)
-        String empresaId = null;
-        String sucursalId = null;
-        if (accesos.size() == 1) {
-            UserAccess acc = accesos.get(0);
-            empresaId = acc.getEmpresa().getId();
-            sucursalId = acc.getSucursal().getId();
-        }
-
+        // 3. Generamos tokens con contexto
         String accessToken = jwtService.generateAccessToken(user, clientIp, empresaId, sucursalId);
         String refreshToken = refreshTokenService.createRefreshToken(user.getUsername()).getToken();
 
-        // UserDto userDto = userDtoMapper.toUserDto(user);
-
+        // 4. Calculamos expiraciones para el DTO
         Date expirationAccessToken = new Date(System.currentTimeMillis() + accessTokenExpiration);
         Date expirationRefreshToken = new Date(System.currentTimeMillis() + refreshTokenExpiration);
 
-        // return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken,
-        // expirationAccessToken, expirationRefreshToken, userDto));
-        return ResponseEntity
-                .ok(new AuthResponse(accessToken, refreshToken, expirationAccessToken, expirationRefreshToken, false,
-                        java.util.Collections.emptyList()));
+        // 5. Devolvemos la respuesta
+        // El flag 'requiresSelection' va en false porque ya sabemos su sede
+        return ResponseEntity.ok(new AuthResponse(
+                accessToken,
+                refreshToken,
+                expirationAccessToken,
+                expirationRefreshToken,
+                false,
+                List.of()));
     }
 
     @PostMapping("/select-branch")
@@ -122,35 +114,41 @@ public class AuthController {
                 new java.util.Date(System.currentTimeMillis() + accessTokenExpiration),
                 new java.util.Date(System.currentTimeMillis() + refreshTokenExpiration),
                 false,
-                List.of()
-            );
+                List.of());
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@RequestBody RefreshTokenRequest requestBody,
             HttpServletRequest request) {
-        String requestRefreshToken = requestBody.refreshToken();
-        return refreshTokenService.findByToken(requestRefreshToken)
+
+        return refreshTokenService.findByToken(requestBody.refreshToken())
                 .map(refreshTokenService::verifyExpiration)
-                .map(refreshToken -> {
-                    User user = refreshToken.getUser();
-                    refreshTokenRepository.delete(refreshToken);
-                    String newRefreshToken = refreshTokenService.createRefreshToken(user.getUsername()).getToken();
+                .map(tokenEntity -> {
+                    User user = tokenEntity.getUser();
                     String clientIp = getClientIp(request);
-                    String accessToken = jwtService.generateAccessToken(user, clientIp, null, null);
 
-                    // UserDto userDto = userDtoMapper.toUserDto(user);
+                    // IMPORTANTE: Recuperamos el acceso para mantener el contexto en el nuevo token
+                    UserAccess acceso = userAccessRepository.findByUserIdAndActiveTrue(user.getId())
+                            .stream().findFirst().orElse(null);
 
-                    Date expirationAccessToken = new Date(System.currentTimeMillis() + accessTokenExpiration);
-                    Date expirationRefreshToken = new Date(System.currentTimeMillis() + refreshTokenExpiration);
+                    String empId = (acceso != null) ? acceso.getEmpresa().getId() : null;
+                    String sucId = (acceso != null) ? acceso.getSucursal().getId() : null;
 
-                    // return ResponseEntity.ok(new AuthResponse(accessToken, newRefreshToken,
-                    // expirationAccessToken, expirationRefreshToken, userDto));
-                    return ResponseEntity.ok(new AuthResponse(accessToken, newRefreshToken, expirationAccessToken,
-                            expirationRefreshToken, false, java.util.Collections.emptyList()));
+                    String newAccessToken = jwtService.generateAccessToken(user, clientIp, empId, sucId);
 
+                    // Rotación de Refresh Token (opcional pero recomendado)
+                    refreshTokenRepository.delete(tokenEntity);
+                    String newRefreshToken = refreshTokenService.createRefreshToken(user.getUsername()).getToken();
+
+                    return ResponseEntity.ok(new AuthResponse(
+                            newAccessToken,
+                            newRefreshToken,
+                            new Date(System.currentTimeMillis() + accessTokenExpiration),
+                            new Date(System.currentTimeMillis() + refreshTokenExpiration),
+                            false,
+                            List.of()));
                 })
-                .orElseThrow(() -> new TokenRefreshException(requestRefreshToken, "Refresh token no encontrado..."));
+                .orElseThrow(() -> new TokenRefreshException(requestBody.refreshToken(), "Token inválido"));
     }
 
     private String getClientIp(HttpServletRequest request) {

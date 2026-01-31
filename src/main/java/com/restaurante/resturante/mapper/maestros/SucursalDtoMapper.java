@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.domain.maestros.Sucursal;
+import com.restaurante.resturante.dto.maestro.CreateSucursalDto;
 import com.restaurante.resturante.dto.maestro.SucursalDto;
 
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class SucursalDtoMapper {
             return null;
 
         return new SucursalDto(
-                sucursal.getId(), // Asumiendo que ya cambiaste Long a String en la entidad
+                sucursal.getId(),
                 sucursal.getNombre(),
                 sucursal.getDireccion(),
                 sucursal.getTelefono(),
@@ -41,17 +42,25 @@ public class SucursalDtoMapper {
                 .collect(Collectors.toList());
     }
 
+    public Sucursal toEntity(CreateSucursalDto dto) {
+        if (dto == null)
+            return null;
+
+        // Reutilizamos el método de abajo pasándole los datos del record
+        return toEntity(dto.nombre(), dto.direccion(), dto.telefono());
+    }
+
     /**
      * Crea una entidad Sucursal a partir de datos básicos (si lo necesitas más
      * adelante)
      */
-    public Sucursal toEntity(String nombre, String direccion, String telefono, Empresa empresa) {
+    public Sucursal toEntity(String nombre, String direccion, String telefono) {
         Sucursal sucursal = new Sucursal();
         sucursal.setNombre(nombre);
         sucursal.setDireccion(direccion);
         sucursal.setTelefono(telefono);
-        sucursal.setEmpresa(empresa);
-        sucursal.setEstado(true);
+        // Usamos setEstado(true) como lo tenías definido
+        sucursal.setEstado(true); 
         return sucursal;
     }
 }

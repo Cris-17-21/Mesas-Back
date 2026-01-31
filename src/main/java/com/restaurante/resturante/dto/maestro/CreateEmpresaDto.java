@@ -7,6 +7,5 @@ public record CreateEmpresaDto(
     String telefono,
     String email,
     String logoUrl,
-    String fechaAfiliacion,
-    Double precioMensual
+    String fechaAfiliacion
 ) {}

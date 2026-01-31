@@ -40,7 +40,6 @@ public class UserDtoMapper {
 
         User user = new User();
         user.setUsername(dto.username());
-        user.setPassword(dto.password());
         user.setNombres(dto.nombres());
         user.setApellidoPaterno(dto.apellidoPaterno());
         user.setApellidoMaterno(dto.apellidoMaterno());

@@ -1,10 +1,9 @@
 package com.restaurante.resturante.dto.maestro;
 
-import com.restaurante.resturante.config.jackson.ObfuscatedId;
+import java.util.List;
 
 public record EmpresaDto(
-    @ObfuscatedId
-    Long id,
+    String id,
     String ruc,
     String razonSocial,
     String direccionFiscal,
@@ -12,5 +11,5 @@ public record EmpresaDto(
     String email,
     String logoUrl,
     String fechaAfiliacion,
-    Double precioMensual
+    List<SucursalDto> sucursales 
 ) {}

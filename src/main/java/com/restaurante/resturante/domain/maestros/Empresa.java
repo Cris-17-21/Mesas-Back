@@ -67,20 +67,11 @@ public class Empresa extends Auditable {
     @Builder.Default
     private Boolean shadowBan = false;
 
-    // Pagos
-    @Column(name = "precio_mensual", precision = 10, scale = 2, nullable = false)
-    private BigDecimal precioMensual;
-
     // ---- RELACIONES ----
     @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
     @ToString.Exclude
     @JsonBackReference
     private Set<Sucursal> sucursales;
-
-    @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @JsonBackReference
-    private Set<HistorialPago> historialPagos;
 
     @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
     @ToString.Exclude

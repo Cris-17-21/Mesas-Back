@@ -101,9 +101,16 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-
     public Optional<String> extractIpAddress(String token) {
         return extractClaim(token, claims -> claims.get(CLAIM_IP_ADDRESS, String.class));
+    }
+
+    public Optional<String> extractEmpresaId(String token) {
+        return extractClaim(token, claims -> claims.get(CLAIM_EMPRESA_ID, String.class));
+    }
+
+    public Optional<String> extractSucursalId(String token) {
+        return extractClaim(token, claims -> claims.get(CLAIM_SUCURSAL_ID, String.class));
     }
 
     private boolean isTokenExpired(String token) {
