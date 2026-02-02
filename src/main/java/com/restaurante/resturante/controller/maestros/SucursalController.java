@@ -1,6 +1,7 @@
 package com.restaurante.resturante.controller.maestros;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,5 +52,10 @@ public class SucursalController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         sucursalService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<List<SucursalDto>> getByEmpresa(@PathVariable String empresaId) {
+        return ResponseEntity.ok(sucursalService.findByEmpresaId(empresaId));
     }
 }

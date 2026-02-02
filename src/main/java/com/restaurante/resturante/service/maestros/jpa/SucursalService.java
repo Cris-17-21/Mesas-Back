@@ -1,6 +1,7 @@
 package com.restaurante.resturante.service.maestros.jpa;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,5 +89,14 @@ public class SucursalService implements ISucursalService {
 
         // Podrías implementar un borrado lógico aquí
         sucursalRepository.delete(sucursal);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SucursalDto> findByEmpresaId(String empresaId) {
+        return sucursalRepository.findByEmpresaId(empresaId)
+                .stream()
+                .map(sucursalMapper::toDto)
+                .toList();
     }
 }
