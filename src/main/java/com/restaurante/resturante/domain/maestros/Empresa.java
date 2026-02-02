@@ -1,6 +1,5 @@
 package com.restaurante.resturante.domain.maestros;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
 
@@ -52,7 +51,7 @@ public class Empresa extends Auditable {
     @Column(nullable = true, unique = true)
     private String email;
 
-    @Column(nullable = true, unique = true)
+    @Column(nullable = true)
     private String logoUrl;
 
     @Column(nullable = false)
