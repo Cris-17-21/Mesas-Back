@@ -1,11 +1,12 @@
 package com.restaurante.resturante.domain.maestros;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.restaurante.resturante.domain.audit.Auditable;
-import com.restaurante.resturante.domain.security.UserAccess;
+import com.restaurante.resturante.domain.security.PermissionModule;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -29,41 +30,44 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "sucursales")
-public class Sucursal extends Auditable{
+@Table(name = "mesas")
+public class Mesa {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(nullable = false)
-    private String nombre;
+    @Column(name = "codigo_mesa", nullable = false, unique = true)
+    private String codigoMesa;
 
-    @Column(nullable = true)
-    private String direccion;
+    @Column(name = "capacidad", nullable = false)
+    private Integer capacidad;
 
-    @Column(nullable = true)
-    private String telefono;
+    @Column(name = "estado", nullable = false)
+    @Builder.Default
+    private String estado = "LIBRE";
 
     @Column(name = "is_active")
     @Builder.Default
-    private Boolean estado = true;
+    private Boolean active = true;
 
     // ---- RELACIONES ----
+    //(Borrar luego) Falta la relación con pedidos
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "empresa_id", nullable = false)
+    @JoinColumn(name = "piso_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
-    private Empresa empresa;
+    private Piso piso;
 
-    @OneToMany(mappedBy = "sucursal", fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "union_principal_id")
     @ToString.Exclude
-    @JsonBackReference
-    private Set<UserAccess> usersAccess;
+    @JsonBackReference("principal-secundario")
+    private Mesa principal;
 
-    @OneToMany(mappedBy = "sucursal", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @JsonBackReference
-    private Set<Piso> pisos;
+    @OneToMany(mappedBy = "principal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonBackReference("principal-secundario")
+    private Set<Mesa> secundario = new HashSet<>();
 }

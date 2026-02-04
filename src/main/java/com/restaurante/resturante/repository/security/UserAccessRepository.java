@@ -13,4 +13,5 @@ public interface UserAccessRepository extends JpaRepository<UserAccess, String>{
 
     Optional<UserAccess> findByUserIdAndSucursalId(String userId, String sucursalId);
 
+    Optional<UserAccess> findByUserId(String userId);
 }

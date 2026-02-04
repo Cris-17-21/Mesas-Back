@@ -3,8 +3,6 @@ package com.restaurante.resturante.domain.maestros;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.restaurante.resturante.domain.audit.Auditable;
-import com.restaurante.resturante.domain.security.UserAccess;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,41 +27,33 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "sucursales")
-public class Sucursal extends Auditable{
+@Table(name = "pisos")
+public class Piso {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(nullable = false)
+    @Column(name = "nombre", nullable = false, unique = true)
     private String nombre;
 
-    @Column(nullable = true)
-    private String direccion;
-
-    @Column(nullable = true)
-    private String telefono;
+    @Column(name = "descripcion", nullable = true)
+    private String descripcion;
 
     @Column(name = "is_active")
     @Builder.Default
-    private Boolean estado = true;
+    private Boolean active = true;
 
     // ---- RELACIONES ----
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "empresa_id", nullable = false)
+    @JoinColumn(name = "sucursal_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
-    private Empresa empresa;
+    private Sucursal sucursal;
 
-    @OneToMany(mappedBy = "sucursal", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "piso", fetch = FetchType.LAZY)
     @ToString.Exclude
     @JsonBackReference
-    private Set<UserAccess> usersAccess;
-
-    @OneToMany(mappedBy = "sucursal", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @JsonBackReference
-    private Set<Piso> pisos;
+    private Set<Mesa> mesas;
 }
