@@ -18,7 +18,14 @@ public class ProveedorDtoMapper {
                 proveedor.getRuc(),
                 proveedor.getDireccion(),
                 proveedor.getTelefono(),
-                proveedor.getEstado());
+                proveedor.getEstado(),
+                proveedor.getMetodosPago() != null ? proveedor.getMetodosPago().stream()
+                        .map(mp -> new com.restaurante.resturante.dto.compras.ProveedorMetodoPagoDto(
+                                mp.getIdTipoPago(),
+                                mp.getTiposPago() != null ? mp.getTiposPago().getTipoPago() : null,
+                                mp.getDatosPago()))
+                        .collect(java.util.stream.Collectors.toList())
+                        : java.util.Collections.emptyList());
     }
 
     public Proveedor toEntity(ProveedorDto dto) {
@@ -26,16 +33,7 @@ public class ProveedorDtoMapper {
             return null;
 
         return Proveedor.builder()
-                .idProveedor(dto.idProveedor()) // May be null for creation, handled by DB or manually? The SQL uses INT
-                                                // but not AUTO_INCREMENT explicitly in the CREATE statement provided.
-                                                // Wait.
-                // The User provided SQL: `id_proveedor` int(11) NOT NULL. No AUTO_INCREMENT.
-                // So ID must be provided or generated. I should check if I missed
-                // GenerationType in Entity.
-                // Existing entities use UUID.
-                // The SQL for Proveedor: `PRIMARY KEY (id_proveedor)`.
-                // If strictly following SQL, I might need to generate ID manually or ask user.
-                // For now, I'll map what is in DTO.
+                .idProveedor(dto.idProveedor())
                 .razonSocial(dto.razonSocial())
                 .nombreComercial(dto.nombreComercial())
                 .ruc(dto.ruc())
