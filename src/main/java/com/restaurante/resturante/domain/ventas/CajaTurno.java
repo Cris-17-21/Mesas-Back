@@ -1,12 +1,13 @@
-package com.restaurante.resturante.domain.maestros;
+package com.restaurante.resturante.domain.ventas;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.restaurante.resturante.domain.ventas.Pedido;
+import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.maestros.Sucursal;
+import com.restaurante.resturante.domain.security.User;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,7 +16,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,51 +26,51 @@ import lombok.ToString;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Entity
-@Table(name = "mesas")
-public class Mesa {
+@Table(name = "caja_turnos")
+public class CajaTurno extends Auditable{
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(name = "codigo_mesa", nullable = false, unique = true)
-    private String codigoMesa;
+    @Column(name = "monto_apertura", nullable = false)
+    private BigDecimal montoApertura;
 
-    @Column(name = "capacidad", nullable = false)
-    private Integer capacidad;
+    @Column(name = "monto_cierre", nullable = true)
+    private BigDecimal montoCierre;
+
+    @Column(name = "diferencia", nullable = true)
+    private BigDecimal diferencia;
+
+    @Column(name = "fecha_apertura", nullable = false)
+    private LocalDateTime fechaApertura;
+
+    @Column(name = "fecha_cierre", nullable = true)
+    private LocalDateTime fechaCierre;
 
     @Column(name = "estado", nullable = false)
     @Builder.Default
-    private String estado = "LIBRE";
+    private String estado = "ABIERTA"; 
 
     @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
 
     // ---- RELACIONES ----
-    @OneToMany(mappedBy = "mesa", fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sucursal_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
-    private Set<Pedido> pedidos;
+    private Sucursal sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "piso_id", nullable = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
-    private Piso piso;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "union_principal_id")
-    @ToString.Exclude
-    @JsonBackReference("principal-secundario")
-    private Mesa principal;
-
-    @OneToMany(mappedBy = "principal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JsonBackReference("principal-secundario")
-    private Set<Mesa> secundario = new HashSet<>();
+    private User user;
 }

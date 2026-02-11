@@ -4,6 +4,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.maestros.Cliente;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -41,4 +42,9 @@ public class TipoDocumento extends Auditable {
     @ToString.Exclude
     @JsonBackReference
     private Set<User> users;
+
+    @OneToMany(mappedBy = "tipoDocumento", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<Cliente> clientes;
 }

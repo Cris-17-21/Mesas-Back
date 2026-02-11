@@ -171,4 +171,35 @@ public class UserService implements IUserService{
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User no encontrado"));
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<UserDto> getUserByEmpresaIdAndSucursalId(String empresaId, String sucursalId) {
+        List<User> users = userAccessRepository.findUsersByEmpresaIdAndSucursalId(empresaId, sucursalId);
+
+        if (users.isEmpty()) {
+            throw new EntityNotFoundException("No se encontró ningún usuario para la empresa '" + empresaId + "' y sucursal '" + sucursalId + "'");
+        }
+
+        return users.stream()
+                .map(userDtoMapper::toUserDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<UserDto> getUserByEmpresaId(String empresaId) {
+        List<User> users = userAccessRepository.findUsersByEmpresaId(empresaId);
+        return users.stream()
+                .map(userDtoMapper::toUserDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public UserDto getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + username));
+        return userDtoMapper.toUserDto(user);
+    }
 }

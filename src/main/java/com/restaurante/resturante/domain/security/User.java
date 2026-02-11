@@ -12,6 +12,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.ventas.Pedido;
+import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -86,6 +88,11 @@ public class User extends Auditable implements UserDetails {
     @ToString.Exclude
     @JsonBackReference
     private Set<UserAccess> usersAccess;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<Pedido> pedidos;
 
     // ------METODO DE SPRING SECURITY------
 

@@ -3,7 +3,9 @@ package com.restaurante.resturante.domain.inventario;
 import java.math.BigDecimal;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.compras.Proveedor;
+import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,12 +15,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
@@ -65,7 +69,14 @@ public class Producto {
     @Column(name = "imagen")
     private String imagen;
 
+
+    // ---- RELACIONES ----
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "producto_tipos", joinColumns = @JoinColumn(name = "id_producto"), inverseJoinColumns = @JoinColumn(name = "id_tipo"))
     private Set<TiposProducto> tipos;
+
+    @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<PedidoDetalle> pedidoDetalles;
 }

@@ -19,4 +19,10 @@ public interface IUserService {
     UserDto update(String obfuscatedId, CreateUserDto dto);
 
     void delete(String obfuscatedId);
+
+    List<UserDto> getUserByEmpresaIdAndSucursalId(String empresaId, String sucursalId);
+
+    List<UserDto> getUserByEmpresaId(String empresaId);
+
+    UserDto getUserByUsername(String username);
 }

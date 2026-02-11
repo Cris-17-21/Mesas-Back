@@ -6,6 +6,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.security.UserAccess;
+import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -76,4 +77,9 @@ public class Empresa extends Auditable {
     @ToString.Exclude
     @JsonBackReference
     private Set<UserAccess> usersAccess;
+
+    @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonBackReference
+    private Set<Cliente> clientes;
 }

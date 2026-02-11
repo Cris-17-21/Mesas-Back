@@ -1,7 +1,10 @@
 package com.restaurante.resturante.service.maestros.jpa;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,4 +102,5 @@ public class SucursalService implements ISucursalService {
                 .map(sucursalMapper::toDto)
                 .toList();
     }
+
 }
