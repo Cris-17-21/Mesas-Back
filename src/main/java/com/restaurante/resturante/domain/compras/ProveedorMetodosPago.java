@@ -14,17 +14,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.io.Serializable;
 
-// Clave compuesta para JPA
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-class ProveedorMetodosPagoId implements Serializable {
-    private Integer idProveedor;
-    private Integer idTipoPago;
-}
-
 @Getter
 @Setter
 @NoArgsConstructor
