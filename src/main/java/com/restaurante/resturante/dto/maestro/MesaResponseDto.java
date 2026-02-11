@@ -5,7 +5,6 @@ public record MesaResponseDto(
     String codigoMesa,
     Integer capacidad,
     String estado,
-    Boolean active,
     String pisoNombre,
     String idPrincipal
 ) {}

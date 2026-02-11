@@ -6,9 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurante.resturante.domain.maestros.Mesa;
+import com.restaurante.resturante.domain.maestros.Piso;
+import com.restaurante.resturante.dto.maestro.CreateMesaDto;
 import com.restaurante.resturante.dto.maestro.MesaResponseDto;
 import com.restaurante.resturante.mapper.maestros.MesaMapper;
 import com.restaurante.resturante.repository.maestro.MesaRepository;
+import com.restaurante.resturante.repository.maestro.PisoRepository;
 import com.restaurante.resturante.service.maestros.IMesaService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,58 +21,105 @@ import lombok.RequiredArgsConstructor;
 public class MesaService implements IMesaService {
 
     private final MesaRepository mesaRepository;
+    private final PisoRepository pisoRepository;
     private final MesaMapper mesaMapper;
 
     @Override
-    public List<MesaResponseDto> listarTodas() {
-        // Usando tu variable 'active' de la entidad
-        return mesaRepository.findAll().stream()
-                .map(mesaMapper::toDTO)
-                .toList();
+    @Transactional(readOnly = true)
+    public List<MesaResponseDto> findByPiso(String pisoId) {
+        return mesaMapper.toDTOList(mesaRepository.findByPisoId(pisoId));
+    }
+
+    @Override
+    @Transactional
+    public MesaResponseDto create(CreateMesaDto dto) {
+        Piso piso = pisoRepository.findById(dto.pisoId())
+                .orElseThrow(() -> new RuntimeException("Piso no encontrado"));
+
+        Mesa mesa = mesaMapper.toEntity(dto);
+        mesa.setPiso(piso);
+        // Garantizamos que el código esté en MAYÚSCULAS
+        mesa.setCodigoMesa(dto.codigoMesa().toUpperCase());
+
+        return mesaMapper.toDto(mesaRepository.save(mesa));
+    }
+
+    @Override
+    @Transactional
+    public MesaResponseDto update(String id, CreateMesaDto dto) {
+        Mesa mesa = mesaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
+        mesa.setCodigoMesa(dto.codigoMesa().toUpperCase());
+        mesa.setCapacidad(dto.capacidad());
+        mesa.setActive(dto.active());
+
+        return mesaMapper.toDto(mesaRepository.save(mesa));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MesaResponseDto obtenerPorId(String id) {
+        return mesaRepository.findById(id)
+                .map(mesaMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+    }
+
+    @Override
+    @Transactional
+    public void eliminar(String id) {
+        Mesa mesa = mesaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+        mesa.setActive(false);
+        mesaRepository.save(mesa);
     }
 
     @Override
     @Transactional
     public MesaResponseDto cambiarEstado(String id, String nuevoEstado) {
         Mesa mesa = mesaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Mesa no existe"));
-        
-        mesa.setEstado(nuevoEstado);
-        return mesaMapper.toDTO(mesaRepository.save(mesa));
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
+        // El estado siempre debe persistirse en MAYÚSCULAS
+        mesa.setEstado(nuevoEstado.toUpperCase());
+        return mesaMapper.toDto(mesaRepository.save(mesa));
     }
 
     @Override
-    public List<MesaResponseDto> listarActivasPorPiso(String pisoId) {
-        // Ojo: asegúrate que tu Repo tenga findByPisoId(String id)
-        return mesaRepository.findByPisoId(pisoId).stream()
-                .filter(Mesa::getActive)
-                .map(mesaMapper::toDTO)
-                .toList();
-    }
-
-    @Override
+    @Transactional
     public void unirMesas(String idPrincipal, List<String> idsSecundarios) {
         Mesa principal = mesaRepository.findById(idPrincipal)
                 .orElseThrow(() -> new RuntimeException("Mesa principal no encontrada"));
 
         List<Mesa> secundarias = mesaRepository.findAllById(idsSecundarios);
-        secundarias.forEach(s -> {
-            s.setPrincipal(principal);
-            s.setEstado("UNIDA");
-        });
-        
+
+        for (Mesa secundaria : secundarias) {
+            if (secundaria.getId().equals(idPrincipal))
+                continue; // Evitar auto-unión
+
+            secundaria.setPrincipal(principal);
+            // Al unirse, la secundaria hereda el estado de la principal o un estado de
+            // unión
+            secundaria.setEstado("OCUPADA_UNION");
+        }
+
         mesaRepository.saveAll(secundarias);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public MesaResponseDto obtenerPorId(String id) {
-        // 1. Buscamos la mesa por su ID (String)
-        // Usamos orElseThrow para manejar el caso de que el UUID no exista
-        Mesa mesa = mesaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Mesa no encontrada con el ID: " + id));
+    @Transactional
+    public void separarMesas(String idPrincipal) {
+        // Obtenemos todas las mesas que tienen a esta como principal
+        // Nota: Asegúrate de que tu Repository tenga findByPrincipalId
+        List<Mesa> mesasUnidas = mesaRepository.findAll().stream()
+                .filter(m -> m.getPrincipal() != null && m.getPrincipal().getId().equals(idPrincipal))
+                .toList();
 
-        // 2. Convertimos la entidad encontrada a DTO usando el mapper manual
-        return mesaMapper.toDTO(mesa);
+        mesasUnidas.forEach(m -> {
+            m.setPrincipal(null);
+            m.setEstado("LIBRE");
+        });
+
+        mesaRepository.saveAll(mesasUnidas);
     }
 }
