@@ -37,22 +37,46 @@ public class ClienteService implements IClienteService {
     @Override
     @Transactional
     public ClienteDto crear(CreateClienteDto dto) {
-        // Validación de duplicados por empresa
-        if (clienteRepository.existsByNumeroDocumentoAndEmpresaId(dto.numeroDocumento(), dto.empresaId())) {
-            throw new RuntimeException(
-                    "El documento " + dto.numeroDocumento() + " ya está registrado en esta empresa.");
-        }
+        // 1. Buscamos el registro existente (activo o inactivo)
+        return clienteRepository.findByNumeroDocumentoAndEmpresaId(dto.numeroDocumento(), dto.empresaId())
+                .map(clienteExistente -> {
+                    // Si ya está activo, lanzamos la excepción que tenías
+                    if (clienteExistente.getActive()) {
+                        throw new RuntimeException(
+                                "El documento " + dto.numeroDocumento() + " ya está registrado y activo.");
+                    }
 
-        Cliente cliente = clienteMapper.toEntity(dto);
+                    // Si existe pero estaba INACTIVO, lo actualizamos y reactivamos
+                    actualizarDatosCliente(clienteExistente, dto);
+                    clienteExistente.setActive(true);
 
-        // Seteo de relaciones desde el DTO
-        cliente.setEmpresa(empresaRepository.findById(dto.empresaId())
-                .orElseThrow(() -> new RuntimeException("Empresa no encontrada")));
+                    return clienteMapper.toDto(clienteRepository.save(clienteExistente));
+                })
+                .orElseGet(() -> {
+                    // 2. Si no existe en absoluto, creación limpia
+                    Cliente nuevoCliente = clienteMapper.toEntity(dto);
 
-        cliente.setTipoDocumento(tipoDocumentoRepository.findById(dto.tipoDocumentoId())
+                    nuevoCliente.setEmpresa(empresaRepository.findById(dto.empresaId())
+                            .orElseThrow(() -> new RuntimeException("Empresa no encontrada")));
+
+                    nuevoCliente.setTipoDocumento(tipoDocumentoRepository.findById(dto.tipoDocumentoId())
+                            .orElseThrow(() -> new RuntimeException("Tipo de Documento no encontrado")));
+
+                    nuevoCliente.setActive(true); // Aseguramos que nazca activo
+                    return clienteMapper.toDto(clienteRepository.save(nuevoCliente));
+                });
+    }
+
+    // Método auxiliar para no repetir código de seteo
+    private void actualizarDatosCliente(Cliente entidad, CreateClienteDto dto) {
+        entidad.setNombreRazonSocial(dto.nombreRazonSocial());
+        entidad.setDireccion(dto.direccion());
+        entidad.setCorreo(dto.correo());
+        entidad.setTelefono(dto.telefono());
+        // También actualizamos el tipo por si cambió de DNI a RUC con el mismo número
+        // (raro, pero posible)
+        entidad.setTipoDocumento(tipoDocumentoRepository.findById(dto.tipoDocumentoId())
                 .orElseThrow(() -> new RuntimeException("Tipo de Documento no encontrado")));
-
-        return clienteMapper.toDto(clienteRepository.save(cliente));
     }
 
     @Override

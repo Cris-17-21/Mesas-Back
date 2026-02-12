@@ -18,7 +18,8 @@ public class ClienteDtoMapper {
             entity.getNombreRazonSocial(),
             entity.getDireccion(),
             entity.getCorreo(),
-            entity.getTelefono()
+            entity.getTelefono(),
+            entity.getActive()
         );
     }
 

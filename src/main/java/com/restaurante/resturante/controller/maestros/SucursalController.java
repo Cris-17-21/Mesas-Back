@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,27 +27,32 @@ public class SucursalController {
 
     private final ISucursalService sucursalService;
 
+    @PreAuthorize("hasAuthority('READ_SUCURSAL')")
     @GetMapping
     public ResponseEntity<List<SucursalDto>> getAll() {
         return ResponseEntity.ok(sucursalService.findAll());
     }
 
+    @PreAuthorize("hasAuthority('READ_SUCURSAL')")
     @GetMapping("/{id}")
     public ResponseEntity<SucursalDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(sucursalService.findById(id));
     }
 
+    @PreAuthorize("hasAuthority('CREATE_SUCURSAL')")
     @PostMapping
     public ResponseEntity<SucursalDto> create(@RequestBody CreateSucursalDto dto) {
         SucursalDto created = sucursalService.create(dto);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('UPDATE_SUCURSAL')")
     @PutMapping("/{id}")
     public ResponseEntity<SucursalDto> update(@PathVariable String id, @RequestBody CreateSucursalDto dto) {
         return ResponseEntity.ok(sucursalService.update(id, dto));
     }
 
+    @PreAuthorize("hasAuthority('DELETE_SUCURSAL')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         sucursalService.delete(id);

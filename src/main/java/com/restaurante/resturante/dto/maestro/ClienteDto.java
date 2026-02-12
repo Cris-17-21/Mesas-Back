@@ -7,5 +7,6 @@ public record ClienteDto(
     String nombreRazonSocial,
     String direccion,
     String correo,
-    String telefono
+    String telefono,
+    boolean isActive
 ) {}

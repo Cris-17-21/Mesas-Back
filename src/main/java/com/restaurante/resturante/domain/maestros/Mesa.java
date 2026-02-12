@@ -38,7 +38,7 @@ public class Mesa {
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(name = "codigo_mesa", nullable = false, unique = true)
+    @Column(name = "codigo_mesa", nullable = false)
     private String codigoMesa;
 
     @Column(name = "capacidad", nullable = false)

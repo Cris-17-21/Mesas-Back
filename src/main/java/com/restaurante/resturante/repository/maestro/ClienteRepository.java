@@ -16,6 +16,8 @@ public interface ClienteRepository extends JpaRepository<Cliente, String>{
     // Útil para el autocompletado en el sistema de ventas
     Optional<Cliente> findByNumeroDocumento(String numeroDocumento);
 
+    Optional<Cliente> findByNumeroDocumentoAndEmpresaId(String numeroDocumento, String empresaId);
+
     // Buscar clientes por nombre o razón social (Búsqueda predictiva)
     List<Cliente> findByNombreRazonSocialContainingIgnoreCaseAndActiveTrue(String nombre);
 

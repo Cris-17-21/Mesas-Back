@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,27 +27,32 @@ public class EmpresaController {
 
     private final IEmpresaService empresaService;
 
+    @PreAuthorize("hasAuthority('READ_EMPRESA')")
     @GetMapping
     public ResponseEntity<List<EmpresaDto>> getAll() {
         return ResponseEntity.ok(empresaService.findAll());
     }
 
+    @PreAuthorize("hasAuthority('READ_EMPRESA')")
     @GetMapping("/{id}")
     public ResponseEntity<EmpresaDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(empresaService.findById(id));
     }
 
+    @PreAuthorize("hasAuthority('CREATE_EMPRESA')")
     @PostMapping
     public ResponseEntity<EmpresaDto> create(@RequestBody CreateEmpresaDto dto) {
         EmpresaDto created = empresaService.create(dto);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAuthority('UPDATE_EMPRESA')")
     @PutMapping("/{id}")
     public ResponseEntity<EmpresaDto> update(@PathVariable String id, @RequestBody CreateEmpresaDto dto) {
         return ResponseEntity.ok(empresaService.update(id, dto));
     }
 
+    @PreAuthorize("hasAuthority('DELETE_EMPRESA')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         empresaService.delete(id);
