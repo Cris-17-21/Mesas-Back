@@ -118,13 +118,6 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         // generationtype.UUID?? No, I used Long).
         // Let's check PedidoCompra.java content I wrote.
         // `@Id @Column... private Long idPedidoCompra;` - NO @GeneratedValue!
-        // This means I must generate ID manually or the DB fails if it expects value.
-        // User's SQL: `CREATE TABLE ... PRIMARY KEY (id_pedido_compra)`. No
-        // AUTO_INCREMENT.
-        // This is bad. I need to generate IDs.
-        // I will use System.currentTimeMillis() or similar as a simple unique ID for
-        // now since strict SQL was asked.
-        pedido.setIdPedidoCompra(System.currentTimeMillis());
 
         PedidoCompra savedPedido = pedidoRepository.save(pedido);
 
@@ -137,7 +130,6 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                         .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detDto.idProducto()));
 
                 DetallePedidoCompra detalle = DetallePedidoCompra.builder()
-                        .idDetallePedido(System.nanoTime()) // Manual ID again
                         .pedidoCompra(savedPedido)
                         .producto(producto)
                         .cantidadPedida(detDto.cantidadPedida())
