@@ -13,5 +13,6 @@ public record PedidoResponseDto(
     LocalDateTime fechaCreacion,
     String nombreCliente,
     String codigoMesa,
-    List<PedidoDetalleResponseDto> detalles
+    List<PedidoDetalleResponseDto> detalles,
+    String sucursalId
 ) {}

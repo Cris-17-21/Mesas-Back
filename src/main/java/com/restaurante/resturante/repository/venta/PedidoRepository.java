@@ -8,15 +8,22 @@ import org.springframework.data.jpa.repository.Query;
 
 import com.restaurante.resturante.domain.ventas.Pedido;
 
-public interface PedidoRepository extends JpaRepository<Pedido, String>{
+public interface PedidoRepository extends JpaRepository<Pedido, String> {
 
-    // Buscar el pedido activo de una mesa (que no esté Pagado ni Anulado)
-    @Query("SELECT p FROM Pedido p WHERE p.mesa.id = :mesaId AND p.estado NOT IN ('Pagado', 'Anulado')")
-    Optional<Pedido> findPedidoActivoPorMesa(String mesaId);
+    // Buscar pedido por código corto (ej: "A-123")
+    Optional<Pedido> findByCodigoPedido(String codigo);
 
-    // Listar todos los pedidos pendientes de una sucursal
+    // Listar pedidos activos en una sucursal (Cocina / Mozos)
+    // Usamos String sucursalId por consistencia con tus UUIDs
     List<Pedido> findBySucursalIdAndEstado(String sucursalId, String estado);
 
-    // Buscar por el código único (ej: PED-102)
-    Optional<Pedido> findByCodigoPedido(String codigoPedido);
+    // Listar todos los pedidos de un turno de caja específico
+    List<Pedido> findByCajaTurnoId(String cajaTurnoId);
+
+    // Verificar si una mesa tiene un pedido abierto (Evitar duplicar mesas)
+    boolean existsByMesaIdAndEstado(String mesaId, String estado);
+
+    // Calcular total de ventas por método de pago en una caja específica
+    @Query("SELECT SUM(pp.monto) FROM PedidoPago pp WHERE pp.cajaTurno.id = :cajaId AND pp.medioPago.nombre = :metodo")
+    java.math.BigDecimal sumTotalByCajaAndMetodo(String cajaId, String metodo);
 }

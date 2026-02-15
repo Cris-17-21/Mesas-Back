@@ -21,8 +21,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value(),
                 "Credenciales Inválidas",
                 "El nombre de usuario o la contraseña son incorrectos.",
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -32,19 +31,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN.value(),
                 "Token de Refresco Inválido",
                 ex.getMessage(),
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
-    
+
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUsernameNotFoundException(UsernameNotFoundException ex) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Usuario no encontrado",
                 ex.getMessage(),
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -54,8 +51,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN.value(),
                 "Acceso Denegado",
                 ex.getMessage(),
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
@@ -65,8 +61,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Error en la Solicitud",
                 ex.getMessage(),
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -76,8 +71,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Error Interno del Servidor",
                 "Ha ocurrido un error inesperado. Por favor, contacte al soporte.",
-                Instant.now()
-        );
+                Instant.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            org.springframework.web.bind.MethodArgumentNotValidException ex) {
+        String mensaje = ex.getBindingResult().getFieldError().getDefaultMessage();
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Error de Validación",
+                mensaje,
+                Instant.now());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 }

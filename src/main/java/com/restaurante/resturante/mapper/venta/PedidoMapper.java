@@ -5,41 +5,86 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.restaurante.resturante.domain.ventas.Pedido;
-import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 import com.restaurante.resturante.dto.venta.PedidoDetalleResponseDto;
+import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
+import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class PedidoMapper {
-    public PedidoResponseDto toResponseDTO(Pedido pedido) {
-        if (pedido == null) return null;
 
-        List<PedidoDetalleResponseDto> detalles = pedido.getPedidoDetalles().stream()
-                .map(this::toDetalleResponseDTO)
-                .toList();
+    private final PedidoDetalleMapper detalleMapper;
 
+    public Pedido toEntity(PedidoRequestDto dto) {
+        if (dto == null)
+            return null;
+
+        return Pedido.builder()
+                .tipoEntrega(dto.tipoEntrega())
+                .estado("ABIERTO")
+                // Nota: Las relaciones (Mesa, Cliente, Sucursal)
+                // se asignan en el Service buscando en el Repo
+                .build();
+    }
+
+    public PedidoResponseDto toDto(Pedido entity) {
+        if (entity == null)
+            return null;
+
+        // 1. Lógica para campos calculados o condicionales
+        String clienteNombre = (entity.getCliente() != null)
+                ? entity.getCliente().getNombreRazonSocial()
+                : "CLIENTE GENERAL";
+
+        String mesaCodigo = (entity.getMesa() != null)
+                ? entity.getMesa().getCodigoMesa()
+                : "N/A";
+
+        List<PedidoDetalleResponseDto> listaDetalles = (entity.getPedidoDetalles() != null)
+                ? entity.getPedidoDetalles().stream().map(detalleMapper::toDto).toList()
+                : java.util.Collections.emptyList();
+
+        // 2. Constructor de 10 parámetros según tu nuevo Record
         return new PedidoResponseDto(
-            pedido.getId(),
-            pedido.getCodigoPedido(),
-            pedido.getEstado(),
-            pedido.getTipoEntrega(),
-            pedido.getTotalFinal(),
-            pedido.getFechaCreacion(),
-            pedido.getCliente() != null ? pedido.getCliente().getNombreRazonSocial() : "CLIENTE GENERAL",
-            pedido.getMesa() != null ? pedido.getMesa().getCodigoMesa() : "DELIVERY",
-            detalles
+                entity.getId(), // 1
+                entity.getCodigoPedido(), // 2
+                entity.getEstado(), // 3
+                entity.getTipoEntrega(), // 4
+                entity.getTotalFinal(), // 5
+                entity.getFechaCreacion(), // 6
+                clienteNombre, // 7
+                mesaCodigo, // 8
+                listaDetalles, // 9
+                entity.getSucursal() != null ? entity.getSucursal().getId() : null // 10. sucursalId
         );
     }
 
-    public PedidoDetalleResponseDto toDetalleResponseDTO(PedidoDetalle detalle) {
-        return new PedidoDetalleResponseDto(
-            detalle.getId(),
-            detalle.getProducto().getNombreProducto(),
-            detalle.getCantidad(),
-            detalle.getPrecioUnitario(),
-            detalle.getTotalLinea(),
-            detalle.getEstadoPreparacion(),
-            detalle.getObservaciones()
+    public PedidoResumenDto toResumenDto(Pedido entity) {
+        if (entity == null)
+            return null;
+
+        // 1. Extraemos valores con lógica de nulos
+        String clienteNombre = (entity.getCliente() != null)
+                ? entity.getCliente().getNombreRazonSocial()
+                : "CLIENTE GENERAL";
+
+        String mesaCodigo = (entity.getMesa() != null)
+                ? entity.getMesa().getCodigoMesa()
+                : "N/A";
+
+        // 2. Constructor con los 8 parámetros en el orden exacto del Record
+        return new PedidoResumenDto(
+                entity.getId(), // 1. id
+                entity.getCodigoPedido(), // 2. codigoPedido
+                entity.getEstado(), // 3. estado
+                entity.getTipoEntrega(), // 4. tipoEntrega
+                entity.getTotalFinal(), // 5. totalFinal
+                entity.getFechaCreacion(), // 6. fechaCreacion
+                clienteNombre, // 7. nombreCliente
+                mesaCodigo // 8. codigoMesa
         );
     }
 }

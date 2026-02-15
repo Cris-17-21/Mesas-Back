@@ -5,7 +5,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.dto.maestro.CreateSucursalDto;
 import com.restaurante.resturante.dto.maestro.SucursalDto;

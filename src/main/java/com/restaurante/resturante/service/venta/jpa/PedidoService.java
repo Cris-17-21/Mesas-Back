@@ -1,116 +1,219 @@
 package com.restaurante.resturante.service.venta.jpa;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.restaurante.resturante.domain.inventario.Producto;
 import com.restaurante.resturante.domain.maestros.Mesa;
+import com.restaurante.resturante.domain.ventas.CajaTurno;
 import com.restaurante.resturante.domain.ventas.Pedido;
+import com.restaurante.resturante.domain.ventas.PedidoDetalle;
+import com.restaurante.resturante.dto.maestro.UnionMesaRequest;
+import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
+import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+import com.restaurante.resturante.dto.venta.SepararCuentaDto;
+import com.restaurante.resturante.mapper.venta.PedidoDetalleMapper;
 import com.restaurante.resturante.mapper.venta.PedidoMapper;
+import com.restaurante.resturante.repository.inventario.ProductoRepository;
 import com.restaurante.resturante.repository.maestro.MesaRepository;
+import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
+import com.restaurante.resturante.service.maestros.IMesaService;
 import com.restaurante.resturante.service.venta.IPedidoService;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class PedidoService implements IPedidoService{
+@Transactional
+public class PedidoService implements IPedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final CajaTurnoRepository cajaRepository;
     private final MesaRepository mesaRepository;
+    private final ProductoRepository productoRepository;
+    private final IMesaService mesaService; // Inyectamos tu service de mesas
     private final PedidoMapper pedidoMapper;
+    private final PedidoDetalleMapper detalleMapper;
 
     @Override
     @Transactional
-    public PedidoResponseDto crearPedido(PedidoRequestDto request) {
-        // 1. Mapear lo básico a Entidad
-        Pedido pedido = Pedido.builder()
-                .codigoPedido("PED-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .tipoEntrega(request.tipoEntrega())
-                .estado("PENDIENTE")
-                .build();
+    public PedidoResponseDto crearPedido(PedidoRequestDto dto) {
+        // 1. Validar Caja Abierta (Obligatorio para arqueo posterior)
+        var caja = cajaRepository.findByUserIdAndSucursalIdAndEstado(dto.usuarioId(), dto.sucursalId(), "ABIERTA")
+                .orElseThrow(() -> new RuntimeException("DEBE ABRIR CAJA PARA REGISTRAR PEDIDOS"));
 
-        // 2. Buscar y asignar Mesa si existe (id es String)
-        if (request.mesaId() != null) {
-            Mesa mesa = mesaRepository.findById(request.mesaId())
-                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
-            pedido.setMesa(mesa);
-            mesa.setEstado("OCUPADA"); // Lógica de negocio: ocupar mesa
-            mesaRepository.save(mesa);
+        // 2. Crear Pedido y asignar código
+        Pedido pedido = pedidoMapper.toEntity(dto);
+        pedido.setCodigoPedido("PED-" + System.currentTimeMillis() % 10000);
+        pedido.setFechaCreacion(LocalDateTime.now());
+        pedido.setCajaTurno(caja);
+
+        // 3. Procesar Detalles
+        List<PedidoDetalle> detalles = dto.detalles().stream()
+                .map(d -> {
+                    PedidoDetalle det = detalleMapper.toEntity(d);
+                    det.setPedido(pedido);
+
+                    // Buscar Producto y Asignar Precio
+                    try {
+                        Integer prodId = Integer.parseInt(d.productoId());
+                        Producto producto = productoRepository.findById(prodId)
+                                .orElseThrow(() -> new RuntimeException("PRODUCTO NO ENCONTRADO: " + d.productoId()));
+
+                        det.setProducto(producto);
+                        det.setPrecioUnitario(producto.getPrecioVenta());
+                        det.setTotalLinea(
+                                producto.getPrecioVenta().multiply(new java.math.BigDecimal(det.getCantidad())));
+                    } catch (NumberFormatException e) {
+                        throw new RuntimeException("ID DE PRODUCTO INVALIDO: " + d.productoId());
+                    }
+
+                    return det;
+                }).toList();
+
+        pedido.setPedidoDetalles(detalles);
+        pedido.calcularTotales();
+
+        // 4. Cambiar estado de mesa a través del MesaService
+        mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
+
+        return pedidoMapper.toDto(pedidoRepository.save(pedido));
+    }
+
+    @Override
+    @Transactional
+    public PedidoResponseDto actualizarDetalles(String pedidoId, List<PedidoDetalleRequestDto> nuevosDetalles) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
+
+        if (!"ABIERTO".equals(pedido.getEstado())) {
+            throw new RuntimeException("EL PEDIDO YA NO ESTÁ ABIERTO");
         }
 
-        // 3. Aquí iría la lógica para buscar Sucursal, Cliente, etc.
-        
-        Pedido guardado = pedidoRepository.save(pedido);
-        return pedidoMapper.toResponseDTO(guardado);
+        List<PedidoDetalle> extras = nuevosDetalles.stream()
+                .map(d -> {
+                    PedidoDetalle det = detalleMapper.toEntity(d);
+                    det.setPedido(pedido);
+                    return det;
+                }).toList();
+
+        pedido.getPedidoDetalles().addAll(extras);
+        pedido.calcularTotales(); // Recalcula total_final
+
+        return pedidoMapper.toDto(pedidoRepository.save(pedido));
+    }
+
+    @Override
+    @Transactional
+    public void unirMesas(UnionMesaRequest dto) {
+        // Delegamos la lógica física al MesaService
+        mesaService.unirMesas(dto.idPrincipal(), dto.idsSecundarios());
+        // Aquí podrías añadir lógica extra si el pedido debe mostrar las mesas unidas
+    }
+
+    @Override
+    @Transactional
+    public void registrarPago(String pedidoId, String metodoPago) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
+
+        // 1. Cerrar Pedido
+        pedido.setEstado("PAGADO");
+        pedido.setFechaCierre(LocalDateTime.now());
+        // pedido.setMetodoPago(metodoPago.toUpperCase());
+
+        // 2. Liberar Mesas (Principal y unidas)
+        String mesaId = pedido.getMesa().getId();
+        mesaService.separarMesas(mesaId); // Libera secundarias
+        mesaService.cambiarEstado(mesaId, "LIBRE"); // Libera principal
+
+        pedidoRepository.save(pedido);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PedidoResponseDto obtenerPorId(String id) {
-        Pedido pedido = pedidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-        return pedidoMapper.toResponseDTO(pedido);
+        return pedidoRepository.findById(id)
+                .map(pedidoMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
     }
 
     @Override
-    public List<PedidoResponseDto> listarTodos() {
-        return pedidoRepository.findAll().stream()
-                .map(pedidoMapper::toResponseDTO)
+    @Transactional(readOnly = true)
+    public List<PedidoResumenDto> listarPedidosActivos(String sucursalId) {
+        // Nota: Asegúrate de tener este método en el repository
+        return pedidoRepository.findBySucursalIdAndEstado(sucursalId, "ABIERTO")
+                .stream()
+                .map(pedidoMapper::toResumenDto)
                 .toList();
     }
 
     @Override
     @Transactional
-    public PedidoResponseDto actualizarEstado(String id, String nuevoEstado) {
-        Pedido pedido = pedidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + id));
+    public PedidoResponseDto separarCuenta(SepararCuentaDto dto) {
+        // 1. Obtener Pedido Origen
+        Pedido origen = pedidoRepository.findById(dto.pedidoOrigenId())
+                .orElseThrow(() -> new RuntimeException("PEDIDO ORIGEN NO ENCONTRADO"));
 
-        // Lógica de negocio: Si el pedido se cierra, grabamos la fecha de cierre
-        if ("ENTREGADO".equalsIgnoreCase(nuevoEstado) || "COMPLETADO".equalsIgnoreCase(nuevoEstado)) {
-            pedido.setFechaCierre(java.time.LocalDateTime.now());
-            
-            // Si tiene mesa, la liberamos automáticamente al entregar/finalizar
-            if (pedido.getMesa() != null) {
-                Mesa mesa = pedido.getMesa();
-                mesa.setEstado("LIBRE"); 
-                mesaRepository.save(mesa);
+        if (!"ABIERTO".equals(origen.getEstado())) {
+            throw new RuntimeException("EL PEDIDO ORIGEN DEBE ESTAR ABIERTO");
+        }
+
+        // 2. Filtrar detalles a mover
+        List<PedidoDetalle> detallesAMover = origen.getPedidoDetalles().stream()
+                .filter(d -> dto.detallesIds().contains(d.getId()))
+                .toList();
+
+        if (detallesAMover.isEmpty()) {
+            throw new RuntimeException("NO SE SELECCIONARON DETALLES PARA SEPARAR");
+        }
+
+        // 3. Crear Nuevo Pedido (Clonando datos clave)
+        Pedido nuevo = new Pedido();
+        nuevo.setCodigoPedido("PED-SEP-" + System.currentTimeMillis() % 10000); // Código temporal
+        nuevo.setFechaCreacion(LocalDateTime.now());
+        nuevo.setEstado("ABIERTO");
+        nuevo.setTipoEntrega(origen.getTipoEntrega());
+        nuevo.setSucursal(origen.getSucursal());
+        nuevo.setCajaTurno(origen.getCajaTurno());
+        nuevo.setUser(origen.getUser());
+
+        if (dto.nuevaMesaId() != null) {
+            Mesa nuevaMesa = mesaService.obtenerPorId(dto.nuevaMesaId()) != null
+                    ? mesaRepository.findById(dto.nuevaMesaId()).orElse(null)
+                    : null;
+            // Simplificación: usar logic directa si tengo acceso al repo, o usar service
+            // Aquí accedo al repo mesaRepository si lo inyecto, o uso mesaService si expone
+            // entidad (no lo hace, retorna DTO)
+            // Mejor uso mesaRepository que ya está inyectado en línea 23
+            if (nuevaMesa != null) {
+                nuevo.setMesa(nuevaMesa);
+                mesaService.cambiarEstado(nuevaMesa.getId(), "OCUPADA");
             }
         }
 
-        pedido.setEstado(nuevoEstado.toUpperCase());
-        Pedido actualizado = pedidoRepository.save(pedido);
-        
-        return pedidoMapper.toResponseDTO(actualizado);
-    }
+        // 4. Mover detalles
+        origen.getPedidoDetalles().removeAll(detallesAMover);
 
-    @Override
-    @Transactional
-    public void cancelarPedido(String id) {
-        Pedido pedido = pedidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+        List<PedidoDetalle> nuevosDetalles = detallesAMover.stream().map(d -> {
+            d.setPedido(nuevo);
+            return d;
+        }).toList();
 
-        // Validar si se puede cancelar (Ej: no cancelar si ya está ENTREGADO)
-        if ("ENTREGADO".equalsIgnoreCase(pedido.getEstado())) {
-            throw new RuntimeException("No se puede cancelar un pedido que ya fue entregado");
-        }
+        nuevo.setPedidoDetalles(new java.util.ArrayList<>(nuevosDetalles));
 
-        // Liberar la mesa si el pedido se cancela
-        if (pedido.getMesa() != null) {
-            Mesa mesa = pedido.getMesa();
-            mesa.setEstado("LIBRE");
-            mesaRepository.save(mesa);
-        }
+        // 5. Recalcular y Guardar
+        origen.calcularTotales();
+        nuevo.calcularTotales();
 
-        pedido.setEstado("CANCELADO");
-        pedidoRepository.save(pedido);
-        
-        // Dependiendo de tu política, podrías borrarlo físicamente o solo marcarlo:
-        // pedidoRepository.delete(pedido); 
+        pedidoRepository.save(origen);
+        return pedidoMapper.toDto(pedidoRepository.save(nuevo));
     }
 }

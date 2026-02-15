@@ -89,17 +89,25 @@ public class MesaService implements IMesaService {
     @Transactional
     public void unirMesas(String idPrincipal, List<String> idsSecundarios) {
         Mesa principal = mesaRepository.findById(idPrincipal)
-                .orElseThrow(() -> new RuntimeException("Mesa principal no encontrada"));
+                .orElseThrow(() -> new RuntimeException("MESA PRINCIPAL NO ENCONTRADA"));
+
+        // Validar que la principal esté ocupada (con pedido)
+        if (!"OCUPADA".equals(principal.getEstado())) {
+            throw new RuntimeException("LA MESA PRINCIPAL DEBE ESTAR OCUPADA PARA UNIR OTRAS");
+        }
 
         List<Mesa> secundarias = mesaRepository.findAllById(idsSecundarios);
 
         for (Mesa secundaria : secundarias) {
             if (secundaria.getId().equals(idPrincipal))
-                continue; // Evitar auto-unión
+                continue;
+
+            // REGLA: Solo unir mesas que estén LIBRES
+            if (!"LIBRE".equals(secundaria.getEstado())) {
+                throw new RuntimeException("LA MESA " + secundaria.getCodigoMesa() + " NO ESTÁ LIBRE");
+            }
 
             secundaria.setPrincipal(principal);
-            // Al unirse, la secundaria hereda el estado de la principal o un estado de
-            // unión
             secundaria.setEstado("OCUPADA_UNION");
         }
 
@@ -109,11 +117,8 @@ public class MesaService implements IMesaService {
     @Override
     @Transactional
     public void separarMesas(String idPrincipal) {
-        // Obtenemos todas las mesas que tienen a esta como principal
-        // Nota: Asegúrate de que tu Repository tenga findByPrincipalId
-        List<Mesa> mesasUnidas = mesaRepository.findAll().stream()
-                .filter(m -> m.getPrincipal() != null && m.getPrincipal().getId().equals(idPrincipal))
-                .toList();
+        // Optimización: Usar el repositorio en lugar de traer todas las mesas a memoria
+        List<Mesa> mesasUnidas = mesaRepository.findByPrincipalId(idPrincipal);
 
         mesasUnidas.forEach(m -> {
             m.setPrincipal(null);

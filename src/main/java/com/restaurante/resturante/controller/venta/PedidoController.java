@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,44 +13,61 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.restaurante.resturante.dto.maestro.UnionMesaRequest;
+import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
-import com.restaurante.resturante.service.venta.jpa.PedidoService;
+import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+import com.restaurante.resturante.service.venta.IPedidoService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/pedidos")
+@RequestMapping("/api/ventas/pedidos")
 @RequiredArgsConstructor
 public class PedidoController {
-    private final PedidoService pedidoService;
+
+    private final IPedidoService pedidoService;
 
     @PostMapping
-    public ResponseEntity<PedidoResponseDto> crear(@Valid @RequestBody PedidoRequestDto request) {
-        return new ResponseEntity<>(pedidoService.crearPedido(request), HttpStatus.CREATED);
+    public ResponseEntity<PedidoResponseDto> crearPedido(@RequestBody PedidoRequestDto dto) {
+        // PERMISO: REGISTRAR_PEDIDO
+        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoService.crearPedido(dto));
+    }
+
+    @GetMapping("/activos/{sucursalId}")
+    public ResponseEntity<List<PedidoResumenDto>> listarActivos(@PathVariable String sucursalId) {
+        // PERMISO: VER_PEDIDOS_ACTIVOS
+        return ResponseEntity.ok(pedidoService.listarPedidosActivos(sucursalId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PedidoResponseDto> obtenerPorId(@PathVariable String id) {
+    public ResponseEntity<PedidoResponseDto> verDetalle(@PathVariable String id) {
         return ResponseEntity.ok(pedidoService.obtenerPorId(id));
     }
 
-    @GetMapping
-    public ResponseEntity<List<PedidoResponseDto>> listarTodos() {
-        return ResponseEntity.ok(pedidoService.listarTodos());
-    }
-
-    @PatchMapping("/{id}/estado")
-    public ResponseEntity<PedidoResponseDto> actualizarEstado(
+    // Para agregar más platos a una mesa (comanda adicional)
+    @PatchMapping("/{id}/detalles")
+    public ResponseEntity<PedidoResponseDto> agregarPlatos(
             @PathVariable String id, 
-            @RequestParam String nuevoEstado) {
-        return ResponseEntity.ok(pedidoService.actualizarEstado(id, nuevoEstado));
+            @RequestBody List<PedidoDetalleRequestDto> nuevosDetalles) {
+        // PERMISO: ACTUALIZAR_COMANDA
+        return ResponseEntity.ok(pedidoService.actualizarDetalles(id, nuevosDetalles));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelar(@PathVariable String id) {
-        pedidoService.cancelarPedido(id);
+    @PostMapping("/unir-mesas")
+    public ResponseEntity<Void> unirMesas(@RequestBody UnionMesaRequest dto) {
+        // PERMISO: UNIR_MESAS
+        pedidoService.unirMesas(dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/pagar")
+    public ResponseEntity<Void> registrarPago(
+            @PathVariable String id, 
+            @RequestParam String metodoPago) {
+        // PERMISO: REGISTRAR_PAGO
+        pedidoService.registrarPago(id, metodoPago);
         return ResponseEntity.noContent().build();
     }
 }

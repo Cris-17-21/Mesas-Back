@@ -2,7 +2,7 @@ package com.restaurante.resturante.domain.ventas;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.maestros.Cliente;
@@ -42,23 +42,28 @@ public class Pedido {
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(name = "codigo_pedido", nullable = false, unique = true)
+    @Column(name = "codigo_pedido", nullable = false)
     private String codigoPedido;
 
     @Column(name = "tipo_entrega", nullable = false)
-    private String tipoEntrega;
+    @Builder.Default
+    private String tipoEntrega = "MESA"; // MESA, LLEVAR, DELIVERY
 
     @Column(name = "estado", nullable = false)
-    private String estado;
+    @Builder.Default
+    private String estado = "ABIERTO"; // ABIERTO, PAGADO, ANULADO
 
     @Column(name = "total_productos")
-    private BigDecimal totalProductos;
+    @Builder.Default
+    private BigDecimal totalProductos = BigDecimal.ZERO;
 
     @Column(name = "descuento_global")
-    private BigDecimal descuentoGlobal;
+    @Builder.Default
+    private BigDecimal descuentoGlobal = BigDecimal.ZERO;
 
     @Column(name = "total_final")
-    private BigDecimal totalFinal;
+    @Builder.Default
+    private BigDecimal totalFinal = BigDecimal.ZERO;
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
@@ -75,19 +80,18 @@ public class Pedido {
     private Sucursal sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mesa_id", nullable = true)
+    @JoinColumn(name = "caja_turno_id", nullable = false) // <--- AGREGADO: Crucial para arqueo
     @ToString.Exclude
-    @JsonBackReference
-    private Mesa mesa;
+    private CajaTurno cajaTurno;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = true)
+    @JoinColumn(name = "usuario_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cliente_id", nullable = true)
+    @JoinColumn(name = "cliente_id")
     @ToString.Exclude
     @JsonBackReference
     private Cliente cliente;
@@ -95,11 +99,45 @@ public class Pedido {
     @OneToMany(mappedBy = "pedido", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @ToString.Exclude
     @JsonBackReference
-    private Set<PedidoDetalle> pedidoDetalles;
+    private List<PedidoDetalle> pedidoDetalles;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mesa_id")
+    @ToString.Exclude
+    @JsonBackReference
+    private Mesa mesa;
+
+    @OneToMany(mappedBy = "pedido", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @JsonBackReference
+    private List<PedidoPago> pagos;
 
     // ---- METODOS ----
+    // Este método te ayudará mucho en el Service para recalcular totales
+    public void calcularTotales() {
+        this.totalProductos = pedidoDetalles.stream()
+                .map(PedidoDetalle::getTotalLinea)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        this.totalFinal = this.totalProductos.subtract(this.descuentoGlobal);
+    }
+
     public boolean estaPagadoCompletamente() {
+        if (pedidoDetalles == null || pedidoDetalles.isEmpty())
+            return false;
         return pedidoDetalles.stream()
-            .allMatch(d -> d.getCantidadPagada().equals(d.getCantidad()));
+                .allMatch(d -> d.getCantidadPagada() >= d.getCantidad());
+    }
+
+    public BigDecimal getMontoPagado() {
+        if (pagos == null)
+            return BigDecimal.ZERO;
+        return pagos.stream()
+                .map(PedidoPago::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // Para saber si ya cubrieron el total
+    public boolean estaTotalmentePagado() {
+        return getMontoPagado().compareTo(this.totalFinal) >= 0;
     }
 }
