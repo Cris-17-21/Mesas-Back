@@ -38,20 +38,26 @@ public class CajaTurno extends Auditable{
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(name = "monto_apertura", nullable = false)
+    @Column(name = "monto_apertura", nullable = false, precision = 12, scale = 2)
     private BigDecimal montoApertura;
 
-    @Column(name = "monto_cierre", nullable = true)
-    private BigDecimal montoCierre;
+    @Column(name = "monto_cierre_esperado", precision = 12, scale = 2)
+    private BigDecimal montoCierreEsperado; // Lo que el sistema dice que hay
 
-    @Column(name = "diferencia", nullable = true)
-    private BigDecimal diferencia;
+    @Column(name = "monto_cierre_real", precision = 12, scale = 2)
+    private BigDecimal montoCierreReal; // Lo que el cajero cuenta
+
+    @Column(name = "diferencia", precision = 12, scale = 2)
+    private BigDecimal diferencia; // Real - Esperado
 
     @Column(name = "fecha_apertura", nullable = false)
     private LocalDateTime fechaApertura;
 
     @Column(name = "fecha_cierre", nullable = true)
     private LocalDateTime fechaCierre;
+
+    @Column(name = "observaciones", columnDefinition = "TEXT")
+    private String observaciones; // Por si hay sobrante o faltante
 
     @Column(name = "estado", nullable = false)
     @Builder.Default

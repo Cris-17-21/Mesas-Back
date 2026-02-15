@@ -1,9 +1,10 @@
 package com.restaurante.resturante.domain.ventas;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.restaurante.resturante.domain.inventario.Producto;
+import com.restaurante.resturante.domain.maestros.MedioPago;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,49 +28,36 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pedido_detalles")
-public class PedidoDetalle {
+@Table(name = "pedido_pagos")
+public class PedidoPago {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    @Column(name = "cantidad", nullable = false)
-    private Integer cantidad;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal monto;
 
-    @Column(name = "cantidad_pagada")
-    @Builder.Default
-    private Integer cantidadPagada = 0; 
+    @Column(name = "fecha_pago", nullable = false)
+    private LocalDateTime fechaPago;
 
-    @Column(name = "estado_pago")
-    @Builder.Default
-    private String estadoPago = "PENDIENTE";
+    @Column(name = "referencia_pago")
+    private String referenciaPago; // Nro Operación, 4 últimos dígitos tarjeta, etc.
 
-    @Column(name = "precio_unitario", nullable = false, precision = 12, scale = 2)
-    @Builder.Default
-    private BigDecimal precioUnitario = BigDecimal.ZERO;
+    // RELACIONES
 
-    @Column(name = "total_linea", nullable = false, precision = 12, scale = 2)
-    @Builder.Default
-    private BigDecimal totalLinea = BigDecimal.ZERO;
-
-    @Column(name = "observaciones", nullable = true)
-    private String observaciones;
-
-    @Column(name = "estado_preparacion", nullable = true)
-    private String estadoPreparacion;
-
-    // ---- RELACIONES ----
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pedido_id", nullable = false)
     @ToString.Exclude
     @JsonBackReference
     private Pedido pedido;
 
+    @ManyToOne(fetch = FetchType.EAGER) // Eager porque casi siempre necesitamos ver el nombre del medio de pago
+    @JoinColumn(name = "medio_pago_id", nullable = false)
+    private MedioPago medioPago;
+    
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "producto_id", nullable = false)
-    @ToString.Exclude
-    @JsonBackReference
-    private Producto producto;
+    @JoinColumn(name = "caja_turno_id", nullable = false) 
+    private CajaTurno cajaTurno; // VITAL: Saber a qué turno pertenece este dinero específico
 }

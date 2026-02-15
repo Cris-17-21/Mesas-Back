@@ -1,6 +1,8 @@
 package com.restaurante.resturante.service.venta.jpa;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,84 +16,94 @@ import com.restaurante.resturante.mapper.venta.CajaTurnoDtoMapper;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
+import com.restaurante.resturante.repository.venta.MovimientoCajaRepository;
+import com.restaurante.resturante.repository.venta.PedidoRepository;
 import com.restaurante.resturante.service.venta.ICajaTurnoService;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CajaTurnoService implements ICajaTurnoService {
 
-    private final CajaTurnoRepository repository;
-    private final UserRepository userRepository;
-    private final SucursalRepository sucursalRepository;
-    private final CajaTurnoDtoMapper mapper;
+        private final CajaTurnoRepository cajaRepository;
+        private final PedidoRepository pedidoRepository; // Para el arqueo
+        private final MovimientoCajaRepository movimientoRepository; // Para ingresos/egresos manuales
+        private final CajaTurnoDtoMapper mapper;
+        private final UserRepository userRepository;
+        private final SucursalRepository sucursalRepository;
 
-    @Override
-    @Transactional
-    public CajaTurnoDto abrirTurno(AbrirCajaDto dto) {
-        // 1. Regla de Oro: Solo un turno abierto por usuario en esta sucursal
-        if (repository.existsByUserIdAndSucursalIdAndEstado(dto.usuarioId(), dto.sucursalId(), "ABIERTA")) {
-            throw new RuntimeException("Ya tienes un turno abierto en esta sucursal.");
+        @Override
+        @Transactional(readOnly = true)
+        public Optional<CajaTurnoDto> obtenerCajaActiva(String sucursalId, String userId) {
+                return cajaRepository.findByUserIdAndSucursalIdAndEstado(userId, sucursalId, "ABIERTA")
+                                .map(mapper::toDto);
         }
 
-        // 2. Validar que existan las entidades
-        var usuario = userRepository.findById(dto.usuarioId())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-        var sucursal = sucursalRepository.findById(dto.sucursalId())
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+        @Override
+        public CajaTurnoDto abrirCaja(AbrirCajaDto dto) {
+                if (cajaRepository.existsBySucursalIdAndEstado(dto.sucursalId(), "ABIERTA")) {
+                        throw new RuntimeException("YA EXISTE UNA CAJA ABIERTA EN ESTA SUCURSAL");
+                }
 
-        // 3. Crear el turno
-        CajaTurno turno = CajaTurno.builder()
-                .user(usuario)
-                .sucursal(sucursal)
-                .montoApertura(dto.montoApertura())
-                .fechaApertura(LocalDateTime.now())
-                .estado("ABIERTA")
-                .active(true)
-                .build();
+                var user = userRepository.findById(dto.usuarioId())
+                                .orElseThrow(() -> new RuntimeException("USUARIO NO ENCONTRADO"));
+                var sucursal = sucursalRepository.findById(dto.sucursalId())
+                                .orElseThrow(() -> new RuntimeException("SUCURSAL NO ENCONTRADA"));
 
-        return mapper.toDto(repository.save(turno));
-    }
+                CajaTurno caja = CajaTurno.builder()
+                                .montoApertura(dto.montoApertura())
+                                .fechaApertura(LocalDateTime.now())
+                                .estado("ABIERTA")
+                                .user(user)
+                                .sucursal(sucursal)
+                                .active(true)
+                                .build();
 
-    @Override
-    @Transactional(readOnly = true)
-    public CajaResumentDto obtenerResumenActual(String turnoId) {
-        CajaTurno turno = repository.findById(turnoId)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
-
-        // TODO: Aquí llamaremos a PedidoRepository para sumar ventas por medio de pago
-        // Por ahora enviamos ceros para que compile el Mapper
-        java.math.BigDecimal efectivo = java.math.BigDecimal.ZERO;
-        java.math.BigDecimal tarjetas = java.math.BigDecimal.ZERO;
-        java.math.BigDecimal otros = java.math.BigDecimal.ZERO;
-
-        return mapper.toResumenDto(turno, efectivo, tarjetas, otros);
-    }
-
-    @Override
-    @Transactional
-    public CajaTurnoDto cerrarTurno(CerrarCajaDto dto) {
-        CajaTurno turno = repository.findById(dto.id())
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
-
-        if (!"ABIERTA".equals(turno.getEstado())) {
-            throw new RuntimeException("Este turno ya se encuentra cerrado.");
+                return mapper.toDto(cajaRepository.save(caja));
         }
 
-        // TODO: Calcular diferencia contra el monto esperado antes de guardar
-        turno.setEstado("CERRADA");
-        turno.setFechaCierre(LocalDateTime.now());
-        turno.setMontoCierre(dto.montoCierreReal());
+        @Override
+        @Transactional(readOnly = true)
+        public CajaResumentDto obtenerResumenArqueo(String cajaId) {
+                CajaTurno caja = cajaRepository.findById(cajaId)
+                                .orElseThrow(() -> new RuntimeException("CAJA NO ENCONTRADA"));
 
-        return mapper.toDto(repository.save(turno));
-    }
+                // 1. Ventas
+                BigDecimal efectivo = pedidoRepository.sumTotalByCajaAndMetodo(cajaId, "EFECTIVO");
+                BigDecimal tarjeta = pedidoRepository.sumTotalByCajaAndMetodo(cajaId, "TARJETA");
 
-    @Override
-    @Transactional(readOnly = true)
-    public CajaTurnoDto getTurnoActivo(String usuarioId, String sucursalId) {
-        return repository.findByUserIdAndSucursalIdAndEstado(usuarioId, sucursalId, "ABIERTA")
-                .map(mapper::toDto)
-                .orElse(null); // El front sabrá que si es null, debe pedir apertura
-    }
+                // 2. Movimientos Manuales
+                BigDecimal ingresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
+                                com.restaurante.resturante.domain.ventas.TipoMovimiento.INGRESO);
+                BigDecimal egresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
+                                com.restaurante.resturante.domain.ventas.TipoMovimiento.EGRESO);
+
+                // 3. Mapper -> Incluye (Apertura + VentasEfectivo + Ingresos - Egresos)
+                return mapper.toResumenDto(
+                                caja,
+                                efectivo != null ? efectivo : BigDecimal.ZERO,
+                                tarjeta != null ? tarjeta : BigDecimal.ZERO,
+                                ingresos != null ? ingresos : BigDecimal.ZERO,
+                                egresos != null ? egresos : BigDecimal.ZERO);
+        }
+
+        @Override
+        public void cerrarCaja(CerrarCajaDto dto) {
+                CajaTurno caja = cajaRepository.findById(dto.id())
+                                .orElseThrow(() -> new RuntimeException("CAJA NO ENCONTRADA"));
+
+                // 1. Obtenemos el resumen actual para guardar el "Esperado" al momento del
+                // cierre
+                CajaResumentDto resumen = obtenerResumenArqueo(caja.getId());
+
+                caja.setMontoCierreEsperado(resumen.totalEsperado());
+                caja.setMontoCierreReal(dto.montoCierreReal());
+                caja.setDiferencia(dto.montoCierreReal().subtract(resumen.totalEsperado()));
+                caja.setFechaCierre(LocalDateTime.now());
+                caja.setEstado("CERRADA");
+
+                cajaRepository.save(caja);
+        }
 }

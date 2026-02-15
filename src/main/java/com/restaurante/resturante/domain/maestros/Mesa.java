@@ -53,10 +53,10 @@ public class Mesa {
     private Boolean active = true;
 
     // ---- RELACIONES ----
-    @OneToMany(mappedBy = "mesa", fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pedido_actual_id")
     @ToString.Exclude
-    @JsonBackReference
-    private Set<Pedido> pedidos;
+    private Pedido pedido;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "piso_id", nullable = false)
@@ -72,5 +72,5 @@ public class Mesa {
 
     @OneToMany(mappedBy = "principal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonBackReference("principal-secundario")
-    private Set<Mesa> secundario = new HashSet<>();
+    private Set<Mesa> secundarias = new HashSet<>();
 }

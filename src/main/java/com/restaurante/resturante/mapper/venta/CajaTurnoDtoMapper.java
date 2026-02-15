@@ -16,38 +16,60 @@ public class CajaTurnoDtoMapper {
      * Sigue el orden: id, montoApertura, fechaApertura, estado, nombreUsuario.
      */
     public CajaTurnoDto toDto(CajaTurno entity) {
-        if (entity == null) return null;
+        if (entity == null)
+            return null;
 
         return new CajaTurnoDto(
-            entity.getId(),
-            entity.getMontoApertura(),
-            entity.getFechaApertura(),
-            entity.getEstado(),
-            (entity.getUser() != null) ? entity.getUser().getNombres() : "N/A"
-        );
+                entity.getId(),
+                entity.getEstado(),
+                entity.getFechaApertura(),
+                entity.getFechaCierre(),
+                entity.getUser().getUsername(),
+                entity.getMontoApertura(),
+                entity.getDiferencia() != null ? entity.getDiferencia() : BigDecimal.ZERO);
     }
 
     /**
      * Convierte la entidad a un DTO de Resumen (Dashboard del cajero).
-     * Sigue el orden: id, montoApertura, ventasEfectivo, ventasTarjeta, ventasOtros, totalEsperado, fechaApertura.
+     * Sigue el orden: id, montoApertura, ventasEfectivo, ventasTarjeta,
+     * ventasOtros, totalEsperado, fechaApertura.
      */
-    public CajaResumentDto toResumenDto(CajaTurno entity,
-                                        BigDecimal efectivo,
-                                        BigDecimal tarjetas,
-                                        BigDecimal otros) {
-        if (entity == null) return null;
+    public CajaResumentDto toResumenDto(CajaTurno entity, BigDecimal ventasEfectivo, BigDecimal ventasTarjeta,
+            BigDecimal ingresos, BigDecimal egresos) {
+        BigDecimal totalVentas = ventasEfectivo.add(ventasTarjeta);
 
-        // Calculamos el total esperado: Apertura + ventas en efectivo
-        BigDecimal totalEsperado = entity.getMontoApertura().add(efectivo);
+        // Total Esperado = Apertura + Ventas + Ingresos - Egresos
+        BigDecimal totalEsperado = entity.getMontoApertura()
+                .add(totalVentas)
+                .add(ingresos)
+                .subtract(egresos);
+
+        // Usamos montoCierreReal que es el que definiste en la entidad
+        BigDecimal cierreReal = entity.getMontoCierreReal() != null ? entity.getMontoCierreReal() : BigDecimal.ZERO;
+        BigDecimal diferencia = cierreReal.subtract(totalEsperado);
 
         return new CajaResumentDto(
-            entity.getId(),                // 1. id
-            entity.getMontoApertura(),     // 2. montoApertura
-            efectivo,                      // 3. totalVentasEfectivo
-            tarjetas,                      // 4. totalVentasTarjeta
-            otros,                         // 5. totalOtrosMedios
-            totalEsperado,                 // 6. totalEsperado
-            entity.getFechaApertura()      // 7. fechaApertura
-        );
+                // Metadatos
+                entity.getId(),
+                entity.getEstado(),
+                entity.getFechaApertura(),
+                entity.getFechaCierre(),
+                entity.getUser().getUsername(),
+
+                // Bloque 1: Flujo
+                entity.getMontoApertura(),
+                ingresos, // Ingresos caja chica
+                egresos, // Egresos caja chica
+
+                // Bloque 2: Ventas
+                ventasEfectivo,
+                ventasTarjeta,
+                BigDecimal.ZERO, // Otros
+                totalVentas, // Global
+
+                // Bloque 3: Arqueo
+                totalEsperado,
+                cierreReal,
+                diferencia);
     }
 }
