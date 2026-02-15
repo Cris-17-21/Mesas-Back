@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.restaurante.resturante.domain.compras.Proveedor;
@@ -19,5 +20,5 @@ public interface InventarioRepository extends JpaRepository<Inventario, Long> {
     List<Proveedor> findDistinctProveedoresConInventario();
 
     @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.proveedor prov WHERE p.proveedor.idProveedor = :idProveedor AND p.estado = true")
-    List<Inventario> findByProductoProveedorIdProveedorAndProductoEstadoTrue(Integer idProveedor);
+    List<Inventario> findByProductoProveedorIdProveedorAndProductoEstadoTrue(@Param("idProveedor") Integer idProveedor);
 }

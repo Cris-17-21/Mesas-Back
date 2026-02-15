@@ -24,6 +24,7 @@ import com.restaurante.resturante.repository.compras.TiposPagoRepository;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
 import com.restaurante.resturante.repository.security.UserRepository; // Assuming exists
 import com.restaurante.resturante.service.compras.IPedidoCompraService;
+import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -110,19 +111,17 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             tipoPago = tiposPagoRepository.findById(dto.idTipoPago()).orElse(null);
         }
 
-        // 2. Create Header
+        // 2. Validate Dates
+        if (dto.fechaEntregaEsperada() != null && dto.fechaEntregaEsperada().isBefore(java.time.LocalDate.now())) {
+            throw new RuntimeException("La fecha de entrega esperada no puede ser anterior a hoy.");
+        }
+
+        // 3. Create Header
         PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago);
-        // Ensure ID generation? SQL has BIGINT but no AUTO_INCREMENT specified in the
-        // CREATE string provided by user?
-        // Wait, "id_pedido_compra bigint(20) NOT NULL". usually implies AI or manual.
-        // If not AI, we fail. I'll assume GenType.IDENTITY was NOT on my Entity (I used
-        // generationtype.UUID?? No, I used Long).
-        // Let's check PedidoCompra.java content I wrote.
-        // `@Id @Column... private Long idPedidoCompra;` - NO @GeneratedValue!
+        pedido.setEstadoPedido("Pendiente");
+        pedido = pedidoRepository.save(pedido);
 
-        PedidoCompra savedPedido = pedidoRepository.save(pedido);
-
-        // 3. Save Details
+        // 4. Save Details with Strict Provider Validation
         BigDecimal totalCalculado = BigDecimal.ZERO;
 
         if (dto.detalles() != null) {
@@ -130,12 +129,20 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                 Producto producto = productoRepository.findById(detDto.idProducto())
                         .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detDto.idProducto()));
 
+                // Strict Validation: Product must belong to the Provider
+                if (producto.getProveedor() != null
+                        && !producto.getProveedor().getIdProveedor().equals(proveedor.getIdProveedor())) {
+                    throw new RuntimeException("El producto '" + producto.getNombreProducto()
+                            + "' no pertenece al proveedor seleccionado.");
+                }
+
                 DetallePedidoCompra detalle = DetallePedidoCompra.builder()
-                        .pedidoCompra(savedPedido)
+                        .pedidoCompra(pedido)
                         .producto(producto)
                         .cantidadPedida(detDto.cantidadPedida())
                         .costoUnitario(detDto.costoUnitario())
                         .subtotalLinea(detDto.costoUnitario().multiply(new BigDecimal(detDto.cantidadPedida())))
+                        .cantidadRecibida(0) // Initialize
                         .build();
 
                 detalleRepository.save(detalle);
@@ -143,11 +150,11 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             }
         }
 
-        // 4. Update Header Total
-        savedPedido.setTotalPedido(totalCalculado);
-        savedPedido = pedidoRepository.save(savedPedido);
+        // 5. Update Header Total
+        pedido.setTotalPedido(totalCalculado);
+        pedido = pedidoRepository.save(pedido);
 
-        return pedidoMapper.toDto(savedPedido, null); // Return updated DTO (details omitted in response for brevity)
+        return pedidoMapper.toDto(pedido, null);
     }
 
     @Override
@@ -170,9 +177,13 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             throw new RuntimeException("No se puede recibir un pedido anulado");
         }
 
-        boolean algunaRecepcion = false;
-        boolean pedidoCompleto = true;
+        if ("COMPLETADO".equals(pedido.getEstadoPedido())) {
+            throw new RuntimeException("El pedido ya está completado.");
+        }
 
+        boolean algunaRecepcion = false;
+
+        // Process Incoming Receptions
         for (com.restaurante.resturante.dto.compras.RecepcionPedidoRequest.DetalleRecepcion detReq : request
                 .getDetalles()) {
             DetallePedidoCompra detalle = detalleRepository.findById(detReq.getIdDetallePedido())
@@ -182,53 +193,49 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                 throw new RuntimeException("El detalle no corresponde al pedido indicado");
             }
 
-            int cantidadRecibida = detReq.getCantidadRecibida();
-            if (cantidadRecibida <= 0)
+            int cantidadRecibidaAhora = detReq.getCantidadRecibida();
+            if (cantidadRecibidaAhora <= 0)
                 continue;
 
-            if (detalle.getCantidadRecibida() + cantidadRecibida > detalle.getCantidadPedida()) {
-                throw new RuntimeException("La cantidad recibida excede lo pedido para el producto: "
+            if (detalle.getCantidadRecibida() + cantidadRecibidaAhora > detalle.getCantidadPedida()) {
+                throw new RuntimeException("La cantidad recibida excede lo pendiente para el producto: "
                         + detalle.getProducto().getNombreProducto());
             }
 
-            // Actualizar detalle
-            detalle.setCantidadRecibida(detalle.getCantidadRecibida() + cantidadRecibida);
+            // Update Detail
+            detalle.setCantidadRecibida(detalle.getCantidadRecibida() + cantidadRecibidaAhora);
             detalleRepository.save(detalle);
 
-            // Actualizar Inventario
+            // Update Real-Time Inventory
             Producto producto = detalle.getProducto();
             com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
                     .findByProducto_IdProducto(producto.getIdProducto())
-                    .orElse(com.restaurante.resturante.domain.inventario.Inventario.builder()
-                            .producto(producto)
-                            .stockActual(0)
-                            .stockMinimo(5)
-                            .build());
+                    .orElseGet(() -> {
+                        com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
+                                .builder()
+                                .producto(producto)
+                                .stockActual(0)
+                                .stockMinimo(5)
+                                .build();
+                        inv.setCreatedBy("SYSTEM");
+                        return inv;
+                    });
 
-            inventario.setStockActual(inventario.getStockActual() + cantidadRecibida);
+            inventario.setStockActual(inventario.getStockActual() + cantidadRecibidaAhora);
             inventarioRepository.save(inventario);
 
             algunaRecepcion = true;
-            if (detalle.getCantidadRecibida() < detalle.getCantidadPedida()) {
-                pedidoCompleto = false;
-            }
         }
 
         if (algunaRecepcion) {
-            if (pedidoCompleto) {
-                // Verificar TODOS los detalles del pedido, no solo los recibidos en esta
-                // request
-                // (Simplificación: asumimos que el flag pedidoCompleto de arriba es parcial,
-                // necesitamos verificar todos)
-                // Correcto sería:
-                long itemsIncompletos = detalleRepository.findByPedidoCompra_IdPedidoCompra(id).stream()
-                        .filter(d -> d.getCantidadRecibida() < d.getCantidadPedida())
-                        .count();
-                if (itemsIncompletos == 0) {
-                    pedido.setEstadoPedido("COMPLETADO");
-                } else {
-                    pedido.setEstadoPedido("PARCIAL");
-                }
+            // Recalculate State based on ALL details
+            List<DetallePedidoCompra> allDetalles = detalleRepository.findByPedidoCompra_IdPedidoCompra(id);
+
+            boolean todoCompleto = allDetalles.stream()
+                    .allMatch(d -> d.getCantidadRecibida().equals(d.getCantidadPedida()));
+
+            if (todoCompleto) {
+                pedido.setEstadoPedido("COMPLETADO");
             } else {
                 pedido.setEstadoPedido("PARCIAL");
             }

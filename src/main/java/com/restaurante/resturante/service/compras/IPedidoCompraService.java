@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import com.restaurante.resturante.dto.compras.PedidoCompraDto;
 
+import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
+
 public interface IPedidoCompraService {
     List<PedidoCompraDto> findAll();
 
@@ -14,7 +16,7 @@ public interface IPedidoCompraService {
 
     PedidoCompraDto actualizarEstado(Long id, String nuevoEstado);
 
-    PedidoCompraDto registrarRecepcion(Long id, com.restaurante.resturante.dto.compras.RecepcionPedidoRequest request);
+    PedidoCompraDto registrarRecepcion(Long id, RecepcionPedidoRequest request);
 
     void anularPedido(Long id);
 }
