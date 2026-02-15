@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.security.User;
 
 import jakarta.persistence.Column;
@@ -29,7 +30,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "pedidoscompra")
-public class PedidoCompra {
+public class PedidoCompra extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,12 +41,7 @@ public class PedidoCompra {
     @JoinColumn(name = "id_proveedor", nullable = false)
     private Proveedor proveedor;
 
-    // ADAPTATION: Mapping id_usuario (SQL says INT) to User entity (UUID String)
-    // We assume the DB column will be modified or we treat it as String here for
-    // JPA to work with User entity.
-    // Given the user instruction to "adapt", we map to User.
-    // If the actual DB column is strictly INT, this will fail at runtime unless
-    // altered.
+    // Use UUID string for User since User entity uses String ID
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario", nullable = false)
     private User usuario;

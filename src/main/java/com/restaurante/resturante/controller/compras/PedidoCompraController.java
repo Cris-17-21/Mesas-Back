@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
 
 import com.restaurante.resturante.dto.compras.PedidoCompraDto;
 import com.restaurante.resturante.service.compras.IPedidoCompraService;
@@ -46,5 +49,19 @@ public class PedidoCompraController {
     @PutMapping("/{id}/estado")
     public ResponseEntity<PedidoCompraDto> actualizarEstado(@PathVariable Long id, @RequestParam String estado) {
         return ResponseEntity.ok(pedidoService.actualizarEstado(id, estado));
+    }
+
+    @PostMapping("/{id}/recepciones")
+    @PreAuthorize("hasAuthority('GESTIONAR_COMPRAS')")
+    public ResponseEntity<PedidoCompraDto> registrarRecepcion(@PathVariable Long id,
+            @RequestBody RecepcionPedidoRequest request) {
+        return ResponseEntity.ok(pedidoService.registrarRecepcion(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('GESTIONAR_COMPRAS')")
+    public ResponseEntity<Void> anularCompra(@PathVariable Long id) {
+        pedidoService.anularPedido(id);
+        return ResponseEntity.ok().build();
     }
 }

@@ -38,6 +38,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     private final TiposPagoRepository tiposPagoRepository;
     // We need UserRepository to fetch the User entity by UUID
     private final UserRepository userRepository;
+    private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
     private final PedidoCompraDtoMapper pedidoMapper;
 
     @Override
@@ -154,18 +155,105 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     public PedidoCompraDto actualizarEstado(Long id, String nuevoEstado) {
         PedidoCompra pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
         pedido.setEstadoPedido(nuevoEstado);
+        return pedidoMapper.toDto(pedidoRepository.save(pedido), null);
+    }
 
-        // Logic: If status == "RECIBIDO", we update stock.
-        // Logic: If status == "RECIBIDO", we would typically update stock here.
-        // However, per domain design, stock is managed per Branch/Almacen in the
-        // Inventory module,
-        // not directly on the global Product definition.
-        if ("RECIBIDO".equalsIgnoreCase(nuevoEstado)) {
-            // Future integration with Branch Inventory System goes here.
+    @Override
+    @Transactional
+    public PedidoCompraDto registrarRecepcion(Long id,
+            com.restaurante.resturante.dto.compras.RecepcionPedidoRequest request) {
+        PedidoCompra pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        if ("ANULADO".equals(pedido.getEstadoPedido())) {
+            throw new RuntimeException("No se puede recibir un pedido anulado");
         }
 
-        return pedidoMapper.toDto(pedidoRepository.save(pedido), null);
+        boolean algunaRecepcion = false;
+        boolean pedidoCompleto = true;
+
+        for (com.restaurante.resturante.dto.compras.RecepcionPedidoRequest.DetalleRecepcion detReq : request
+                .getDetalles()) {
+            DetallePedidoCompra detalle = detalleRepository.findById(detReq.getIdDetallePedido())
+                    .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detReq.getIdDetallePedido()));
+
+            if (!detalle.getPedidoCompra().getIdPedidoCompra().equals(id)) {
+                throw new RuntimeException("El detalle no corresponde al pedido indicado");
+            }
+
+            int cantidadRecibida = detReq.getCantidadRecibida();
+            if (cantidadRecibida <= 0)
+                continue;
+
+            if (detalle.getCantidadRecibida() + cantidadRecibida > detalle.getCantidadPedida()) {
+                throw new RuntimeException("La cantidad recibida excede lo pedido para el producto: "
+                        + detalle.getProducto().getNombreProducto());
+            }
+
+            // Actualizar detalle
+            detalle.setCantidadRecibida(detalle.getCantidadRecibida() + cantidadRecibida);
+            detalleRepository.save(detalle);
+
+            // Actualizar Inventario
+            Producto producto = detalle.getProducto();
+            com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
+                    .findByProducto_IdProducto(producto.getIdProducto())
+                    .orElse(com.restaurante.resturante.domain.inventario.Inventario.builder()
+                            .producto(producto)
+                            .stockActual(0)
+                            .stockMinimo(5)
+                            .build());
+
+            inventario.setStockActual(inventario.getStockActual() + cantidadRecibida);
+            inventarioRepository.save(inventario);
+
+            algunaRecepcion = true;
+            if (detalle.getCantidadRecibida() < detalle.getCantidadPedida()) {
+                pedidoCompleto = false;
+            }
+        }
+
+        if (algunaRecepcion) {
+            if (pedidoCompleto) {
+                // Verificar TODOS los detalles del pedido, no solo los recibidos en esta
+                // request
+                // (Simplificación: asumimos que el flag pedidoCompleto de arriba es parcial,
+                // necesitamos verificar todos)
+                // Correcto sería:
+                long itemsIncompletos = detalleRepository.findByPedidoCompra_IdPedidoCompra(id).stream()
+                        .filter(d -> d.getCantidadRecibida() < d.getCantidadPedida())
+                        .count();
+                if (itemsIncompletos == 0) {
+                    pedido.setEstadoPedido("COMPLETADO");
+                } else {
+                    pedido.setEstadoPedido("PARCIAL");
+                }
+            } else {
+                pedido.setEstadoPedido("PARCIAL");
+            }
+            pedidoRepository.save(pedido);
+        }
+
+        return pedidoMapper.toDto(pedido, null);
+    }
+
+    @Override
+    @Transactional
+    public void anularPedido(Long id) {
+        PedidoCompra pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        // Validar si ya tiene recepciones
+        boolean tieneRecepciones = detalleRepository.findByPedidoCompra_IdPedidoCompra(id).stream()
+                .anyMatch(d -> d.getCantidadRecibida() > 0);
+
+        if (tieneRecepciones) {
+            throw new RuntimeException(
+                    "No se puede anular un pedido que ya tiene recepciones. Debe realizar una devolución o ajuste.");
+        }
+
+        pedido.setEstadoPedido("ANULADO");
+        pedidoRepository.save(pedido);
     }
 }

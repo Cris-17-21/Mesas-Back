@@ -13,4 +13,8 @@ public interface IPedidoCompraService {
     PedidoCompraDto registrarPedido(PedidoCompraDto dto);
 
     PedidoCompraDto actualizarEstado(Long id, String nuevoEstado);
+
+    PedidoCompraDto registrarRecepcion(Long id, com.restaurante.resturante.dto.compras.RecepcionPedidoRequest request);
+
+    void anularPedido(Long id);
 }
