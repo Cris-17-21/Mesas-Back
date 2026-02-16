@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
-    
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
@@ -54,14 +54,16 @@ public class DataSeeder implements CommandLineRunner {
         createPermissionIfNotExists("UPDATE_MODULE", "Editar módulos", modulosModule);
         createPermissionIfNotExists("DELETE_MODULE", "Eliminar módulos", modulosModule);
 
-        PermissionModule permisosModule = createModuleIfNotExists("Permisos", "/permission", "bi bi-shield-lock", 0, configModule);
+        PermissionModule permisosModule = createModuleIfNotExists("Permisos", "/permission", "bi bi-shield-lock", 0,
+                configModule);
 
         createPermissionIfNotExists("READ_PERMISSION", "Ver permisos", permisosModule);
         createPermissionIfNotExists("CREATE_PERMISSION", "Crear nuevos permisos", permisosModule);
         createPermissionIfNotExists("UPDATE_PERMISSION", "Editar permisos", permisosModule);
         createPermissionIfNotExists("DELETE_PERMISSION", "Eliminar permisos", permisosModule);
 
-        PermissionModule rolesModule = createModuleIfNotExists("Roles", "/roles", "bi bi-shield-check", 2, configModule);
+        PermissionModule rolesModule = createModuleIfNotExists("Roles", "/roles", "bi bi-shield-check", 2,
+                configModule);
         PermissionModule userModule = createModuleIfNotExists("Usuarios", "/users", "bi bi-people", 3, configModule);
 
         // Permisos de Configuración -> Roles
@@ -76,34 +78,46 @@ public class DataSeeder implements CommandLineRunner {
         createPermissionIfNotExists("UPDATE_USER", "Editar usuarios", userModule);
 
         // Modulo de creacion de maestros
-        PermissionModule maestrosModule = createModuleIfNotExists("Maestros", "/maestros", "bi bi-wrench-adjustable", 2, null);
-        PermissionModule empresaModule = createModuleIfNotExists("Empresas", "/empresas", "bi bi-building", 1, maestrosModule);
-        PermissionModule sucursalesModule = createModuleIfNotExists("Sucursales", "/sucursales", "bi bi-buildings", 2, maestrosModule);
+        PermissionModule maestrosModule = createModuleIfNotExists("Maestros", "/maestros", "bi bi-wrench-adjustable", 2,
+                null);
+        PermissionModule empresaModule = createModuleIfNotExists("Empresas", "/empresas", "bi bi-building", 1,
+                maestrosModule);
+        PermissionModule sucursalesModule = createModuleIfNotExists("Sucursales", "/sucursales", "bi bi-buildings", 2,
+                maestrosModule);
 
         // Permisos de Maestros -> empresas
+        // Permisos de Maestros -> empresas
         createPermissionIfNotExists("READ_EMPRESA", "Ver empresas", empresaModule);
+        createPermissionIfNotExists("CREATE_EMPRESA", "Crear empresas", empresaModule);
+        createPermissionIfNotExists("UPDATE_EMPRESA", "Editar empresas", empresaModule);
+        createPermissionIfNotExists("DELETE_EMPRESA", "Eliminar empresas", empresaModule);
 
         // Permisos de Maestros -> sucursales
         createPermissionIfNotExists("READ_SUCURSAL", "Ver sucursales", sucursalesModule);
+        createPermissionIfNotExists("CREATE_SUCURSAL", "Crear sucursales", sucursalesModule);
+        createPermissionIfNotExists("UPDATE_SUCURSAL", "Editar sucursales", sucursalesModule);
+        createPermissionIfNotExists("DELETE_SUCURSAL", "Eliminar sucursales", sucursalesModule);
 
         // Modulo de creacion de ventas
         PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "null", 3, null);
         PermissionModule comandaModule = createModuleIfNotExists("Pedido", "/pedido", "null", 1, ventasModule);
         createPermissionIfNotExists("READ_PEDIDO", "Ver pedido", comandaModule);
 
-        // --- 3. Crear el Rol "SUPER_ADMIN" y asignarle los permisos de prueba ---
-        if(roleRepository.findByName("ROLE_SUPER_ADMIN").isEmpty()) {
-            Role superAdminRole = new Role();
-            Set<Permission> superAdminPermissions = new HashSet<>(permissionRepository.findAll());
-            superAdminRole.setName("ROLE_SUPER_ADMIN");
-            superAdminRole.setDescription("Super Administrador");
-            superAdminRole.setPermissions(superAdminPermissions);
-            
-            // CORRECCIÓN: Asignar auditoría manualmente
-            superAdminRole.setCreatedBy("SYSTEM");
+        // --- 3. Crear o Actualizar el Rol "SUPER_ADMIN" y asignarle TODOS los permisos
+        // ---
+        // Buscamos si existe, si no, lo creamos.
+        Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN").orElseGet(() -> {
+            Role newRole = new Role();
+            newRole.setName("ROLE_SUPER_ADMIN");
+            newRole.setDescription("Super Administrador");
+            newRole.setCreatedBy("SYSTEM");
+            return newRole;
+        });
 
-            roleRepository.save(superAdminRole);
-        }
+        // SIEMPRE actualizamos los permisos al reiniciar
+        Set<Permission> superAdminPermissions = new HashSet<>(permissionRepository.findAll());
+        superAdminRole.setPermissions(superAdminPermissions);
+        roleRepository.save(superAdminRole);
 
         // --- Crear Tipo Documento ---
         TipoDocumento dniTipo = tipoDocumentoRepository.findByName("DNI").orElseGet(() -> {
@@ -130,16 +144,18 @@ public class DataSeeder implements CommandLineRunner {
                 .active(true)
                 .role(rolSuperAdmin)
                 .build();
-        
-        // CORRECCIÓN: Si User extiende de una clase base y el builder no lo cubre, setters manuales:
+
+        // CORRECCIÓN: Si User extiende de una clase base y el builder no lo cubre,
+        // setters manuales:
         superAdminUser.setCreatedBy("SYSTEM");
 
         userRepository.save(superAdminUser);
-        
+
         System.out.println("✅ DataSeeder finalizado correctamente.");
     }
 
-    private PermissionModule createModuleIfNotExists(String name, String relativePath, String iconName, int order, PermissionModule parent) {
+    private PermissionModule createModuleIfNotExists(String name, String relativePath, String iconName, int order,
+            PermissionModule parent) {
         return permissionModuleRepository.findByName(name).orElseGet(() -> {
             PermissionModule newModule = new PermissionModule();
             newModule.setName(name);
