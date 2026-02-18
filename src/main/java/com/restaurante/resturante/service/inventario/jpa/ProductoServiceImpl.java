@@ -78,4 +78,11 @@ public class ProductoServiceImpl implements IProductoService {
         return save(dto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoDto> findByEmpresaId(String empresaId) {
+        return productoRepository.findByEmpresaId(empresaId).stream()
+                .map(productoMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

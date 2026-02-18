@@ -25,4 +25,5 @@ public class TiposProducto {
 
     @Column(name = "nombre_tipo", nullable = false, length = 50, unique = true)
     private String nombreTipo;
+
 }

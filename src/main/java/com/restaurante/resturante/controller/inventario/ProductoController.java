@@ -46,4 +46,9 @@ public class ProductoController {
     public ResponseEntity<ProductoDto> update(@PathVariable Integer id, @RequestBody ProductoDto dto) {
         return ResponseEntity.ok(productoService.update(id, dto));
     }
+
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<List<ProductoDto>> findByEmpresaId(@PathVariable String empresaId) {
+        return ResponseEntity.ok(productoService.findByEmpresaId(empresaId));
+    }
 }
