@@ -98,27 +98,27 @@ public class DataSeeder implements CommandLineRunner {
         createPermissionIfNotExists("UPDATE_SUCURSAL", "Editar sucursales", sucursalesModule);
         createPermissionIfNotExists("DELETE_SUCURSAL", "Eliminar sucursales", sucursalesModule);
 
-        // Modulo de Compras
+        // --- MÓDULO DE COMPRAS (Padre) ---
         PermissionModule comprasModule = createModuleIfNotExists("Compras", "/compras", "bi bi-cart4", 4, null);
 
-        // Compras -> Pedidos
-        PermissionModule pedidosCompraModule = createModuleIfNotExists("Pedidos", "/pedidos", "bi bi-receipt", 1,
-                comprasModule);
-        createPermissionIfNotExists("READ_COMPRA", "Ver compras", pedidosCompraModule);
-        createPermissionIfNotExists("CREATE_COMPRA", "Registrar compra", pedidosCompraModule);
-        createPermissionIfNotExists("UPDATE_COMPRA", "Editar compra", pedidosCompraModule);
-        createPermissionIfNotExists("DELETE_COMPRA", "Anular compra", pedidosCompraModule);
-
-        // Permisos de Maestros -> productos
-        PermissionModule productosModule = createModuleIfNotExists("Productos", "/productos", "bi bi-box-seam", 3,
+        // 1. Compras -> Productos
+        PermissionModule productosModule = createModuleIfNotExists("Productos", "/productos", "bi bi-box-seam", 1,
                 comprasModule);
         createPermissionIfNotExists("READ_PRODUCTO", "Ver productos", productosModule);
         createPermissionIfNotExists("CREATE_PRODUCTO", "Crear productos", productosModule);
         createPermissionIfNotExists("UPDATE_PRODUCTO", "Editar productos", productosModule);
         createPermissionIfNotExists("DELETE_PRODUCTO", "Eliminar productos", productosModule);
 
-        // Permisos de Maestros -> proveedores
-        PermissionModule proveedoresModule = createModuleIfNotExists("Proveedores", "/proveedores", "bi bi-truck", 4,
+        // 2. Compras -> Gestión de Compras
+        PermissionModule pedidosCompraModule = createModuleIfNotExists("Gestión de Compras", "/pedidos",
+                "bi bi-receipt", 2, comprasModule);
+        createPermissionIfNotExists("READ_COMPRA", "Ver compras", pedidosCompraModule);
+        createPermissionIfNotExists("CREATE_COMPRA", "Registrar compra", pedidosCompraModule);
+        createPermissionIfNotExists("UPDATE_COMPRA", "Editar compra", pedidosCompraModule);
+        createPermissionIfNotExists("DELETE_COMPRA", "Anular compra", pedidosCompraModule);
+
+        // 3. Compras -> Proveedores
+        PermissionModule proveedoresModule = createModuleIfNotExists("Proveedores", "/proveedores", "bi bi-truck", 3,
                 comprasModule);
         createPermissionIfNotExists("READ_PROVEEDOR", "Ver proveedores", proveedoresModule);
         createPermissionIfNotExists("CREATE_PROVEEDOR", "Crear proveedores", proveedoresModule);
