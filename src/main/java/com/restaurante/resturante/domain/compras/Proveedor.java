@@ -5,6 +5,8 @@ import java.util.Set;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -24,6 +26,7 @@ import lombok.Setter;
 public class Proveedor {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_proveedor")
     private Integer idProveedor;
 
@@ -33,13 +36,13 @@ public class Proveedor {
     @Column(name = "nombre_comercial", length = 100)
     private String nombreComercial;
 
-    @Column(name = "ruc", length = 20, unique = true)
+    @Column(name = "ruc", length = 11, unique = true)
     private String ruc;
 
     @Column(name = "direccion")
     private String direccion;
 
-    @Column(name = "telefono", length = 20)
+    @Column(name = "telefono", length = 9)
     private String telefono;
 
     @Column(name = "estado", nullable = false)

@@ -24,13 +24,19 @@ public class ProductoDtoMapper {
                 producto.getProveedor() != null ? producto.getProveedor().getIdProveedor() : null,
                 producto.getProveedor() != null ? producto.getProveedor().getRazonSocial() : null,
                 producto.getTipo(),
+                producto.getTipos() != null
+                        ? producto.getTipos().stream()
+                                .map(com.restaurante.resturante.domain.inventario.TiposProducto::getIdTipo)
+                                .collect(java.util.stream.Collectors.toList())
+                        : null,
                 producto.getPesoGramos(),
 
                 producto.getEstado(),
                 producto.getImagen());
     }
 
-    public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor) {
+    public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor,
+            java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos) {
         if (dto == null)
             return null;
 
@@ -43,6 +49,7 @@ public class ProductoDtoMapper {
                 .categoria(categoria)
                 .proveedor(proveedor)
                 .tipo(dto.tipo())
+                .tipos(tipos)
                 .pesoGramos(dto.pesoGramos())
 
                 .estado(dto.estado())

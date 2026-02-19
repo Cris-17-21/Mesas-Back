@@ -67,7 +67,14 @@ public class ProveedorServiceImpl implements IProveedorService {
             existing.setRuc(dto.ruc());
             existing.setDireccion(dto.direccion());
             existing.setTelefono(dto.telefono());
-            existing.setEstado(dto.estado());
+            if (dto.estado() != null) {
+                existing.setEstado(dto.estado());
+            } else {
+                // If not provided, keep existing or ensure it's not null (default to 1 if
+                // existing is null, though unlikely)
+                if (existing.getEstado() == null)
+                    existing.setEstado(1);
+            }
             Proveedor saved = proveedorRepository.save(existing);
 
             // Update payment methods

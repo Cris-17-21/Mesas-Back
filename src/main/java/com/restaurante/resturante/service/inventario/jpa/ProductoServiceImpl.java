@@ -26,6 +26,7 @@ public class ProductoServiceImpl implements IProductoService {
     private final ProductoRepository productoRepository;
     private final CategoriaProductoRepository categoriaRepository;
     private final ProveedorRepository proveedorRepository;
+    private final com.restaurante.resturante.repository.inventario.TiposProductoRepository tiposRepository;
     private final ProductoDtoMapper productoMapper;
 
     @Override
@@ -62,7 +63,12 @@ public class ProductoServiceImpl implements IProductoService {
             proveedor = proveedorRepository.findById(dto.idProveedor()).orElse(null);
         }
 
-        Producto entity = productoMapper.toEntity(dto, categoria, proveedor);
+        java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos = null;
+        if (dto.idTipos() != null && !dto.idTipos().isEmpty()) {
+            tipos = new java.util.HashSet<>(tiposRepository.findAllById(dto.idTipos()));
+        }
+
+        Producto entity = productoMapper.toEntity(dto, categoria, proveedor, tipos);
         return productoMapper.toDto(productoRepository.save(entity));
     }
 
