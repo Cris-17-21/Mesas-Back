@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +27,11 @@ public class TiposProducto {
     @Column(name = "id_tipo")
     private Integer idTipo;
 
-    @Column(name = "nombre_tipo", nullable = false, length = 50, unique = true)
+    @Column(name = "nombre_tipo", nullable = false, length = 50)
     private String nombreTipo;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "id_categoria")
+    private CategoriaProducto categoria;
 
 }

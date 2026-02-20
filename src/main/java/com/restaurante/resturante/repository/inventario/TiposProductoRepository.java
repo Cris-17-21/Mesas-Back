@@ -7,4 +7,5 @@ import com.restaurante.resturante.domain.inventario.TiposProducto;
 
 @Repository
 public interface TiposProductoRepository extends JpaRepository<TiposProducto, Integer> {
+    java.util.List<TiposProducto> findByCategoria_IdCategoria(Integer idCategoria);
 }
