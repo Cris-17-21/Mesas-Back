@@ -101,6 +101,19 @@ public class DataSeeder implements CommandLineRunner {
         // --- MÓDULO DE COMPRAS (Padre) ---
         PermissionModule comprasModule = createModuleIfNotExists("Compras", "/compras", "bi bi-cart4", 4, null);
 
+        // Under Compras Module
+        PermissionModule clasificacionModule = createModuleIfNotExists("Clasificación", "/clasificacion", "bi bi-tags", 2, comprasModule); // Order 2, bump others
+        // Categoria
+        createPermissionIfNotExists("READ_CATEGORIA", "Ver categorías", clasificacionModule);
+        createPermissionIfNotExists("CREATE_CATEGORIA", "Crear categorías", clasificacionModule);
+        createPermissionIfNotExists("UPDATE_CATEGORIA", "Editar categorías", clasificacionModule);
+        createPermissionIfNotExists("DELETE_CATEGORIA", "Eliminar categorías", clasificacionModule);
+        // Tipo Producto
+        createPermissionIfNotExists("READ_TIPOPRODUCTO", "Ver tipos de producto", clasificacionModule);
+        createPermissionIfNotExists("CREATE_TIPOPRODUCTO", "Crear tipos de producto", clasificacionModule);
+        createPermissionIfNotExists("UPDATE_TIPOPRODUCTO", "Editar tipos de producto", clasificacionModule);
+        createPermissionIfNotExists("DELETE_TIPOPRODUCTO", "Eliminar tipos de producto", clasificacionModule);
+
         // 1. Compras -> Productos
         PermissionModule productosModule = createModuleIfNotExists("Productos", "/productos", "bi bi-box-seam", 1,
                 comprasModule);
