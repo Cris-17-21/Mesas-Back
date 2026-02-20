@@ -18,8 +18,8 @@ public class CategoriaProductoDtoMapper {
 
     public CategoriaProducto toEntity(CategoriaProductoDto dto, Empresa empresa) {
         return CategoriaProducto.builder()
-                .idCategoria(dto.id())
-                .nombreCategoria(dto.nombre())
+                .idCategoria(dto.idCategoria())
+                .nombreCategoria(dto.nombreCategoria())
                 .empresa(empresa)
                 .build();
     }

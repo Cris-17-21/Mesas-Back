@@ -63,7 +63,7 @@ public class TiposProductoController {
 
         // Validate category existence usually done better but simplistic here
         if (categoria == null && dto.idCategoria() != null) {
-            // Maybe return bad request or handle gracefully
+            return ResponseEntity.badRequest().build();
         }
 
         TiposProducto entity = mapper.toEntity(dto, categoria);
