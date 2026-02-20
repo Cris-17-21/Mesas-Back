@@ -11,5 +11,6 @@ public record PedidoResumenDto(
     BigDecimal totalFinal,
     LocalDateTime fechaCreacion,
     String nombreCliente,
-    String codigoMesa
+    String codigoMesa,
+    String mesaId
 ) {}

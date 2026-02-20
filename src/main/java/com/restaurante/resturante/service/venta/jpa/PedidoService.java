@@ -88,8 +88,13 @@ public class PedidoService implements IPedidoService {
         pedido.setPedidoDetalles(detalles);
         pedido.calcularTotales();
 
-        // 4. Cambiar estado de mesa
-        mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
+        // 4. Cambiar estado de mesa y asociarla
+        if (dto.mesaId() != null && !dto.mesaId().isBlank()) {
+            Mesa mesa = mesaRepository.findById(dto.mesaId())
+                    .orElseThrow(() -> new RuntimeException("Mesa no encontrada: " + dto.mesaId()));
+            pedido.setMesa(mesa);
+            mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
+        }
 
         return pedidoMapper.toDto(pedidoRepository.save(pedido));
     }
