@@ -129,6 +129,14 @@ public class DataSeeder implements CommandLineRunner {
         PermissionModule comandaModule = createModuleIfNotExists("Pedido", "/pedido", "null", 1, ventasModule);
         createPermissionIfNotExists("READ_PEDIDO", "Ver pedido", comandaModule);
 
+        // --- 4. Almacén / Inventario ---
+        PermissionModule almacenModule = createModuleIfNotExists("Almacén", "/almacen", "bi bi-archive", 5, null);
+        PermissionModule inventarioModule = createModuleIfNotExists("Inventario", "/inventario", "bi bi-journal-text",
+                1, almacenModule);
+
+        createPermissionIfNotExists("VER_INVENTARIO", "Ver stock de inventario", inventarioModule);
+        createPermissionIfNotExists("READ_INVENTARIO", "Leer datos de inventario", inventarioModule);
+
         // --- 3. Crear o Actualizar el Rol "SUPER_ADMIN" y asignarle TODOS los permisos
         // ---
         // Buscamos si existe, si no, lo creamos.

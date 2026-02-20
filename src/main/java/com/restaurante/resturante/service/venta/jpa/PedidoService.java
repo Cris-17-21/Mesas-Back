@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurante.resturante.domain.inventario.Producto;
 import com.restaurante.resturante.domain.maestros.Mesa;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.ventas.CajaTurno;
 import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
@@ -22,6 +23,7 @@ import com.restaurante.resturante.mapper.venta.PedidoDetalleMapper;
 import com.restaurante.resturante.mapper.venta.PedidoMapper;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
 import com.restaurante.resturante.repository.maestro.MesaRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
 import com.restaurante.resturante.service.maestros.IMesaService;
@@ -41,11 +43,12 @@ public class PedidoService implements IPedidoService {
     private final IMesaService mesaService; // Inyectamos tu service de mesas
     private final PedidoMapper pedidoMapper;
     private final PedidoDetalleMapper detalleMapper;
+    private final SucursalRepository sucursalRepository;
 
     @Override
     @Transactional
     public PedidoResponseDto crearPedido(PedidoRequestDto dto) {
-        // 1. Validar Caja Abierta (Obligatorio para arqueo posterior)
+        // 1. Validar Caja Abierta
         var caja = cajaRepository.findByUserIdAndSucursalIdAndEstado(dto.usuarioId(), dto.sucursalId(), "ABIERTA")
                 .orElseThrow(() -> new RuntimeException("DEBE ABRIR CAJA PARA REGISTRAR PEDIDOS"));
 
@@ -55,33 +58,30 @@ public class PedidoService implements IPedidoService {
         pedido.setFechaCreacion(LocalDateTime.now());
         pedido.setCajaTurno(caja);
 
+        // **Nuevo paso: cargar y setear sucursal**
+        Sucursal sucursal = sucursalRepository.findById(dto.sucursalId())
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+        pedido.setSucursal(sucursal);
+
         // 3. Procesar Detalles
         List<PedidoDetalle> detalles = dto.detalles().stream()
                 .map(d -> {
                     PedidoDetalle det = detalleMapper.toEntity(d);
                     det.setPedido(pedido);
 
-                    // Buscar Producto y Asignar Precio
-                    try {
-                        Integer prodId = Integer.parseInt(d.productoId());
-                        Producto producto = productoRepository.findById(prodId)
-                                .orElseThrow(() -> new RuntimeException("PRODUCTO NO ENCONTRADO: " + d.productoId()));
-
-                        det.setProducto(producto);
-                        det.setPrecioUnitario(producto.getPrecioVenta());
-                        det.setTotalLinea(
-                                producto.getPrecioVenta().multiply(new java.math.BigDecimal(det.getCantidad())));
-                    } catch (NumberFormatException e) {
-                        throw new RuntimeException("ID DE PRODUCTO INVALIDO: " + d.productoId());
-                    }
-
+                    Integer prodId = Integer.parseInt(d.productoId());
+                    Producto producto = productoRepository.findById(prodId)
+                            .orElseThrow(() -> new RuntimeException("PRODUCTO NO ENCONTRADO: " + d.productoId()));
+                    det.setProducto(producto);
+                    det.setPrecioUnitario(producto.getPrecioVenta());
+                    det.setTotalLinea(producto.getPrecioVenta().multiply(new java.math.BigDecimal(det.getCantidad())));
                     return det;
                 }).toList();
 
         pedido.setPedidoDetalles(detalles);
         pedido.calcularTotales();
 
-        // 4. Cambiar estado de mesa a través del MesaService
+        // 4. Cambiar estado de mesa
         mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
 
         return pedidoMapper.toDto(pedidoRepository.save(pedido));
