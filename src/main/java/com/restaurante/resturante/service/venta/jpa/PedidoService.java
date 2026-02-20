@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.restaurante.resturante.domain.inventario.Producto;
 import com.restaurante.resturante.domain.maestros.Mesa;
 import com.restaurante.resturante.domain.maestros.Sucursal;
+import com.restaurante.resturante.domain.security.User;
 import com.restaurante.resturante.domain.ventas.CajaTurno;
 import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
@@ -24,6 +25,7 @@ import com.restaurante.resturante.mapper.venta.PedidoMapper;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
 import com.restaurante.resturante.repository.maestro.MesaRepository;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
+import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
 import com.restaurante.resturante.service.maestros.IMesaService;
@@ -44,6 +46,7 @@ public class PedidoService implements IPedidoService {
     private final PedidoMapper pedidoMapper;
     private final PedidoDetalleMapper detalleMapper;
     private final SucursalRepository sucursalRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -62,6 +65,10 @@ public class PedidoService implements IPedidoService {
         Sucursal sucursal = sucursalRepository.findById(dto.sucursalId())
                 .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
         pedido.setSucursal(sucursal);
+
+        User usuario = userRepository.findById(dto.usuarioId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        pedido.setUser(usuario);
 
         // 3. Procesar Detalles
         List<PedidoDetalle> detalles = dto.detalles().stream()
