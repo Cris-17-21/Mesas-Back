@@ -2,7 +2,6 @@ package com.restaurante.resturante.domain.inventario;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurante.resturante.domain.maestros.Empresa;
-import com.restaurante.resturante.domain.maestros.Sucursal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

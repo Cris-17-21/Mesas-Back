@@ -13,7 +13,7 @@ public class CategoriaProductoDtoMapper {
         return new CategoriaProductoDto(
                 entity.getIdCategoria(),
                 entity.getNombreCategoria(),
-                entity.getEmpresa().getId());
+                entity.getEmpresa() != null ? entity.getEmpresa().getId() : null);
     }
 
     public CategoriaProducto toEntity(CategoriaProductoDto dto, Empresa empresa) {

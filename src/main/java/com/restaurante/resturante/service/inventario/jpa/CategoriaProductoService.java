@@ -3,8 +3,10 @@ package com.restaurante.resturante.service.inventario.jpa;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.restaurante.resturante.dto.inventario.CategoriaProductoDto;
 import com.restaurante.resturante.mapper.inventario.CategoriaProductoDtoMapper;
@@ -34,10 +36,15 @@ public class CategoriaProductoService implements ICategoriaProductoService {
     @Override
     @Transactional
     public CategoriaProductoDto save(CategoriaProductoDto dto) {
-        com.restaurante.resturante.domain.maestros.Empresa empresa = null;
-        if (dto.empresaId() != null) {
-            empresa = empresaRepository.findById(dto.empresaId()).orElse(null);
+        if (dto.empresaId() == null || dto.empresaId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "empresaId es obligatorio para crear una categoría");
         }
+        com.restaurante.resturante.domain.maestros.Empresa empresa = empresaRepository
+                .findById(dto.empresaId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "No se encontró la empresa con ID: " + dto.empresaId() +
+                                ". Por favor cierra sesión e ingresa de nuevo."));
         com.restaurante.resturante.domain.inventario.CategoriaProducto entity = categoriaMapper.toEntity(dto, empresa);
         return categoriaMapper.toDto(categoriaRepository.save(entity));
     }
