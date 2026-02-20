@@ -18,6 +18,7 @@ import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
 import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+import com.restaurante.resturante.dto.venta.SepararCuentaDto;
 import com.restaurante.resturante.service.venta.IPedidoService;
 
 import lombok.RequiredArgsConstructor;
@@ -49,7 +50,7 @@ public class PedidoController {
     // Para agregar más platos a una mesa (comanda adicional)
     @PatchMapping("/{id}/detalles")
     public ResponseEntity<PedidoResponseDto> agregarPlatos(
-            @PathVariable String id, 
+            @PathVariable String id,
             @RequestBody List<PedidoDetalleRequestDto> nuevosDetalles) {
         // PERMISO: ACTUALIZAR_COMANDA
         return ResponseEntity.ok(pedidoService.actualizarDetalles(id, nuevosDetalles));
@@ -64,10 +65,15 @@ public class PedidoController {
 
     @PostMapping("/{id}/pagar")
     public ResponseEntity<Void> registrarPago(
-            @PathVariable String id, 
+            @PathVariable String id,
             @RequestParam String metodoPago) {
         // PERMISO: REGISTRAR_PAGO
         pedidoService.registrarPago(id, metodoPago);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/separar-cuenta")
+    public ResponseEntity<PedidoResponseDto> separarCuenta(@RequestBody SepararCuentaDto dto) {
+        return ResponseEntity.ok(pedidoService.separarCuenta(dto));
     }
 }
