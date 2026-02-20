@@ -178,18 +178,9 @@ public class PedidoService implements IPedidoService {
             throw new RuntimeException("EL PEDIDO ORIGEN DEBE ESTAR ABIERTO");
         }
 
-        // 2. Filtrar detalles a mover
-        List<PedidoDetalle> detallesAMover = origen.getPedidoDetalles().stream()
-                .filter(d -> dto.detallesIds().contains(d.getId()))
-                .toList();
-
-        if (detallesAMover.isEmpty()) {
-            throw new RuntimeException("NO SE SELECCIONARON DETALLES PARA SEPARAR");
-        }
-
         // 3. Crear Nuevo Pedido (Clonando datos clave)
         Pedido nuevo = new Pedido();
-        nuevo.setCodigoPedido("PED-SEP-" + System.currentTimeMillis() % 10000); // Código temporal
+        nuevo.setCodigoPedido("PED-SEP-" + System.currentTimeMillis() % 10000);
         nuevo.setFechaCreacion(LocalDateTime.now());
         nuevo.setEstado("ABIERTO");
         nuevo.setTipoEntrega(origen.getTipoEntrega());
@@ -197,29 +188,64 @@ public class PedidoService implements IPedidoService {
         nuevo.setCajaTurno(origen.getCajaTurno());
         nuevo.setUser(origen.getUser());
 
-        if (dto.nuevaMesaId() != null) {
-            Mesa nuevaMesa = mesaService.obtenerPorId(dto.nuevaMesaId()) != null
-                    ? mesaRepository.findById(dto.nuevaMesaId()).orElse(null)
-                    : null;
-            // Simplificación: usar logic directa si tengo acceso al repo, o usar service
-            // Aquí accedo al repo mesaRepository si lo inyecto, o uso mesaService si expone
-            // entidad (no lo hace, retorna DTO)
-            // Mejor uso mesaRepository que ya está inyectado en línea 23
-            if (nuevaMesa != null) {
-                nuevo.setMesa(nuevaMesa);
-                mesaService.cambiarEstado(nuevaMesa.getId(), "OCUPADA");
+        // Si no se especifica nueva mesa, se queda en la misma (cuenta dividida en
+        // mesa)
+        if (dto.nuevaMesaId() != null && !dto.nuevaMesaId().isBlank()) {
+            Mesa nuevaMesa = mesaRepository.findById(dto.nuevaMesaId())
+                    .orElseThrow(() -> new RuntimeException("MESA DESTINO NO ENCONTRADA"));
+            nuevo.setMesa(nuevaMesa);
+            mesaService.cambiarEstado(nuevaMesa.getId(), "OCUPADA");
+        } else {
+            nuevo.setMesa(origen.getMesa());
+        }
+
+        // 2. Procesar items a mover
+        List<PedidoDetalle> nuevosDetalles = new java.util.ArrayList<>();
+
+        for (var itemDto : dto.items()) {
+            PedidoDetalle originalDet = origen.getPedidoDetalles().stream()
+                    .filter(d -> d.getId().equals(itemDto.detalleId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("DETALLE NO ENCONTRADO: " + itemDto.detalleId()));
+
+            int cantAMover = itemDto.cantidad();
+            int cantOriginal = originalDet.getCantidad();
+
+            if (cantAMover <= 0 || cantAMover > cantOriginal) {
+                throw new RuntimeException(
+                        "CANTIDAD A MOVER NO VÁLIDA PARA: " + originalDet.getProducto().getNombreProducto());
+            }
+
+            if (cantAMover == cantOriginal) {
+                // Mover item completo
+                originalDet.setPedido(nuevo);
+                nuevosDetalles.add(originalDet);
+            } else {
+                // Split parcial
+                // 1. Reducir original
+                originalDet.setCantidad(cantOriginal - cantAMover);
+                originalDet.setTotalLinea(
+                        originalDet.getPrecioUnitario().multiply(new java.math.BigDecimal(originalDet.getCantidad())));
+
+                // 2. Crear clon para el nuevo pedido
+                PedidoDetalle clon = PedidoDetalle.builder()
+                        .pedido(nuevo)
+                        .producto(originalDet.getProducto())
+                        .cantidad(cantAMover)
+                        .precioUnitario(originalDet.getPrecioUnitario())
+                        .totalLinea(originalDet.getPrecioUnitario().multiply(new java.math.BigDecimal(cantAMover)))
+                        .observaciones(originalDet.getObservaciones())
+                        .estadoPreparacion(originalDet.getEstadoPreparacion())
+                        .estadoPago(originalDet.getEstadoPago())
+                        .build();
+                nuevosDetalles.add(clon);
             }
         }
 
-        // 4. Mover detalles
-        origen.getPedidoDetalles().removeAll(detallesAMover);
+        // Remover del origen los que se movieron completamente
+        origen.getPedidoDetalles().removeIf(d -> d.getPedido() == nuevo);
 
-        List<PedidoDetalle> nuevosDetalles = detallesAMover.stream().map(d -> {
-            d.setPedido(nuevo);
-            return d;
-        }).toList();
-
-        nuevo.setPedidoDetalles(new java.util.ArrayList<>(nuevosDetalles));
+        nuevo.setPedidoDetalles(nuevosDetalles);
 
         // 5. Recalcular y Guardar
         origen.calcularTotales();
