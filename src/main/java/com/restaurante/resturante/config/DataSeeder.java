@@ -19,6 +19,9 @@ import com.restaurante.resturante.repository.security.RoleRepository;
 import com.restaurante.resturante.repository.security.TipoDocumentoRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 
+import com.restaurante.resturante.domain.compras.TiposPago;
+import com.restaurante.resturante.repository.compras.TiposPagoRepository;
+
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -31,11 +34,15 @@ public class DataSeeder implements CommandLineRunner {
         private final PermissionModuleRepository permissionModuleRepository;
         private final TipoDocumentoRepository tipoDocumentoRepository;
         private final PasswordEncoder passwordEncoder;
+        private final TiposPagoRepository tiposPagoRepository;
 
         @Override
         @Transactional
         public void run(String... args) throws Exception {
-                // La ejecución se detiene si el usuario superadmin ya existe.
+                // Siempre seedear tipos de pago (idempotente)
+                seedTiposPago();
+
+                // El resto solo se ejecuta la primera vez (cuando no existe superadmin)
                 if (userRepository.findByUsername("superadmin").isPresent()) {
                         return;
                 }
@@ -244,5 +251,25 @@ public class DataSeeder implements CommandLineRunner {
 
                         return permissionRepository.save(newPermission);
                 });
+        }
+
+        private void seedTiposPago() {
+                crearTipoPagoSiNoExiste(1, "Efectivo");
+                crearTipoPagoSiNoExiste(2, "Transferencia Bancaria");
+                crearTipoPagoSiNoExiste(3, "Cheque");
+                crearTipoPagoSiNoExiste(4, "Tarjeta de Crédito");
+                crearTipoPagoSiNoExiste(5, "Tarjeta de Débito");
+                crearTipoPagoSiNoExiste(6, "Crédito 30 días");
+                crearTipoPagoSiNoExiste(7, "Crédito 60 días");
+                crearTipoPagoSiNoExiste(8, "Crédito 90 días");
+        }
+
+        private void crearTipoPagoSiNoExiste(Integer id, String nombre) {
+                if (!tiposPagoRepository.existsById(id)) {
+                        TiposPago tp = new TiposPago();
+                        tp.setIdTipoPago(id);
+                        tp.setTipoPago(nombre);
+                        tiposPagoRepository.save(tp);
+                }
         }
 }
