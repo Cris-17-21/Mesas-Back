@@ -18,6 +18,7 @@ import com.restaurante.resturante.dto.maestro.CreateEmpresaDto;
 import com.restaurante.resturante.dto.maestro.EmpresaDto;
 import com.restaurante.resturante.service.maestros.IEmpresaService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -41,14 +42,14 @@ public class EmpresaController {
 
     @PreAuthorize("hasAuthority('CREATE_EMPRESA')")
     @PostMapping
-    public ResponseEntity<EmpresaDto> create(@RequestBody CreateEmpresaDto dto) {
+    public ResponseEntity<EmpresaDto> create(@Valid @RequestBody CreateEmpresaDto dto) {
         EmpresaDto created = empresaService.create(dto);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PreAuthorize("hasAuthority('UPDATE_EMPRESA')")
     @PutMapping("/{id}")
-    public ResponseEntity<EmpresaDto> update(@PathVariable String id, @RequestBody CreateEmpresaDto dto) {
+    public ResponseEntity<EmpresaDto> update(@PathVariable String id, @Valid @RequestBody CreateEmpresaDto dto) {
         return ResponseEntity.ok(empresaService.update(id, dto));
     }
 

@@ -1,6 +1,7 @@
 package com.restaurante.resturante.service.maestros.jpa;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,8 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class EmpresaService implements IEmpresaService{
-    
+public class EmpresaService implements IEmpresaService {
+
     private final EmpresaRepository empresaRepository;
     private final EmpresaDtoMapper empresaMapper;
 
@@ -33,7 +34,8 @@ public class EmpresaService implements IEmpresaService{
     @Override
     @Transactional(readOnly = true)
     public EmpresaDto findById(String id) {
-        return empresaRepository.findById(id)
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        return empresaRepository.findById(idSeguro)
                 .map(empresaMapper::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada con ID: " + id));
     }
@@ -41,40 +43,34 @@ public class EmpresaService implements IEmpresaService{
     @Override
     @Transactional
     public EmpresaDto create(CreateEmpresaDto dto) {
-        // 1. Validar si el RUC ya existe
-        if (empresaRepository.existsByRuc(dto.ruc())) {
-            throw new IllegalStateException("Ya existe una empresa registrada con el RUC: " + dto.ruc());
-        }
 
-        // 2. Convertir DTO a Entidad
+        // Validar RUC
+        validarRucUnico(dto.ruc());
         Empresa empresa = empresaMapper.toEntity(dto);
-        
-        // 3. Guardar empresa
-        Empresa saved = empresaRepository.save(empresa);
 
+        // Normalizar la Razón Social en mayúscula
+        empresa.setRazonSocial(empresa.getRazonSocial());
+
+        // Guardar empresa
+        Empresa saved = empresaRepository.save(empresa);
         return empresaMapper.toDto(saved);
     }
 
     @Override
     @Transactional
     public EmpresaDto update(String id, CreateEmpresaDto dto) {
-        Empresa existing = empresaRepository.findById(id)
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+
+        Empresa existing = empresaRepository.findById(idSeguro)
                 .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
 
         // Validar RUC si ha cambiado
-        if (!existing.getRuc().equals(dto.ruc()) && empresaRepository.existsByRuc(dto.ruc())) {
-            throw new IllegalStateException("El RUC " + dto.ruc() + " ya está en uso por otra empresa");
+        if (dto.ruc() != null && !existing.getRuc().equals(dto.ruc())) {
+            validarRucUnico(dto.ruc());
         }
 
         // Actualizar campos
-        existing.setRuc(dto.ruc());
-        existing.setRazonSocial(dto.razonSocial());
-        existing.setDireccionFiscal(dto.direccionFiscal());
-        existing.setTelefono(dto.telefono());
-        existing.setEmail(dto.email());
-        existing.setLogoUrl(dto.logoUrl());
-        // La fecha de afiliación usualmente no se debería cambiar, pero si lo requieres:
-        // existing.setFechaAfiliacion(LocalDate.parse(dto.fechaAfiliacion()));
+        empresaMapper.updateEntityFromDto(dto, existing);
 
         return empresaMapper.toDto(empresaRepository.save(existing));
     }
@@ -82,9 +78,20 @@ public class EmpresaService implements IEmpresaService{
     @Override
     @Transactional
     public void delete(String id) {
-        if (!empresaRepository.existsById(id)) {
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (!empresaRepository.existsById(idSeguro)) {
             throw new EntityNotFoundException("No se puede eliminar: Empresa no encontrada");
         }
-        empresaRepository.deleteById(id);
+        empresaRepository.deleteById(idSeguro);
+    }
+
+    // -------- MÉTODOS AUXILIARES --------
+    private void validarRucUnico(String ruc) {
+        if (ruc == null) {
+            throw new IllegalArgumentException("El RUC no puede ser nulo");
+        }
+        if (empresaRepository.existsByRuc(ruc)) {
+            throw new IllegalStateException("El RUC " + ruc + " ya está registrado.");
+        }
     }
 }

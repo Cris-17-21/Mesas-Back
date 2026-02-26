@@ -32,8 +32,8 @@ public class MedioPagoController {
      * 1. LISTAR TODOS
      * GET /api/medios-pago?empresaId=1
      */
-    @GetMapping
-    public ResponseEntity<List<MedioPagoDto>> listar(@RequestParam String empresaId) {
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<List<MedioPagoDto>> listar(@PathVariable String empresaId) {
         return ResponseEntity.ok(service.listar(empresaId));
     }
 
@@ -42,8 +42,8 @@ public class MedioPagoController {
      * GET /api/medios-pago/{id}?empresaId=1
      */
     @GetMapping("/{id}")
-    public ResponseEntity<MedioPagoDto> obtenerPorId(@PathVariable String id, 
-                                                     @RequestParam String empresaId) {
+    public ResponseEntity<MedioPagoDto> obtenerPorId(@PathVariable String id,
+            @RequestParam String empresaId) {
         return ResponseEntity.ok(service.obtenerPorId(id, empresaId));
     }
 
@@ -63,8 +63,8 @@ public class MedioPagoController {
      * Body: { "nombre": "Yape Nuevo", "empresaId": 1, ... }
      */
     @PutMapping("/{id}")
-    public ResponseEntity<MedioPagoDto> actualizar(@PathVariable String id, 
-                                                   @RequestBody @Valid CreateMedioPagoDto dto) {
+    public ResponseEntity<MedioPagoDto> actualizar(@PathVariable String id,
+            @RequestBody @Valid CreateMedioPagoDto dto) {
         // Nota: El servicio validará que el ID coincida con la empresa del DTO
         return ResponseEntity.ok(service.actualizar(id, dto));
     }
@@ -74,8 +74,8 @@ public class MedioPagoController {
      * DELETE /api/medios-pago/{id}?empresaId=1
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable String id, 
-                                         @RequestParam String empresaId) {
+    public ResponseEntity<Void> eliminar(@PathVariable String id,
+            @RequestParam String empresaId) {
         service.eliminar(id, empresaId);
         return ResponseEntity.noContent().build();
     }
