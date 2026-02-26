@@ -69,7 +69,7 @@ public class User extends Auditable implements UserDetails {
     @Column(name = "numero_documento", nullable = false, unique = true)
     private String numeroDocumento;
 
-    @Column(name = "telefono", nullable = false)
+    @Column(name = "telefono", nullable = true)
     private String telefono;
 
     @Column(nullable = false, unique = true)

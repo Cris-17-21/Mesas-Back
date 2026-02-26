@@ -1,6 +1,5 @@
 package com.restaurante.resturante.service.security.jpa;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,7 +12,6 @@ import com.restaurante.resturante.domain.security.User;
 import com.restaurante.resturante.domain.security.UserAccess;
 import com.restaurante.resturante.dto.security.CreateUserDto;
 import com.restaurante.resturante.dto.security.MeResponseDto;
-import com.restaurante.resturante.dto.security.MeUserDto;
 import com.restaurante.resturante.dto.security.MenuModuleDto;
 import com.restaurante.resturante.dto.security.UserDto;
 import com.restaurante.resturante.mapper.security.UserDtoMapper;
@@ -30,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class UserService implements IUserService{
+public class UserService implements IUserService {
 
     private final UserRepository userRepository;
     private final UserAccessRepository userAccessRepository;
@@ -45,48 +43,25 @@ public class UserService implements IUserService{
     @Transactional(readOnly = true)
     @Override
     public MeResponseDto getUserDetailsForMe(String username) {
-        // 1. Cargamos una copia "fresca" del usuario una sola vez.
-        User user = userRepository.findByUsernameWithDetails(username)
-                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + username));
-
-        // 2. Construimos la navegación PASANDO EL OBJETO USER DIRECTAMENTE.
-        //    ¡Mucho más eficiente! No hay segunda llamada a la BD.
+        User user = getUserByUsernameOrThrow(username);
         List<MenuModuleDto> navigation = menuService.buildUserMenu(user);
 
-        // 4. Construimos el DTO del usuario.
-        MeUserDto userDto = new MeUserDto(
-                user.getId(),
-                user.getUsername(),
-                user.getNombres(),
-                user.getApellidoPaterno(),
-                user.getApellidoMaterno(),
-                user.getTipoDocumento() != null ? user.getTipoDocumento().getName() : null,
-                user.getNumeroDocumento(),
-                user.getTelefono(),
-                user.getEmail(),
-                user.getRole().getName()
-        );
-
-        // 5. Ensamblamos y devolvemos la respuesta final.
-        return new MeResponseDto(navigation, userDto);
+        // Delegamos la creación del MeUserDto al mapper (puedes añadir este método al
+        // mapper luego)
+        return new MeResponseDto(navigation, userDtoMapper.toMeUserDto(user));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public UserDto getUserById(String obfuscatedId) {
-        String id = obfuscatedId;
-
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado"));
-
-        return userDtoMapper.toUserDto(user);
+    public UserDto getUserById(String id) {
+        // Aprovechamos el método privado de soporte para mantener la limpieza
+        return userDtoMapper.toUserDto(getUserOrThrow(id));
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return users.stream()
+        return userRepository.findAll().stream()
                 .map(userDtoMapper::toUserDto)
                 .toList();
     }
@@ -94,112 +69,112 @@ public class UserService implements IUserService{
     @Override
     @Transactional
     public UserDto create(CreateUserDto dto) {
+        validateUsernameUnique(dto.username());
 
-        if (userRepository.existsByUsername(dto.username())) {
-            throw new IllegalStateException("Ya existe un usuario con nombre '" + dto.username() + "'");
-        }
-
-        String roleId = dto.role();
-        Role rol = roleRepository.findById(roleId)
-            .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + dto.role()));
-
-
-        TipoDocumento tipoDoc = tipoDocumentoRepository.findByName(dto.tipoDocumento())
-                .orElseThrow(() -> new EntityNotFoundException("Tipo de documento no encontrado: " + dto.tipoDocumento()));
+        Role rol = getRoleOrThrow(dto.role());
+        TipoDocumento tipoDoc = getTipoDocOrThrow(dto.tipoDocumento());
 
         User user = userDtoMapper.toEntity(dto, rol, tipoDoc);
         user.setPassword(passwordEncoder.encode(dto.password()));
         User savedUser = userRepository.save(user);
 
-        // 3. ASIGNACIÓN DE ACCESO (Lógica 1 a 1)
-        if (dto.empresaId() != null && dto.sucursalId() != null) {
-            var empresa = empresaRepository.findById(dto.empresaId())
-                .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
-            var sucursal = sucursalRepository.findById(dto.sucursalId())
-                .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
-
-            UserAccess access = UserAccess.builder()
-                .user(savedUser)
-                .empresa(empresa)
-                .sucursal(sucursal)
-                .active(true)
-                .build();
-            
-            userAccessRepository.save(access);
-        }
+        // Orquestación de acceso inicial
+        assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
 
         return userDtoMapper.toUserDto(savedUser);
     }
 
     @Override
     @Transactional
-    public UserDto update(String obfuscatedId, CreateUserDto dto) {
+    public UserDto update(String id, CreateUserDto dto) {
+        User existing = getUserOrThrow(id);
 
-        User existing = getUserOrThrow(obfuscatedId);
-
-        if (!existing.getUsername().equals(dto.username()) && userRepository.existsByUsername(dto.username())) {
-            throw new IllegalStateException("Ya existe otro usuario con nombre '" + dto.username() + "'");
+        if (!existing.getUsername().equalsIgnoreCase(dto.username())) {
+            validateUsernameUnique(dto.username());
         }
 
-        String roleId = dto.role();
-        Role rol = roleRepository.findById(roleId)
-            .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + dto.role()));
+        Role rol = getRoleOrThrow(dto.role());
 
-        existing.setUsername(dto.username());
-        existing.setNombres(dto.nombres());
-        existing.setApellidoPaterno(dto.apellidoPaterno());
-        existing.setApellidoMaterno(dto.apellidoMaterno());
-        existing.setTelefono(dto.telefono());
-        existing.setEmail(dto.email());
+        // Usamos el método que ya tienes en el mapper para actualizar campos básicos
+        userDtoMapper.updateEntityFromDto(dto, existing);
         existing.setRole(rol);
 
-
-        // Guardar y devolver DTO
-        User updated = userRepository.save(existing);
-        return userDtoMapper.toUserDto(updated);
+        return userDtoMapper.toUserDto(userRepository.save(existing));
     }
 
     @Override
     @Transactional
-    public void delete(String obfuscatedId) {
-        User existing = getUserOrThrow(obfuscatedId);
-        userRepository.delete(existing);
+    public void delete(String id) {
+        userRepository.delete(getUserOrThrow(id));
     }
 
-    private User getUserOrThrow(String obfuscatedId) {
-        String id = obfuscatedId;
-        return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User no encontrado"));
+    // --- MÉTODOS DE BÚSQUEDA ESPECIALIZADA ---
+
+    @Transactional(readOnly = true)
+    @Override
+    public UserDto getUserByUsername(String username) {
+        return userDtoMapper.toUserDto(getUserByUsernameOrThrow(username));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<UserDto> getUserByEmpresaId(String empresaId) {
+        // Validamos que la empresa exista antes de buscar
+        if (!empresaRepository.existsById(empresaId)) {
+            throw new EntityNotFoundException("Empresa no encontrada con ID: " + empresaId);
+        }
+
+        return userAccessRepository.findUsersByEmpresaId(empresaId).stream()
+                .map(userDtoMapper::toUserDto)
+                .toList();
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getUserByEmpresaIdAndSucursalId(String empresaId, String sucursalId) {
         List<User> users = userAccessRepository.findUsersByEmpresaIdAndSucursalId(empresaId, sucursalId);
+        if (users.isEmpty())
+            throw new EntityNotFoundException("No se encontraron usuarios para la sede indicada.");
+        return users.stream().map(userDtoMapper::toUserDto).toList();
+    }
 
-        if (users.isEmpty()) {
-            throw new EntityNotFoundException("No se encontró ningún usuario para la empresa '" + empresaId + "' y sucursal '" + sucursalId + "'");
+    // -------- MÉTODOS PRIVADOS DE SOPORTE --------
+
+    private void assignInitialAccess(User user, String empresaId, String sucursalId) {
+        if (empresaId != null && sucursalId != null) {
+            var empresa = empresaRepository.findById(empresaId)
+                    .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+            var sucursal = sucursalRepository.findById(sucursalId)
+                    .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+
+            userAccessRepository.save(UserAccess.builder()
+                    .user(user).empresa(empresa).sucursal(sucursal).active(true).build());
         }
-
-        return users.stream()
-                .map(userDtoMapper::toUserDto)
-                .toList();
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public List<UserDto> getUserByEmpresaId(String empresaId) {
-        List<User> users = userAccessRepository.findUsersByEmpresaId(empresaId);
-        return users.stream()
-                .map(userDtoMapper::toUserDto)
-                .toList();
+    private void validateUsernameUnique(String username) {
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalStateException("El nombre de usuario '" + username + "' ya está en uso.");
+        }
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public UserDto getUserByUsername(String username) {
-        User user = userRepository.findByUsername(username)
+    private User getUserOrThrow(String id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado"));
+    }
+
+    private User getUserByUsernameOrThrow(String username) {
+        return userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + username));
-        return userDtoMapper.toUserDto(user);
+    }
+
+    private Role getRoleOrThrow(String roleId) {
+        return roleRepository.findById(roleId)
+                .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado"));
+    }
+
+    private TipoDocumento getTipoDocOrThrow(String name) {
+        return tipoDocumentoRepository.findByName(name)
+                .orElseThrow(() -> new EntityNotFoundException("Tipo de documento no encontrado: " + name));
     }
 }

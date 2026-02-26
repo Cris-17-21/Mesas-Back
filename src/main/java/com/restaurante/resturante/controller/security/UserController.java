@@ -19,6 +19,7 @@ import com.restaurante.resturante.dto.security.MeResponseDto;
 import com.restaurante.resturante.dto.security.UserDto;
 import com.restaurante.resturante.service.security.IUserService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -45,7 +46,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('READ_USER')")
     @GetMapping
     public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<UserDto> users = userService.getAllUsers();    
+        List<UserDto> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
@@ -58,7 +59,6 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-
     @PreAuthorize("hasAuthority('READ_USER')")
     @GetMapping("/empresa/{empresaId}")
     public ResponseEntity<List<UserDto>> getUsersByEmpresa(@PathVariable String empresaId) {
@@ -68,14 +68,15 @@ public class UserController {
 
     @PreAuthorize("hasAuthority('CREATE_USER')")
     @PostMapping
-    public ResponseEntity<UserDto> create(@RequestBody CreateUserDto dto) {
+    public ResponseEntity<UserDto> create(@Valid @RequestBody CreateUserDto dto) {
         UserDto created = userService.create(dto);
         return ResponseEntity.ok(created);
     }
 
     @PreAuthorize("hasAuthority('UPDATE_USER')")
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> update(@PathVariable("id") String obfuscatedId, @RequestBody CreateUserDto dto) {
+    public ResponseEntity<UserDto> update(@PathVariable("id") String obfuscatedId,
+            @Valid @RequestBody CreateUserDto dto) {
         UserDto updated = userService.update(obfuscatedId, dto);
         return ResponseEntity.ok(updated);
     }
