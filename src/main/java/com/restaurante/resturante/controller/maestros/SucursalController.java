@@ -18,6 +18,7 @@ import com.restaurante.resturante.dto.maestro.CreateSucursalDto;
 import com.restaurante.resturante.dto.maestro.SucursalDto;
 import com.restaurante.resturante.service.maestros.ISucursalService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -41,14 +42,14 @@ public class SucursalController {
 
     @PreAuthorize("hasAuthority('CREATE_SUCURSAL')")
     @PostMapping
-    public ResponseEntity<SucursalDto> create(@RequestBody CreateSucursalDto dto) {
+    public ResponseEntity<SucursalDto> create(@Valid @RequestBody CreateSucursalDto dto) {
         SucursalDto created = sucursalService.create(dto);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PreAuthorize("hasAuthority('UPDATE_SUCURSAL')")
     @PutMapping("/{id}")
-    public ResponseEntity<SucursalDto> update(@PathVariable String id, @RequestBody CreateSucursalDto dto) {
+    public ResponseEntity<SucursalDto> update(@PathVariable String id, @Valid @RequestBody CreateSucursalDto dto) {
         return ResponseEntity.ok(sucursalService.update(id, dto));
     }
 
@@ -60,7 +61,7 @@ public class SucursalController {
     }
 
     @GetMapping("/empresa/{empresaId}")
-    public ResponseEntity<List<SucursalDto>> getByEmpresa(@PathVariable String empresaId) {
-        return ResponseEntity.ok(sucursalService.findByEmpresaId(empresaId));
+    public ResponseEntity<List<SucursalDto>> getSucursalesByEmpresa(@PathVariable String empresaId) {
+        return ResponseEntity.ok(sucursalService.findSucursalesByEmpresaId(empresaId));
     }
 }

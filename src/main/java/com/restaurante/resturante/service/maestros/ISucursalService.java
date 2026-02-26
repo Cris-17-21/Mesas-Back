@@ -1,8 +1,6 @@
 package com.restaurante.resturante.service.maestros;
 
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import com.restaurante.resturante.dto.maestro.CreateSucursalDto;
 import com.restaurante.resturante.dto.maestro.SucursalDto;
@@ -19,6 +17,6 @@ public interface ISucursalService {
 
     void delete(String id);
 
-    List<SucursalDto> findByEmpresaId(String empresaId);
+    List<SucursalDto> findSucursalesByEmpresaId(String empresaId);
 
 }

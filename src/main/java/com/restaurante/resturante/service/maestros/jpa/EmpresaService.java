@@ -61,8 +61,7 @@ public class EmpresaService implements IEmpresaService {
     public EmpresaDto update(String id, CreateEmpresaDto dto) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
 
-        Empresa existing = empresaRepository.findById(idSeguro)
-                .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+        Empresa existing = findExistingEmpresa(idSeguro);
 
         // Validar RUC si ha cambiado
         if (dto.ruc() != null && !existing.getRuc().equals(dto.ruc())) {
@@ -93,5 +92,10 @@ public class EmpresaService implements IEmpresaService {
         if (empresaRepository.existsByRuc(ruc)) {
             throw new IllegalStateException("El RUC " + ruc + " ya está registrado.");
         }
+    }
+
+    private Empresa findExistingEmpresa(String id) {
+        return empresaRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
     }
 }

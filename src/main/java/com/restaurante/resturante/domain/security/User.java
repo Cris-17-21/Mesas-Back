@@ -13,7 +13,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.ventas.Pedido;
-import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -67,7 +66,7 @@ public class User extends Auditable implements UserDetails {
     @JsonBackReference
     private TipoDocumento tipoDocumento;
 
-    @Column(name="numero_documento", nullable = false, unique = true)
+    @Column(name = "numero_documento", nullable = false, unique = true)
     private String numeroDocumento;
 
     @Column(name = "telefono", nullable = false)

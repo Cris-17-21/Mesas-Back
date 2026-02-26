@@ -1,10 +1,6 @@
 package com.restaurante.resturante.service.maestros.jpa;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,15 +44,13 @@ public class SucursalService implements ISucursalService {
     @Transactional
     public SucursalDto create(CreateSucursalDto dto) {
         // 1. Validar que la empresa exista
-        Empresa empresa = empresaRepository.findById(dto.empresaId())
-                .orElseThrow(() -> new EntityNotFoundException("No se puede crear sucursal: Empresa no encontrada"));
+        Empresa empresa = findExistingEmpresa(dto.empresaId());
 
         // 2. Convertir DTO a Entidad
         Sucursal sucursal = sucursalMapper.toEntity(dto);
 
-        // 3. Establecer la relación manual si el mapper no lo hace
+        // 3. Establecer la relación manual
         sucursal.setEmpresa(empresa);
-        sucursal.setEstado(true);
 
         // 4. Guardar y retornar
         Sucursal saved = sucursalRepository.save(sucursal);
@@ -66,18 +60,14 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional
     public SucursalDto update(String id, CreateSucursalDto dto) {
-        Sucursal existing = sucursalRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+        Sucursal existing = findExistingSucursal(id);
 
-        // Actualizar datos básicos
-        existing.setNombre(dto.nombre());
-        existing.setDireccion(dto.direccion());
-        existing.setTelefono(dto.telefono());
+        // Actualizar datos con el mapper
+        sucursalMapper.updateEntity(dto, existing);
 
-        // Si permites cambiar de empresa (poco común, pero posible):
+        // En caso se cambie de empresa - NOTA: Caso poco común
         if (!existing.getEmpresa().getId().equals(dto.empresaId())) {
-            Empresa nuevaEmpresa = empresaRepository.findById(dto.empresaId())
-                    .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+            Empresa nuevaEmpresa = findExistingEmpresa(dto.empresaId());
             existing.setEmpresa(nuevaEmpresa);
         }
 
@@ -87,20 +77,27 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional
     public void delete(String id) {
-        Sucursal sucursal = sucursalRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
-
-        // Podrías implementar un borrado lógico aquí
+        Sucursal sucursal = findExistingSucursal(id);
         sucursalRepository.delete(sucursal);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<SucursalDto> findByEmpresaId(String empresaId) {
+    public List<SucursalDto> findSucursalesByEmpresaId(String empresaId) {
         return sucursalRepository.findByEmpresaId(empresaId)
                 .stream()
                 .map(sucursalMapper::toDto)
                 .toList();
     }
 
+    // -------- MÉTODOS AUXILIARES --------
+    private Sucursal findExistingSucursal(String id) {
+        return sucursalRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+    }
+
+    private Empresa findExistingEmpresa(String empresaId) {
+        return empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+    }
 }

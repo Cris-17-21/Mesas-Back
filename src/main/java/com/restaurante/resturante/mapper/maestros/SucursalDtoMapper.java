@@ -1,7 +1,6 @@
 package com.restaurante.resturante.mapper.maestros;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 
@@ -14,10 +13,8 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class SucursalDtoMapper {
-    /**
-     * Convierte una entidad Sucursal a su DTO de respuesta.
-     * Se utiliza principalmente en el flujo de login multi-sede.
-     */
+
+    // Convierte de entidad a DTO (Para respuesta de API)
     public SucursalDto toDto(Sucursal sucursal) {
         if (sucursal == null)
             return null;
@@ -30,36 +27,35 @@ public class SucursalDtoMapper {
                 sucursal.getEmpresa() != null ? sucursal.getEmpresa().getRazonSocial() : null);
     }
 
-    /**
-     * Convierte una lista de entidades a una lista de DTOs.
-     */
-    public List<SucursalDto> toDtoList(List<Sucursal> sucursales) {
-        if (sucursales == null)
-            return null;
-        return sucursales.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-    }
-
+    // Convierte de CreateSucursalDto a Entidad (Para guardar)
     public Sucursal toEntity(CreateSucursalDto dto) {
         if (dto == null)
             return null;
 
-        // Reutilizamos el método de abajo pasándole los datos del record
-        return toEntity(dto.nombre(), dto.direccion(), dto.telefono());
+        // Validación para evitar Nulos
+        String nombreSeguro = Objects.requireNonNull(dto.nombre(), "El nombre de la Sucursal es requerida.");
+
+        return Sucursal.builder()
+                .nombre(nombreSeguro.toUpperCase())
+                .direccion(dto.direccion())
+                .telefono(dto.telefono())
+                .estado(true)
+                .build();
     }
 
-    /**
-     * Crea una entidad Sucursal a partir de datos básicos (si lo necesitas más
-     * adelante)
-     */
-    public Sucursal toEntity(String nombre, String direccion, String telefono) {
-        Sucursal sucursal = new Sucursal();
-        sucursal.setNombre(nombre);
-        sucursal.setDireccion(direccion);
-        sucursal.setTelefono(telefono);
-        // Usamos setEstado(true) como lo tenías definido
-        sucursal.setEstado(true); 
-        return sucursal;
+    // Actualizar entidad
+    public void updateEntity(CreateSucursalDto dto, Sucursal entity) {
+        if (dto == null || entity == null)
+            return;
+
+        if (dto.nombre() != null) {
+            entity.setNombre(dto.nombre().toUpperCase());
+        }
+        if (dto.direccion() != null) {
+            entity.setDireccion(dto.direccion());
+        }
+        if (dto.telefono() != null) {
+            entity.setTelefono(dto.telefono());
+        }
     }
 }
