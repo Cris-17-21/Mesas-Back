@@ -124,7 +124,7 @@ public class UserService implements IUserService {
             throw new EntityNotFoundException("Empresa no encontrada con ID: " + empresaId);
         }
 
-        return userAccessRepository.findUsersByEmpresaId(empresaId).stream()
+        return userAccessRepository.findActiveUsersByEmpresaId(empresaId).stream()
                 .map(userDtoMapper::toUserDto)
                 .toList();
     }

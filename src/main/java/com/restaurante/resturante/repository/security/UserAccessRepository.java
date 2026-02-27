@@ -19,8 +19,8 @@ public interface UserAccessRepository extends JpaRepository<UserAccess, String> 
     Optional<UserAccess> findByUserId(String userId);
 
     // 1. Buscamos Usuarios filtrando por la Empresa en la tabla de accesos
-    @Query("SELECT DISTINCT a.user FROM UserAccess a WHERE a.empresa.id = :empresaId")
-    List<User> findUsersByEmpresaId(@Param("empresaId") String empresaId);
+    @Query("SELECT DISTINCT a.user FROM UserAccess a WHERE a.empresa.id = :empresaId AND a.active = true")
+    List<User> findActiveUsersByEmpresaId(@Param("empresaId") String empresaId);
 
     // 2. Buscamos Usuarios filtrando por Empresa y Sucursal en la tabla de accesos
     @Query("SELECT DISTINCT a.user FROM UserAccess a WHERE a.empresa.id = :empresaId AND a.sucursal.id = :sucursalId")
