@@ -16,6 +16,7 @@ import com.restaurante.resturante.service.maestros.IUserAccessService;
 import com.restaurante.resturante.service.security.IUserService;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -28,6 +29,7 @@ public class UserAcessService implements IUserAccessService {
     private final RoleRepository roleRepository;
 
     @Override
+    @Transactional
     public UserDto registrarUsuarioAdmin(MasterRegistroDto dto) {
         // 1. Crear la Empresa (Obtenemos el ID generado)
         EmpresaDto empresaSaved = empresaService.create(dto.empresa());

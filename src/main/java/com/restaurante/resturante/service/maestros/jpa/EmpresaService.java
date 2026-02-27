@@ -2,6 +2,7 @@ package com.restaurante.resturante.service.maestros.jpa;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,14 @@ public class EmpresaService implements IEmpresaService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<EmpresaDto> findAllActive() {
+        return empresaRepository.findAllByActiveTrue().stream()
+                .map(empresaMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public EmpresaDto findById(String id) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
         return empresaRepository.findById(idSeguro)
@@ -43,15 +52,25 @@ public class EmpresaService implements IEmpresaService {
     @Override
     @Transactional
     public EmpresaDto create(CreateEmpresaDto dto) {
+        if (dto.ruc() == null) {
+            throw new IllegalArgumentException("El RUC no puede ser nulo");
+        }
 
-        // Validar RUC
-        validarRucUnico(dto.ruc());
+        Optional<Empresa> empresaOptional = empresaRepository.findByRuc(dto.ruc());
+
+        if (empresaOptional.isPresent()) {
+            Empresa existing = empresaOptional.get();
+
+            if (existing.getActive() == true) {
+                throw new IllegalStateException("El RUC " + dto.ruc() + " ya está registrado.");
+            } else {
+                empresaMapper.updateEntityFromDto(dto, existing);
+                Empresa reactivated = empresaRepository.save(existing);
+                return empresaMapper.toDto(reactivated);
+            }
+        }
+
         Empresa empresa = empresaMapper.toEntity(dto);
-
-        // Normalizar la Razón Social en mayúscula
-        empresa.setRazonSocial(empresa.getRazonSocial());
-
-        // Guardar empresa
         Empresa saved = empresaRepository.save(empresa);
         return empresaMapper.toDto(saved);
     }
@@ -63,14 +82,20 @@ public class EmpresaService implements IEmpresaService {
 
         Empresa existing = findExistingEmpresa(idSeguro);
 
-        // Validar RUC si ha cambiado
         if (dto.ruc() != null && !existing.getRuc().equals(dto.ruc())) {
-            validarRucUnico(dto.ruc());
+            Optional<Empresa> rucEnUso = empresaRepository.findByRuc(dto.ruc());
+            if (rucEnUso.isPresent() && rucEnUso.get().getActive()) {
+                throw new IllegalStateException(
+                        "El nuevo RUC " + dto.ruc() + " ya está registrado en otra empresa activa.");
+            } else {
+                empresaMapper.updateEntityFromDto(dto, existing);
+                existing.setActive(true); // Revivimos la empresa
+                Empresa reactivated = empresaRepository.save(existing);
+                return empresaMapper.toDto(reactivated);
+            }
         }
 
-        // Actualizar campos
         empresaMapper.updateEntityFromDto(dto, existing);
-
         return empresaMapper.toDto(empresaRepository.save(existing));
     }
 
@@ -81,18 +106,12 @@ public class EmpresaService implements IEmpresaService {
         if (!empresaRepository.existsById(idSeguro)) {
             throw new EntityNotFoundException("No se puede eliminar: Empresa no encontrada");
         }
-        empresaRepository.deleteById(idSeguro);
+        Empresa empresa = findExistingEmpresa(idSeguro);
+        empresa.setActive(false);
+        empresaRepository.save(empresa);
     }
 
     // -------- MÉTODOS AUXILIARES --------
-    private void validarRucUnico(String ruc) {
-        if (ruc == null) {
-            throw new IllegalArgumentException("El RUC no puede ser nulo");
-        }
-        if (empresaRepository.existsByRuc(ruc)) {
-            throw new IllegalStateException("El RUC " + ruc + " ya está registrado.");
-        }
-    }
 
     private Empresa findExistingEmpresa(String id) {
         return empresaRepository.findById(id)

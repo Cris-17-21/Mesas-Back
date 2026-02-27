@@ -9,6 +9,8 @@ public interface IEmpresaService {
 
     List<EmpresaDto> findAll();
 
+    List<EmpresaDto> findAllActive();
+
     EmpresaDto findById(String id);
 
     EmpresaDto create(CreateEmpresaDto dto);

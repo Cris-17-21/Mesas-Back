@@ -72,7 +72,7 @@ public class User extends Auditable implements UserDetails {
     @Column(name = "telefono", nullable = true)
     private String telefono;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = true, unique = true)
     private String email;
 
     @Column(name = "is_active")

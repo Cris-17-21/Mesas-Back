@@ -9,6 +9,8 @@ public interface ISucursalService {
 
     List<SucursalDto> findAll();
 
+    List<SucursalDto> findAllActive();
+
     SucursalDto findById(String id);
 
     SucursalDto create(CreateSucursalDto dto);

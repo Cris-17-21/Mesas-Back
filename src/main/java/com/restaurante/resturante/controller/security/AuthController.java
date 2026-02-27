@@ -99,7 +99,7 @@ public class AuthController {
 
                 if (isAdmin) {
                         // ADMIN: Buscamos las sucursales de su empresa
-                        List<Sucursal> sucursales = sucursalRepository.findByEmpresaId(empresaId);
+                        List<Sucursal> sucursales = sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId);
 
                         if (sucursales.size() > 1) {
                                 requiresSelection = true;

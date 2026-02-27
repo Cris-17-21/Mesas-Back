@@ -21,13 +21,21 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SucursalService implements ISucursalService {
     private final SucursalRepository sucursalRepository;
-    private final EmpresaRepository empresaRepository; // Necesario para vincular
+    private final EmpresaRepository empresaRepository;
     private final SucursalDtoMapper sucursalMapper;
 
     @Override
     @Transactional(readOnly = true)
     public List<SucursalDto> findAll() {
         return sucursalRepository.findAll().stream()
+                .map(sucursalMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SucursalDto> findAllActive() {
+        return sucursalRepository.findAllByEstadoTrue().stream()
                 .map(sucursalMapper::toDto)
                 .toList();
     }
@@ -45,12 +53,16 @@ public class SucursalService implements ISucursalService {
     public SucursalDto create(CreateSucursalDto dto) {
         // 1. Validar que la empresa exista
         Empresa empresa = findExistingEmpresa(dto.empresaId());
+        if (!empresa.getActive()) {
+            throw new IllegalStateException("No se puede crear una sucursal para una empresa inactiva.");
+        }
 
         // 2. Convertir DTO a Entidad
         Sucursal sucursal = sucursalMapper.toEntity(dto);
 
         // 3. Establecer la relación manual
         sucursal.setEmpresa(empresa);
+        sucursal.setEstado(true);
 
         // 4. Guardar y retornar
         Sucursal saved = sucursalRepository.save(sucursal);
@@ -68,6 +80,9 @@ public class SucursalService implements ISucursalService {
         // En caso se cambie de empresa - NOTA: Caso poco común
         if (!existing.getEmpresa().getId().equals(dto.empresaId())) {
             Empresa nuevaEmpresa = findExistingEmpresa(dto.empresaId());
+            if (!nuevaEmpresa.getActive()) {
+                throw new IllegalStateException("No se puede transferir la sucursal a una empresa inactiva.");
+            }
             existing.setEmpresa(nuevaEmpresa);
         }
 
@@ -78,13 +93,14 @@ public class SucursalService implements ISucursalService {
     @Transactional
     public void delete(String id) {
         Sucursal sucursal = findExistingSucursal(id);
-        sucursalRepository.delete(sucursal);
+        sucursal.setEstado(false);
+        sucursalRepository.save(sucursal);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<SucursalDto> findSucursalesByEmpresaId(String empresaId) {
-        return sucursalRepository.findByEmpresaId(empresaId)
+        return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId)
                 .stream()
                 .map(sucursalMapper::toDto)
                 .toList();

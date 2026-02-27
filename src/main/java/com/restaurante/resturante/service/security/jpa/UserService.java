@@ -1,6 +1,7 @@
 package com.restaurante.resturante.service.security.jpa;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,10 +45,10 @@ public class UserService implements IUserService {
     @Override
     public MeResponseDto getUserDetailsForMe(String username) {
         User user = getUserByUsernameOrThrow(username);
+        if (!user.getActive()) {
+            throw new IllegalStateException("El usuario se encuentra inactivo.");
+        }
         List<MenuModuleDto> navigation = menuService.buildUserMenu(user);
-
-        // Delegamos la creación del MeUserDto al mapper (puedes añadir este método al
-        // mapper luego)
         return new MeResponseDto(navigation, userDtoMapper.toMeUserDto(user));
     }
 
@@ -66,19 +67,48 @@ public class UserService implements IUserService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public List<UserDto> getAllActiveUsers() {
+        return userRepository.findAllByActiveTrue().stream()
+                .map(userDtoMapper::toUserDto)
+                .toList();
+    }
+
     @Override
     @Transactional
     public UserDto create(CreateUserDto dto) {
-        validateUsernameUnique(dto.username());
-
+        // 1. Buscamos las dependencias comunes UNA SOLA VEZ
         Role rol = getRoleOrThrow(dto.role());
         TipoDocumento tipoDoc = getTipoDocOrThrow(dto.tipoDocumento());
 
+        Optional<User> userExistente = userRepository.findByUsername(dto.username());
+
+        if (userExistente.isPresent()) {
+            User existing = userExistente.get();
+            if (existing.getActive()) {
+                throw new IllegalStateException(
+                        "El nombre de usuario '" + dto.username() + "' ya está en uso por un usuario activo.");
+            } else {
+                // Reactivación
+                userDtoMapper.updateEntityFromDto(dto, existing);
+                existing.setRole(rol);
+                existing.setTipoDocumento(tipoDoc);
+                existing.setPassword(passwordEncoder.encode(dto.password()));
+                existing.setActive(true);
+
+                User savedUser = userRepository.save(existing);
+                assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
+                return userDtoMapper.toUserDto(savedUser);
+            }
+        }
+
+        // Creación nueva
         User user = userDtoMapper.toEntity(dto, rol, tipoDoc);
         user.setPassword(passwordEncoder.encode(dto.password()));
+        user.setActive(true);
         User savedUser = userRepository.save(user);
 
-        // Orquestación de acceso inicial
         assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
 
         return userDtoMapper.toUserDto(savedUser);
@@ -99,13 +129,19 @@ public class UserService implements IUserService {
         userDtoMapper.updateEntityFromDto(dto, existing);
         existing.setRole(rol);
 
+        if (dto.password() != null && !dto.password().isBlank()) {
+            existing.setPassword(passwordEncoder.encode(dto.password()));
+        }
+
         return userDtoMapper.toUserDto(userRepository.save(existing));
     }
 
     @Override
     @Transactional
     public void delete(String id) {
-        userRepository.delete(getUserOrThrow(id));
+        User user = getUserOrThrow(id);
+        user.setActive(false);
+        userRepository.save(user);
     }
 
     // --- MÉTODOS DE BÚSQUEDA ESPECIALIZADA ---
@@ -144,8 +180,14 @@ public class UserService implements IUserService {
         if (empresaId != null && sucursalId != null) {
             var empresa = empresaRepository.findById(empresaId)
                     .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+            if (!empresa.getActive()) {
+                throw new IllegalStateException("No se puede asignar acceso a una empresa inactiva.");
+            }
             var sucursal = sucursalRepository.findById(sucursalId)
                     .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+            if (!sucursal.getEstado()) {
+                throw new IllegalStateException("No se puede asignar acceso a una sucursal inactiva.");
+            }
 
             userAccessRepository.save(UserAccess.builder()
                     .user(user).empresa(empresa).sucursal(sucursal).active(true).build());

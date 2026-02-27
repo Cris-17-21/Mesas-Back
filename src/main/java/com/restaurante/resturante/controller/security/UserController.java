@@ -51,6 +51,13 @@ public class UserController {
     }
 
     @PreAuthorize("hasAuthority('READ_USER')")
+    @GetMapping("/active")
+    public ResponseEntity<List<UserDto>> getAllActiveUsers() {
+        List<UserDto> users = userService.getAllActiveUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @PreAuthorize("hasAuthority('READ_USER')")
     @GetMapping("/empresa/{empresaId}/sucursal/{sucursalId}")
     public ResponseEntity<List<UserDto>> getUsersByEmpresaAndSucursal(
             @PathVariable String empresaId,

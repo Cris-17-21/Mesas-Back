@@ -14,6 +14,8 @@ public interface IUserService {
 
     List<UserDto> getAllUsers();
 
+    List<UserDto> getAllActiveUsers();
+
     UserDto create(CreateUserDto dto);
 
     UserDto update(String obfuscatedId, CreateUserDto dto);

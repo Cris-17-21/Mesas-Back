@@ -35,6 +35,12 @@ public class EmpresaController {
     }
 
     @PreAuthorize("hasAuthority('READ_EMPRESA')")
+    @GetMapping("/active")
+    public ResponseEntity<List<EmpresaDto>> getAllActive() {
+        return ResponseEntity.ok(empresaService.findAllActive());
+    }
+
+    @PreAuthorize("hasAuthority('READ_EMPRESA')")
     @GetMapping("/{id}")
     public ResponseEntity<EmpresaDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(empresaService.findById(id));

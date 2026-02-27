@@ -35,6 +35,12 @@ public class SucursalController {
     }
 
     @PreAuthorize("hasAuthority('READ_SUCURSAL')")
+    @GetMapping("/active")
+    public ResponseEntity<List<SucursalDto>> getAllActive() {
+        return ResponseEntity.ok(sucursalService.findAllActive());
+    }
+
+    @PreAuthorize("hasAuthority('READ_SUCURSAL')")
     @GetMapping("/{id}")
     public ResponseEntity<SucursalDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(sucursalService.findById(id));
