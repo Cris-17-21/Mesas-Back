@@ -134,12 +134,31 @@ public class GlobalExceptionHandler {
         public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
                 Map<String, String> response = new HashMap<>();
 
-                // Verificamos si es un error de restricción de llave foránea
-                if (ex.getMessage().contains("foreign key constraint fails")) {
+                // Extraemos el mensaje raíz real de la base de datos (es más seguro)
+                String rootMsg = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage()
+                                : ex.getMessage();
+
+                // 1. Verificamos si es un error de llave foránea (Dependencias)
+                if (rootMsg.contains("foreign key constraint fails")) {
                         response.put("error", "Conflicto de Integridad");
                         response.put("message",
                                         "No se puede eliminar el registro porque tiene dependencias activas (sucursales, usuarios, etc).");
-                } else {
+                }
+                // 2. Verificamos si es un error de valor duplicado (Unique Constraint)
+                else if (rootMsg.contains("Duplicate entry")) {
+                        response.put("error", "Dato Duplicado");
+
+                        // Podemos hacer el mensaje amigable para el usuario
+                        response.put("message",
+                                        "Ya existe un registro con este dato único (Ej. DNI, Correo o Usuario). Por favor, verifica e intenta con otro.");
+
+                        // OPCIONAL: Si quieres ponerte exquisito, puedes extraer el valor exacto usando
+                        // un poquito de manipulación de strings o Regex.
+                        // Pero un mensaje general como el de arriba suele ser suficiente para el
+                        // Frontend.
+                }
+                // 3. Fallback genérico para cualquier otra cosa rara de la BD
+                else {
                         response.put("error", "Error de base de datos");
                         response.put("message", "Operación no permitida por integridad de datos.");
                 }

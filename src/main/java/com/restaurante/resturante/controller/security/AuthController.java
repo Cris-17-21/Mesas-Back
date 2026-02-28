@@ -70,6 +70,11 @@ public class AuthController {
                                                 loginRequest.password()));
 
                 User user = (User) authentication.getPrincipal();
+
+                if (!user.getActive()) {
+                        throw new AccessDeniedException("Acceso denegado: El usuario se encuentra inactivo.");
+                }
+
                 String clientIp = getClientIp(request);
 
                 // 2. Verificar roles antes de buscar en UserAccess
@@ -92,6 +97,11 @@ public class AuthController {
                         throw new AccessDeniedException("Usuario sin acceso configurado");
                 }
 
+                if (!accesoBase.getEmpresa().getActive()) {
+                        throw new AccessDeniedException(
+                                        "Acceso denegado: La empresa asignada ya no se encuentra activa.");
+                }
+
                 String empresaId = accesoBase.getEmpresa().getId();
                 String sucursalId = null;
                 boolean requiresSelection = false;
@@ -111,6 +121,10 @@ public class AuthController {
                 } else {
                         // USUARIO NORMAL
                         if (accesoBase.getSucursal() != null) {
+                                if (!accesoBase.getSucursal().getEstado()) {
+                                        throw new AccessDeniedException(
+                                                        "Acceso denegado: La sucursal asignada ya no se encuentra activa.");
+                                }
                                 sucursalId = accesoBase.getSucursal().getId();
                         }
                 }

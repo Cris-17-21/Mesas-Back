@@ -14,6 +14,8 @@ public interface UserAccessRepository extends JpaRepository<UserAccess, String> 
 
     List<UserAccess> findByUserIdAndActiveTrue(String userId);
 
+    List<UserAccess> findByEmpresaId(String empresaId);
+
     Optional<UserAccess> findByUserIdAndSucursalId(String userId, String sucursalId);
 
     Optional<UserAccess> findByUserId(String userId);

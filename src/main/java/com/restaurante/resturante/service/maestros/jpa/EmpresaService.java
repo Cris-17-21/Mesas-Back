@@ -8,10 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurante.resturante.domain.maestros.Empresa;
+import com.restaurante.resturante.domain.maestros.Sucursal;
+import com.restaurante.resturante.domain.security.User;
+import com.restaurante.resturante.domain.security.UserAccess;
 import com.restaurante.resturante.dto.maestro.CreateEmpresaDto;
 import com.restaurante.resturante.dto.maestro.EmpresaDto;
 import com.restaurante.resturante.mapper.maestros.EmpresaDtoMapper;
 import com.restaurante.resturante.repository.maestro.EmpresaRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
+import com.restaurante.resturante.repository.security.UserAccessRepository;
+import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.service.maestros.IEmpresaService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -23,6 +29,9 @@ public class EmpresaService implements IEmpresaService {
 
     private final EmpresaRepository empresaRepository;
     private final EmpresaDtoMapper empresaMapper;
+    private final SucursalRepository sucursalRepository;
+    private final UserAccessRepository userAccessRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -65,6 +74,7 @@ public class EmpresaService implements IEmpresaService {
                 throw new IllegalStateException("El RUC " + dto.ruc() + " ya está registrado.");
             } else {
                 empresaMapper.updateEntityFromDto(dto, existing);
+                existing.setActive(true);
                 Empresa reactivated = empresaRepository.save(existing);
                 return empresaMapper.toDto(reactivated);
             }
@@ -109,6 +119,24 @@ public class EmpresaService implements IEmpresaService {
         Empresa empresa = findExistingEmpresa(idSeguro);
         empresa.setActive(false);
         empresaRepository.save(empresa);
+
+        List<Sucursal> sucursales = sucursalRepository.findByEmpresaIdAndEstadoTrue(empresa.getId());
+        sucursales.forEach(sucursal -> {
+            sucursal.setEstado(false);
+        });
+        sucursalRepository.saveAll(sucursales);
+
+        List<UserAccess> accesos = userAccessRepository.findByEmpresaId(empresa.getId());
+
+        accesos.forEach(acceso -> {
+            acceso.setActive(false); // Desactivamos el puente de acceso
+
+            User user = acceso.getUser();
+            user.setActive(false); // Desactivamos al usuario directamente
+            userRepository.save(user);
+        });
+
+        userAccessRepository.saveAll(accesos);
     }
 
     // -------- MÉTODOS AUXILIARES --------

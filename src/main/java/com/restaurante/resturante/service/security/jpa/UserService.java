@@ -83,6 +83,7 @@ public class UserService implements IUserService {
         TipoDocumento tipoDoc = getTipoDocOrThrow(dto.tipoDocumento());
 
         Optional<User> userExistente = userRepository.findByUsername(dto.username());
+        validateDocumentoUnique(dto.numeroDocumento());
 
         if (userExistente.isPresent()) {
             User existing = userExistente.get();
@@ -121,6 +122,9 @@ public class UserService implements IUserService {
 
         if (!existing.getUsername().equalsIgnoreCase(dto.username())) {
             validateUsernameUnique(dto.username());
+        }
+        if (!existing.getNumeroDocumento().equalsIgnoreCase(dto.numeroDocumento())) {
+            validateDocumentoUnique(dto.numeroDocumento());
         }
 
         Role rol = getRoleOrThrow(dto.role());
@@ -197,6 +201,12 @@ public class UserService implements IUserService {
     private void validateUsernameUnique(String username) {
         if (userRepository.existsByUsername(username)) {
             throw new IllegalStateException("El nombre de usuario '" + username + "' ya está en uso.");
+        }
+    }
+
+    private void validateDocumentoUnique(String numeroDocumento) {
+        if (userRepository.existsByNumeroDocumentoAndActiveTrue(numeroDocumento)) {
+            throw new IllegalStateException("El número de documento '" + numeroDocumento + "' ya está registrado.");
         }
     }
 

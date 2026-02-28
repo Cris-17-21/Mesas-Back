@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     List<User> findAllByActiveTrue();
 
+    Boolean existsByNumeroDocumentoAndActiveTrue(String numeroDocumento);
+
     /**
      * Busca un usuario por su username y carga de forma anticipada (EAGER)
      * todas las relaciones necesarias para el endpoint /me, evitando problemas de
