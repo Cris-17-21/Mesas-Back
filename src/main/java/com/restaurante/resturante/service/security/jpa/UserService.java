@@ -78,33 +78,33 @@ public class UserService implements IUserService {
     @Override
     @Transactional
     public UserDto create(CreateUserDto dto) {
-        // 1. Buscamos las dependencias comunes UNA SOLA VEZ
         Role rol = getRoleOrThrow(dto.role());
         TipoDocumento tipoDoc = getTipoDocOrThrow(dto.tipoDocumento());
 
-        Optional<User> userExistente = userRepository.findByUsername(dto.username());
-        validateDocumentoUnique(dto.numeroDocumento());
+        // Buscamos si el usuario existe por DNI o Username (sin importar si está activo
+        // o no)
+        Optional<User> userByUsername = userRepository.findByUsername(dto.username());
+        Optional<User> userByDoc = userRepository.findByNumeroDocumento(dto.numeroDocumento());
 
-        if (userExistente.isPresent()) {
-            User existing = userExistente.get();
-            if (existing.getActive()) {
-                throw new IllegalStateException(
-                        "El nombre de usuario '" + dto.username() + "' ya está en uso por un usuario activo.");
-            } else {
-                // Reactivación
-                userDtoMapper.updateEntityFromDto(dto, existing);
-                existing.setRole(rol);
-                existing.setTipoDocumento(tipoDoc);
-                existing.setPassword(passwordEncoder.encode(dto.password()));
-                existing.setActive(true);
+        User existing = userByUsername.orElse(userByDoc.orElse(null));
 
-                User savedUser = userRepository.save(existing);
-                assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
-                return userDtoMapper.toUserDto(savedUser);
-            }
+        if (existing != null) {
+            // --- CASO: EL USUARIO YA EXISTE (ACTIVO O INACTIVO) ---
+            // Actualizamos sus datos básicos por si cambiaron
+            userDtoMapper.updateEntityFromDto(dto, existing);
+            existing.setRole(rol);
+            existing.setTipoDocumento(tipoDoc);
+            existing.setActive(true); // Nos aseguramos de que esté activo
+
+            User savedUser = userRepository.save(existing);
+
+            // Asignamos el acceso (Aquí se aplica la regla de MAYÚSCULAS)
+            assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
+
+            return userDtoMapper.toUserDto(savedUser);
         }
 
-        // Creación nueva
+        // --- CASO: USUARIO COMPLETAMENTE NUEVO ---
         User user = userDtoMapper.toEntity(dto, rol, tipoDoc);
         user.setPassword(passwordEncoder.encode(dto.password()));
         user.setActive(true);
@@ -182,19 +182,26 @@ public class UserService implements IUserService {
 
     private void assignInitialAccess(User user, String empresaId, String sucursalId) {
         if (empresaId != null && sucursalId != null) {
-            var empresa = empresaRepository.findById(empresaId)
-                    .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
-            if (!empresa.getActive()) {
-                throw new IllegalStateException("No se puede asignar acceso a una empresa inactiva.");
-            }
-            var sucursal = sucursalRepository.findById(sucursalId)
-                    .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
-            if (!sucursal.getEstado()) {
-                throw new IllegalStateException("No se puede asignar acceso a una sucursal inactiva.");
+            // Buscamos la lista de posibles accesos (aunque haya 5, el código no rompe)
+            List<UserAccess> accesosExistentes = userAccessRepository
+                    .findByUserIdAndSucursalId(user.getId(), sucursalId);
+
+            UserAccess access;
+
+            if (!accesosExistentes.isEmpty()) {
+                // Si hay varios, tomamos el primero para reactivar
+                access = accesosExistentes.get(0);
+            } else {
+                // Si es totalmente nuevo
+                access = new UserAccess();
+                access.setUser(user);
+                access.setEmpresa(empresaRepository.getReferenceById(empresaId));
+                access.setSucursal(sucursalRepository.getReferenceById(sucursalId));
             }
 
-            userAccessRepository.save(UserAccess.builder()
-                    .user(user).empresa(empresa).sucursal(sucursal).active(true).build());
+            access.setActive(true);
+
+            userAccessRepository.save(access);
         }
     }
 

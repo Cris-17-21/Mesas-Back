@@ -73,6 +73,14 @@ public class EmpresaService implements IEmpresaService {
             if (existing.getActive() == true) {
                 throw new IllegalStateException("El RUC " + dto.ruc() + " ya está registrado.");
             } else {
+                List<UserAccess> accesos = userAccessRepository.findByEmpresaId(existing.getId());
+                accesos.forEach(acceso -> {
+                    acceso.setActive(true);
+                    User user = acceso.getUser();
+                    user.setActive(true); // Lo despertamos
+                    userRepository.save(user);
+                });
+                userAccessRepository.saveAll(accesos);
                 empresaMapper.updateEntityFromDto(dto, existing);
                 existing.setActive(true);
                 Empresa reactivated = empresaRepository.save(existing);
@@ -98,6 +106,14 @@ public class EmpresaService implements IEmpresaService {
                 throw new IllegalStateException(
                         "El nuevo RUC " + dto.ruc() + " ya está registrado en otra empresa activa.");
             } else {
+                List<UserAccess> accesos = userAccessRepository.findByEmpresaId(existing.getId());
+                accesos.forEach(acceso -> {
+                    acceso.setActive(true);
+                    User user = acceso.getUser();
+                    user.setActive(true); // Lo despertamos
+                    userRepository.save(user);
+                });
+                userAccessRepository.saveAll(accesos);
                 empresaMapper.updateEntityFromDto(dto, existing);
                 existing.setActive(true); // Revivimos la empresa
                 Empresa reactivated = empresaRepository.save(existing);
@@ -129,10 +145,9 @@ public class EmpresaService implements IEmpresaService {
         List<UserAccess> accesos = userAccessRepository.findByEmpresaId(empresa.getId());
 
         accesos.forEach(acceso -> {
-            acceso.setActive(false); // Desactivamos el puente de acceso
-
+            acceso.setActive(false);
             User user = acceso.getUser();
-            user.setActive(false); // Desactivamos al usuario directamente
+            user.setActive(false);
             userRepository.save(user);
         });
 

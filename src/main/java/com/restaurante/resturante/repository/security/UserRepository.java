@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     List<User> findAllByActiveTrue();
 
+    Optional<User> findByNumeroDocumento(String numeroDocumento);
+
     Boolean existsByNumeroDocumentoAndActiveTrue(String numeroDocumento);
 
     /**

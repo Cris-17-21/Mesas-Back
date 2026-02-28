@@ -12,11 +12,15 @@ import com.restaurante.resturante.domain.security.UserAccess;
 
 public interface UserAccessRepository extends JpaRepository<UserAccess, String> {
 
+    List<UserAccess> findByUserIdAndSucursalId(String userId, String sucursalId);
+
+    List<UserAccess> findByUserIdAndEmpresaId(String userId, String empresaId);
+
     List<UserAccess> findByUserIdAndActiveTrue(String userId);
 
     List<UserAccess> findByEmpresaId(String empresaId);
 
-    Optional<UserAccess> findByUserIdAndSucursalId(String userId, String sucursalId);
+    List<UserAccess> findBySucursalId(String sucursalId);
 
     Optional<UserAccess> findByUserId(String userId);
 

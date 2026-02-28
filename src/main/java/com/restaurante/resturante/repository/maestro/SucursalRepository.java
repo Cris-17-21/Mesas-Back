@@ -1,6 +1,7 @@
 package com.restaurante.resturante.repository.maestro;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,10 @@ public interface SucursalRepository extends JpaRepository<Sucursal, String> {
     List<Sucursal> findAllByEstadoTrue();
 
     List<Sucursal> findByEmpresaIdAndEstadoTrue(String empresaId);
+
+    Optional<Sucursal> findByNombreIgnoreCaseAndEmpresaId(String nombre, String empresaId);
+
+    Optional<Sucursal> findByNombreIgnoreCaseAndEmpresaIdAndEstadoTrue(String nombre, String empresaId);
 
     @Query("SELECT s FROM Sucursal s JOIN s.usersAccess ua JOIN ua.user u WHERE u.username = :username")
     List<Sucursal> findByUsuariosUsername(@Param("username") String username);

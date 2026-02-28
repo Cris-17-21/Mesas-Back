@@ -1,6 +1,7 @@
 package com.restaurante.resturante.domain.security;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 
