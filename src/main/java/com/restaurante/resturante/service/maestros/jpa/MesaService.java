@@ -31,6 +31,12 @@ public class MesaService implements IMesaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<MesaResponseDto> findByPisoAndActiveTrue(String pisoId) {
+        return mesaMapper.toDTOList(mesaRepository.findByPisoIdAndActiveTrue(pisoId));
+    }
+
+    @Override
     @Transactional
     public MesaResponseDto create(CreateMesaDto dto) {
         Piso piso = pisoRepository.findById(dto.pisoId())
@@ -70,6 +76,10 @@ public class MesaService implements IMesaService {
     public void eliminar(String id) {
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
+        if ("OCUPADA".equals(mesa.getEstado()) || "RESERVADA".equals(mesa.getEstado())) {
+            throw new RuntimeException("No se puede eliminar una mesa que está " + mesa.getEstado());
+        }
         mesa.setActive(false);
         mesaRepository.save(mesa);
     }

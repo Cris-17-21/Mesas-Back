@@ -10,14 +10,17 @@ import com.restaurante.resturante.domain.maestros.Mesa;
 
 public interface MesaRepository extends JpaRepository<Mesa, String> {
 
-    // Buscar mesas por área/piso (ej: Segundo Piso)
+    // Buscar mesas por piso
     List<Mesa> findByPisoId(String pisoId);
+
+    // Buscar mesas por área/piso (ej: Segundo Piso)
+    List<Mesa> findByPisoIdAndActiveTrue(String pisoId);
 
     // Buscar mesas por estado (ej: Ver todas las Libres)
     List<Mesa> findByEstadoAndActiveTrue(String estado);
 
     // Para cargar el mapa de mesas por piso
-    List<Mesa> findByPisoIdOrderByCodigoMesaAsc(String pisoId);
+    List<Mesa> findByPisoIdAndActiveTrueOrderByCodigoMesaAsc(String pisoId);
 
     // Para la UNIÓN: buscar mesas que comparten el mismo pedido
     List<Mesa> findByPedidoId(@Param("pedidoId") String pedidoId);

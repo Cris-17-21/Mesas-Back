@@ -37,6 +37,12 @@ public class MesaController {
     }
 
     @PreAuthorize("hasAuthority('READ_MESA')")
+    @GetMapping("/piso/{pisoId}/active")
+    public ResponseEntity<List<MesaResponseDto>> listarPorPisoAndActiveTrue(@PathVariable String pisoId) {
+        return ResponseEntity.ok(mesaService.findByPisoAndActiveTrue(pisoId));
+    }
+
+    @PreAuthorize("hasAuthority('READ_MESA')")
     @GetMapping("/{id}")
     public ResponseEntity<MesaResponseDto> obtenerPorId(@PathVariable String id) {
         return ResponseEntity.ok(mesaService.obtenerPorId(id));
@@ -57,7 +63,7 @@ public class MesaController {
     @PreAuthorize("hasAuthority('UPDATE_MESA')")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<MesaResponseDto> cambiarEstado(
-            @PathVariable String id, 
+            @PathVariable String id,
             @RequestParam String nuevoEstado) {
         return ResponseEntity.ok(mesaService.cambiarEstado(id, nuevoEstado));
     }
@@ -83,4 +89,3 @@ public class MesaController {
         return ResponseEntity.noContent().build();
     }
 }
-

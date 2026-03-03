@@ -11,30 +11,32 @@ import com.restaurante.resturante.dto.maestro.CreateMesaDto;
 public class MesaMapper {
 
     public MesaResponseDto toDto(Mesa mesa) {
-        if (mesa == null) return null;
+        if (mesa == null)
+            return null;
 
         return new MesaResponseDto(
-            mesa.getId(),
-            mesa.getCodigoMesa(),
-            mesa.getCapacidad(),
-            mesa.getEstado(),
-            mesa.getPiso() != null ? mesa.getPiso().getNombre() : "SIN PISO",
-            mesa.getPrincipal() != null ? mesa.getPrincipal().getId() : null
-        );
+                mesa.getId(),
+                mesa.getCodigoMesa(),
+                mesa.getCapacidad(),
+                mesa.getEstado(),
+                mesa.getPiso() != null ? mesa.getPiso().getNombre() : "SIN PISO",
+                mesa.getPrincipal() != null ? mesa.getPrincipal().getId() : null);
     }
 
     public Mesa toEntity(CreateMesaDto dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
         return Mesa.builder()
-            .codigoMesa(dto.codigoMesa())
-            .capacidad(dto.capacidad())
-            .active(dto.active() != null ? dto.active() : true)
-            .estado("LIBRE")
-            .build();
+                .codigoMesa(dto.codigoMesa().toUpperCase())
+                .capacidad(dto.capacidad())
+                .active(dto.active() != null ? dto.active() : true)
+                .estado("LIBRE")
+                .build();
     }
 
     public List<MesaResponseDto> toDTOList(List<Mesa> mesas) {
-        if (mesas == null) return List.of();
+        if (mesas == null)
+            return List.of();
         return mesas.stream().map(this::toDto).collect(Collectors.toList());
     }
 }
