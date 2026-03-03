@@ -17,24 +17,25 @@ public class PisoDtoMapper {
     private final MesaMapper mesaMapper;
 
     public PisoDto toDto(Piso entity) {
-        if (entity == null) return null;
+        if (entity == null)
+            return null;
         return new PisoDto(
-            entity.getId(),
-            entity.getNombre(),
-            entity.getDescripcion(),
-            entity.getSucursal() != null ? entity.getSucursal().getNombre() : null,
-            entity.getMesas() != null 
-                ? entity.getMesas().stream().map(mesaMapper::toDto).collect(Collectors.toList())
-                : java.util.List.of()
-        );
+                entity.getId(),
+                entity.getNombre(),
+                entity.getDescripcion(),
+                entity.getSucursal() != null ? entity.getSucursal().getNombre() : null,
+                entity.getMesas() != null
+                        ? entity.getMesas().stream().map(mesaMapper::toDto).collect(Collectors.toList())
+                        : java.util.List.of());
     }
 
     public Piso toEntity(CreatePisoDto dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
         return Piso.builder()
-            .nombre(dto.nombre())
-            .descripcion(dto.descripcion())
-            .active(true)
-            .build();
+                .nombre(dto.nombre().toUpperCase())
+                .descripcion(dto.descripcion())
+                .active(true)
+                .build();
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import com.restaurante.resturante.domain.security.Role;
 import com.restaurante.resturante.domain.security.TipoDocumento;
 import com.restaurante.resturante.domain.security.User;
+import com.restaurante.resturante.domain.security.UserAccess;
 import com.restaurante.resturante.dto.security.CreateUserDto;
 import com.restaurante.resturante.dto.security.MeUserDto;
 import com.restaurante.resturante.dto.security.UserDto;
@@ -17,9 +18,24 @@ public class UserDtoMapper {
 
     // Convierte de entidad a DTO (Para respuestas de API)
     public UserDto toUserDto(User user) {
-
         if (user == null)
             return null;
+
+        String empresaId = null;
+        String sucursalId = null;
+
+        // Buscamos el primer acceso activo para cargar la empresa y sucursal en el DTO
+        if (user.getUsersAccess() != null && !user.getUsersAccess().isEmpty()) {
+            UserAccess access = user.getUsersAccess().stream()
+                    .filter(UserAccess::getActive)
+                    .findFirst()
+                    .orElse(user.getUsersAccess().iterator().next());
+
+            if (access.getEmpresa() != null)
+                empresaId = access.getEmpresa().getId();
+            if (access.getSucursal() != null)
+                sucursalId = access.getSucursal().getId();
+        }
 
         return new UserDto(
                 user.getId(),
@@ -31,7 +47,9 @@ public class UserDtoMapper {
                 user.getNumeroDocumento(),
                 user.getTelefono(),
                 user.getEmail(),
-                user.getRole().getName());
+                user.getRole().getName(),
+                empresaId,
+                sucursalId);
     }
 
     // Convierte de CreateUserDto a Entidad (Para guardado)
@@ -93,6 +111,21 @@ public class UserDtoMapper {
         if (user == null)
             return null;
 
+        String empresaId = null;
+        String sucursalId = null;
+
+        if (user.getUsersAccess() != null && !user.getUsersAccess().isEmpty()) {
+            UserAccess access = user.getUsersAccess().stream()
+                    .filter(UserAccess::getActive)
+                    .findFirst()
+                    .orElse(user.getUsersAccess().iterator().next());
+
+            if (access.getEmpresa() != null)
+                empresaId = access.getEmpresa().getId();
+            if (access.getSucursal() != null)
+                sucursalId = access.getSucursal().getId();
+        }
+
         return new MeUserDto(
                 user.getId(),
                 user.getUsername(),
@@ -103,6 +136,8 @@ public class UserDtoMapper {
                 user.getNumeroDocumento(),
                 user.getTelefono(),
                 user.getEmail(),
-                user.getRole().getName());
+                user.getRole().getName(),
+                empresaId,
+                sucursalId);
     }
 }

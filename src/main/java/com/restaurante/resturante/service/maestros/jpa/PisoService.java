@@ -19,14 +19,13 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class PisoService implements IPisoService {
-    
+
     private final PisoRepository pisoRepository;
     private final SucursalRepository sucursalRepository;
     private final PisoDtoMapper pisoMapper;
 
     @Override
     public List<PisoDto> findAllBySucursal(String sucursalId) {
-        // Necesitarás agregar findBySucursalId en tu PisoRepository
         return pisoRepository.findBySucursalIdAndActiveTrue(sucursalId)
                 .stream()
                 .map(pisoMapper::toDto)
@@ -38,10 +37,10 @@ public class PisoService implements IPisoService {
     public PisoDto create(CreatePisoDto dto) {
         Sucursal sucursal = sucursalRepository.findById(dto.sucursalId())
                 .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
-        
+
         Piso piso = pisoMapper.toEntity(dto);
         piso.setSucursal(sucursal);
-        
+
         return pisoMapper.toDto(pisoRepository.save(piso));
     }
 
@@ -57,10 +56,10 @@ public class PisoService implements IPisoService {
     public PisoDto update(String id, CreatePisoDto dto) {
         Piso piso = pisoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Piso no encontrado"));
-        
+
         piso.setNombre(dto.nombre());
         piso.setDescripcion(dto.descripcion());
-        
+
         return pisoMapper.toDto(pisoRepository.save(piso));
     }
 
@@ -69,7 +68,13 @@ public class PisoService implements IPisoService {
     public void delete(String id) {
         Piso piso = pisoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Piso no encontrado"));
+
         piso.setActive(false); // Borrado lógico
+        if (piso.getMesas() != null) {
+            piso.getMesas().forEach(mesa -> {
+                mesa.setActive(false);
+            });
+        }
         pisoRepository.save(piso);
     }
 }

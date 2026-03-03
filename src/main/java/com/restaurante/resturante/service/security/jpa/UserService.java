@@ -137,7 +137,14 @@ public class UserService implements IUserService {
             existing.setPassword(passwordEncoder.encode(dto.password()));
         }
 
-        return userDtoMapper.toUserDto(userRepository.save(existing));
+        User savedUser = userRepository.save(existing);
+
+        // Actualizamos el acceso si se proporcionan los datos
+        if (dto.empresaId() != null || dto.sucursalId() != null) {
+            updateUserAccess(savedUser, dto.empresaId(), dto.sucursalId());
+        }
+
+        return userDtoMapper.toUserDto(savedUser);
     }
 
     @Override
@@ -181,18 +188,29 @@ public class UserService implements IUserService {
     // -------- MÉTODOS PRIVADOS DE SOPORTE --------
 
     private void assignInitialAccess(User user, String empresaId, String sucursalId) {
+        updateUserAccess(user, empresaId, sucursalId);
+    }
+
+    private void updateUserAccess(User user, String empresaId, String sucursalId) {
         if (empresaId != null && sucursalId != null) {
-            // Buscamos la lista de posibles accesos (aunque haya 5, el código no rompe)
+            // Desactivamos accesos previos para evitar duplicidad o conflictos
+            List<UserAccess> currentAccesses = userAccessRepository.findByUserIdAndActiveTrue(user.getId());
+            for (UserAccess acc : currentAccesses) {
+                if (!acc.getSucursal().getId().equals(sucursalId)) {
+                    acc.setActive(false);
+                    userAccessRepository.save(acc);
+                }
+            }
+
+            // Buscamos si ya existe este acceso específico (inactivo o activo)
             List<UserAccess> accesosExistentes = userAccessRepository
                     .findByUserIdAndSucursalId(user.getId(), sucursalId);
 
             UserAccess access;
 
             if (!accesosExistentes.isEmpty()) {
-                // Si hay varios, tomamos el primero para reactivar
                 access = accesosExistentes.get(0);
             } else {
-                // Si es totalmente nuevo
                 access = new UserAccess();
                 access.setUser(user);
                 access.setEmpresa(empresaRepository.getReferenceById(empresaId));
@@ -200,7 +218,6 @@ public class UserService implements IUserService {
             }
 
             access.setActive(true);
-
             userAccessRepository.save(access);
         }
     }

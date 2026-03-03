@@ -10,5 +10,7 @@ public record UserDto(
     String numeroDocumento,
     String telefono,
     String email,
-    String role
+    String role,
+    String empresaId,
+    String sucursalId
 ) {}
