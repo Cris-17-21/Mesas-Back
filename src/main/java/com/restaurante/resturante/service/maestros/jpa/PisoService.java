@@ -69,6 +69,14 @@ public class PisoService implements IPisoService {
         Piso piso = pisoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Piso no encontrado"));
 
+        // Validar si hay mesas con pedidos activos
+        boolean tienePedidosActivos = piso.getMesas().stream()
+                .anyMatch(m -> m.getEstado().equals("OCUPADA"));
+
+        if (tienePedidosActivos) {
+            throw new RuntimeException("No se puede eliminar: El piso tiene mesas ocupadas.");
+        }
+
         piso.setActive(false); // Borrado lógico
         if (piso.getMesas() != null) {
             piso.getMesas().forEach(mesa -> {
