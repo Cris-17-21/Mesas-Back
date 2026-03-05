@@ -18,6 +18,7 @@ import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.MovimientoCajaRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
+import com.restaurante.resturante.domain.ventas.TipoMovimiento;
 import com.restaurante.resturante.service.venta.ICajaTurnoService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,8 @@ public class CajaTurnoService implements ICajaTurnoService {
         @Override
         @Transactional(readOnly = true)
         public Optional<CajaTurnoDto> obtenerCajaActiva(String sucursalId, String userId) {
-                return cajaRepository.findByUserIdAndSucursalIdAndEstado(userId, sucursalId, "ABIERTA")
+                // Ahora buscamos cualquier caja abierta en la sucursal, sin importar el usuario
+                return cajaRepository.findBySucursalIdAndEstado(sucursalId, "ABIERTA")
                                 .map(mapper::toDto);
         }
 
@@ -71,20 +73,20 @@ public class CajaTurnoService implements ICajaTurnoService {
                                 .orElseThrow(() -> new RuntimeException("CAJA NO ENCONTRADA"));
 
                 // 1. Ventas
-                BigDecimal efectivo = pedidoRepository.sumTotalByCajaAndMetodo(cajaId, "EFECTIVO");
-                BigDecimal tarjeta = pedidoRepository.sumTotalByCajaAndMetodo(cajaId, "TARJETA");
+                BigDecimal efectivo = pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, true);
+                BigDecimal virtual = pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, false);
 
                 // 2. Movimientos Manuales
                 BigDecimal ingresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
-                                com.restaurante.resturante.domain.ventas.TipoMovimiento.INGRESO);
+                                TipoMovimiento.INGRESO);
                 BigDecimal egresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
-                                com.restaurante.resturante.domain.ventas.TipoMovimiento.EGRESO);
+                                TipoMovimiento.EGRESO);
 
                 // 3. Mapper -> Incluye (Apertura + VentasEfectivo + Ingresos - Egresos)
                 return mapper.toResumenDto(
                                 caja,
                                 efectivo != null ? efectivo : BigDecimal.ZERO,
-                                tarjeta != null ? tarjeta : BigDecimal.ZERO,
+                                virtual != null ? virtual : BigDecimal.ZERO,
                                 ingresos != null ? ingresos : BigDecimal.ZERO,
                                 egresos != null ? egresos : BigDecimal.ZERO);
         }

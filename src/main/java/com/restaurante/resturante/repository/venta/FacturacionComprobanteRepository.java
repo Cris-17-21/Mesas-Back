@@ -12,4 +12,6 @@ public interface FacturacionComprobanteRepository extends JpaRepository<Facturac
     Optional<FacturacionComprobante> findByPedidoId(String pedidoId);
 
     Optional<FacturacionComprobante> findBySerieAndCorrelativo(String serie, String correlativo);
+
+    java.util.List<FacturacionComprobante> findBySucursalIdOrderByFechaEmisionDesc(String sucursalId);
 }

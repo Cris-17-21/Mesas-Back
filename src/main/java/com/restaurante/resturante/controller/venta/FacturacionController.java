@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurante.resturante.dto.venta.FacturaRequestDto;
 import com.restaurante.resturante.dto.venta.FacturacionComprobanteDto;
+import com.restaurante.resturante.dto.venta.NotaCreditoRequestDto;
 import com.restaurante.resturante.service.venta.jpa.FacturacionComprobanteService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,5 +25,16 @@ public class FacturacionController {
     @PostMapping("/emitir")
     public ResponseEntity<FacturacionComprobanteDto> emitirComprobante(@RequestBody FacturaRequestDto dto) {
         return ResponseEntity.ok(service.emitirComprobante(dto));
+    }
+
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<java.util.List<FacturacionComprobanteDto>> listarPorSucursal(
+            @PathVariable String sucursalId) {
+        return ResponseEntity.ok(service.listarComprobantes(sucursalId));
+    }
+
+    @PostMapping("/nota-credito")
+    public ResponseEntity<FacturacionComprobanteDto> emitirNotaCredito(@RequestBody NotaCreditoRequestDto dto) {
+        return ResponseEntity.ok(service.emitirNotaCredito(dto));
     }
 }

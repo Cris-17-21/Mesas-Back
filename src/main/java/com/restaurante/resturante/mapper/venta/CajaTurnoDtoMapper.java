@@ -34,13 +34,13 @@ public class CajaTurnoDtoMapper {
      * Sigue el orden: id, montoApertura, ventasEfectivo, ventasTarjeta,
      * ventasOtros, totalEsperado, fechaApertura.
      */
-    public CajaResumentDto toResumenDto(CajaTurno entity, BigDecimal ventasEfectivo, BigDecimal ventasTarjeta,
+    public CajaResumentDto toResumenDto(CajaTurno entity, BigDecimal ventasEfectivo, BigDecimal ventasVirtual,
             BigDecimal ingresos, BigDecimal egresos) {
-        BigDecimal totalVentas = ventasEfectivo.add(ventasTarjeta);
+        BigDecimal totalVentas = ventasEfectivo.add(ventasVirtual);
 
-        // Total Esperado = Apertura + Ventas + Ingresos - Egresos
+        // Total Esperado (Caja Física) = Apertura + VentasEfectivo + Ingresos - Egresos
         BigDecimal totalEsperado = entity.getMontoApertura()
-                .add(totalVentas)
+                .add(ventasEfectivo)
                 .add(ingresos)
                 .subtract(egresos);
 
@@ -63,7 +63,7 @@ public class CajaTurnoDtoMapper {
 
                 // Bloque 2: Ventas
                 ventasEfectivo,
-                ventasTarjeta,
+                ventasVirtual,
                 BigDecimal.ZERO, // Otros
                 totalVentas, // Global
 

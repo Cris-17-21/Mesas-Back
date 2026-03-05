@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurante.resturante.dto.maestro.UnionMesaRequest;
@@ -18,6 +17,8 @@ import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
 import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+import com.restaurante.resturante.dto.venta.PreCuentaDto;
+import com.restaurante.resturante.dto.venta.RegistrarPagoDto;
 import com.restaurante.resturante.dto.venta.SepararCuentaDto;
 import com.restaurante.resturante.service.venta.IPedidoService;
 
@@ -42,6 +43,13 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarPedidosActivos(sucursalId));
     }
 
+    @GetMapping("/sucursal/{sucursalId}/tipo/{tipo}")
+    public ResponseEntity<List<PedidoResumenDto>> listarPorTipo(
+            @PathVariable String sucursalId,
+            @PathVariable String tipo) {
+        return ResponseEntity.ok(pedidoService.listarPedidosPorTipo(sucursalId, tipo));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PedidoResponseDto> verDetalle(@PathVariable String id) {
         return ResponseEntity.ok(pedidoService.obtenerPorId(id));
@@ -63,13 +71,16 @@ public class PedidoController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/pagar")
-    public ResponseEntity<Void> registrarPago(
-            @PathVariable String id,
-            @RequestParam String metodoPago) {
+    @PostMapping("/pagar")
+    public ResponseEntity<Void> registrarPago(@RequestBody RegistrarPagoDto dto) {
         // PERMISO: REGISTRAR_PAGO
-        pedidoService.registrarPago(id, metodoPago);
+        pedidoService.registrarPago(dto);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/pre-cuenta")
+    public ResponseEntity<PreCuentaDto> verPreCuenta(@PathVariable String id) {
+        return ResponseEntity.ok(pedidoService.generarPreCuenta(id));
     }
 
     @PostMapping("/separar-cuenta")

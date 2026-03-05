@@ -1,6 +1,5 @@
 package com.restaurante.resturante.service.venta.jpa;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
@@ -11,7 +10,7 @@ import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.dto.venta.FacturaRequestDto;
 import com.restaurante.resturante.dto.venta.FacturacionComprobanteDto;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
-import com.restaurante.resturante.repository.venta.FacturacionComprobanteRepository; // Asumiremos que existe o lo creamos
+import com.restaurante.resturante.repository.venta.FacturacionComprobanteRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,19 +22,14 @@ public class FacturacionComprobanteService {
     private final FacturacionComprobanteRepository facturacionRepository;
     private final PedidoRepository pedidoRepository;
 
+    @Transactional
     public FacturacionComprobanteDto emitirComprobante(FacturaRequestDto dto) {
         // 1. Validar Pedido
         Pedido pedido = pedidoRepository.findById(dto.pedidoId())
                 .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
 
-        if (!"PAGADO".equals(pedido.getEstado()) && !"CERRADO".equals(pedido.getEstado())) {
-            // Nota: Podrías permitir facturar antes de pagar, depende del flujo.
-            // Por ahora, asumimos que se factura al momento de cobrar o después.
-        }
-
-        // 2. Simular Generación de Factura (Aquí iría la llamada a la SUNAT / API
-        // externa)
-        String serie = "F001";
+        // 2. Simular Generación de Factura
+        String serie = dto.tipoComprobante().equals("01") ? "F001" : "B001";
         String correlativo = String.format("%08d", System.currentTimeMillis() % 1000000);
         String archivoXml = "https://bucket.s3.aws/facturas/" + serie + "-" + correlativo + ".xml";
         String archivoPdf = "https://bucket.s3.aws/facturas/" + serie + "-" + correlativo + ".pdf";
@@ -47,26 +41,64 @@ public class FacturacionComprobanteService {
                 .serie(serie)
                 .correlativo(correlativo)
                 .fechaEmision(LocalDateTime.now())
-                .rucEmisor("20123456789") // RUC de tu restaurante
+                .rucEmisor("20123456789")
                 .totalVenta(pedido.getTotalFinal())
                 .archivoXml(archivoXml)
                 .archivoPdf(archivoPdf)
                 .estadoSunat("EMITIDO")
+                .empresa(pedido.getSucursal().getEmpresa())
+                .sucursal(pedido.getSucursal())
                 .build();
 
         comprobante = facturacionRepository.save(comprobante);
 
-        // 4. Retornar DTO
         return new FacturacionComprobanteDto(
-                comprobante.getId(),
-                comprobante.getTipoComprobante(),
-                comprobante.getSerie(),
-                comprobante.getCorrelativo(),
-                comprobante.getRucEmisor(),
-                comprobante.getFechaEmision().toString(),
-                comprobante.getTotalVenta(),
-                pedido.getId(),
-                comprobante.getArchivoXml(),
-                comprobante.getArchivoPdf());
+                comprobante.getId(), comprobante.getTipoComprobante(), comprobante.getSerie(),
+                comprobante.getCorrelativo(), comprobante.getRucEmisor(),
+                comprobante.getFechaEmision().toString(), comprobante.getTotalVenta(),
+                pedido.getId(), comprobante.getArchivoXml(), comprobante.getArchivoPdf());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<FacturacionComprobanteDto> listarComprobantes(String sucursalId) {
+        return facturacionRepository.findBySucursalIdOrderByFechaEmisionDesc(sucursalId).stream()
+                .map(c -> new FacturacionComprobanteDto(
+                        c.getId(), c.getTipoComprobante(), c.getSerie(), c.getCorrelativo(),
+                        c.getRucEmisor(), c.getFechaEmision().toString(), c.getTotalVenta(),
+                        c.getPedido() != null ? c.getPedido().getId() : null,
+                        c.getArchivoXml(), c.getArchivoPdf()))
+                .toList();
+    }
+
+    @Transactional
+    public FacturacionComprobanteDto emitirNotaCredito(com.restaurante.resturante.dto.venta.NotaCreditoRequestDto dto) {
+        FacturacionComprobante ref = facturacionRepository.findById(dto.comprobanteId())
+                .orElseThrow(() -> new RuntimeException("COMPROBANTE DE REFERENCIA NO ENCONTRADO"));
+
+        // 1. Crear Nota de Crédito
+        FacturacionComprobante nc = FacturacionComprobante.builder()
+                .tipoComprobante("07") // 07=Nota de Crédito
+                .serie(ref.getSerie().startsWith("F") ? "FC01" : "BC01")
+                .correlativo(String.format("%08d", System.currentTimeMillis() % 1000000))
+                .fechaEmision(LocalDateTime.now())
+                .empresa(ref.getEmpresa())
+                .sucursal(ref.getSucursal())
+                .pedido(ref.getPedido())
+                .cliente(ref.getCliente())
+                .totalVenta(ref.getTotalVenta().negate())
+                .comprobanteReferencia(ref)
+                .codMotivoNota(dto.codMotivo())
+                .descripcionMotivo(dto.descripcion())
+                .estadoSunat("EMITIDO")
+                .rucEmisor(ref.getRucEmisor())
+                .build();
+
+        nc = facturacionRepository.save(nc);
+
+        return new FacturacionComprobanteDto(
+                nc.getId(), nc.getTipoComprobante(), nc.getSerie(), nc.getCorrelativo(),
+                nc.getRucEmisor(), nc.getFechaEmision().toString(), nc.getTotalVenta(),
+                nc.getPedido() != null ? nc.getPedido().getId() : null,
+                null, null);
     }
 }

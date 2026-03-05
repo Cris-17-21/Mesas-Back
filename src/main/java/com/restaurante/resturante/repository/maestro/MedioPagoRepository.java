@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.restaurante.resturante.domain.maestros.MedioPago;
 
-public interface MedioPagoRepository extends JpaRepository<MedioPago, String>{
+public interface MedioPagoRepository extends JpaRepository<MedioPago, String> {
     // Listar solo los activos de MI empresa
     List<MedioPago> findByEmpresaIdAndIsActiveTrue(String empresaId);
 
@@ -16,4 +16,6 @@ public interface MedioPagoRepository extends JpaRepository<MedioPago, String>{
 
     // Evitar duplicados de nombre en la misma empresa
     boolean existsByNombreAndEmpresaIdAndIsActiveTrue(String nombre, String empresaId);
+
+    Optional<MedioPago> findByNombreAndEmpresaIdAndIsActiveTrue(String nombre, String empresaId);
 }

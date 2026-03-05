@@ -20,10 +20,16 @@ public interface PedidoRepository extends JpaRepository<Pedido, String> {
     // Listar todos los pedidos de un turno de caja específico
     List<Pedido> findByCajaTurnoId(String cajaTurnoId);
 
+    List<Pedido> findBySucursalIdAndTipoEntregaAndEstado(String sucursalId, String tipoEntrega, String estado);
+
     // Verificar si una mesa tiene un pedido abierto (Evitar duplicar mesas)
     boolean existsByMesaIdAndEstado(String mesaId, String estado);
 
-    // Calcular total de ventas por método de pago en una caja específica
+    // Calcular total de ventas por si es efectivo o no en una caja específica
+    @Query("SELECT SUM(pp.monto) FROM PedidoPago pp WHERE pp.cajaTurno.id = :cajaId AND pp.medioPago.esEfectivo = :esEfectivo")
+    java.math.BigDecimal sumTotalByCajaAndEsEfectivo(String cajaId, boolean esEfectivo);
+
+    // Si quieres mantener el de por nombre pero mejorado
     @Query("SELECT SUM(pp.monto) FROM PedidoPago pp WHERE pp.cajaTurno.id = :cajaId AND pp.medioPago.nombre = :metodo")
     java.math.BigDecimal sumTotalByCajaAndMetodo(String cajaId, String metodo);
 }
