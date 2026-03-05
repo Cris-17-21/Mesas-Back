@@ -73,4 +73,18 @@ public class MovimientoCajaService {
                                                 m.getUsuario().getUsername()))
                                 .toList();
         }
+
+        @Transactional(readOnly = true)
+        public List<MovimientoCajaResponseDto> listarMovimientosPorRangoFechas(LocalDateTime inicio,
+                        LocalDateTime fin) {
+                return movimientoRepository.findByFechaBetweenOrderByFechaDesc(inicio, fin).stream()
+                                .map(m -> new MovimientoCajaResponseDto(
+                                                m.getId(),
+                                                m.getTipo().name(),
+                                                m.getMonto(),
+                                                m.getDescripcion(),
+                                                m.getFecha(),
+                                                m.getUsuario().getUsername()))
+                                .toList();
+        }
 }

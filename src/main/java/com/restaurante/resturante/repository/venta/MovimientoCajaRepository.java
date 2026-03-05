@@ -1,6 +1,7 @@
 package com.restaurante.resturante.repository.venta;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,4 +29,7 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
     // 3. SEGURIDAD: Buscar movimientos hechos por un usuario específico (Auditoría)
     // Asumiendo que guardas el usuario que hizo el movimiento
     List<MovimientoCaja> findByUsuarioId(String usuarioId);
+
+    // 4. CONSULTA POR RANGO DE FECHAS: Traer movimientos sin importar la caja
+    List<MovimientoCaja> findByFechaBetweenOrderByFechaDesc(LocalDateTime inicio, LocalDateTime fin);
 }

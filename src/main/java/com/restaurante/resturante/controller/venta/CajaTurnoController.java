@@ -1,5 +1,7 @@
 package com.restaurante.resturante.controller.venta;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,8 +31,8 @@ public class CajaTurnoController {
             @PathVariable String sucursalId,
             @PathVariable String usuarioId) {
         return cajaService.obtenerCajaActiva(sucursalId, usuarioId)
-            .map(ResponseEntity::ok) // Si existe, devuelve 200 + DTO
-            .orElse(ResponseEntity.noContent().build()); // Si no existe, devuelve 204 (o .ok(null))
+                .map(ResponseEntity::ok) // Si existe, devuelve 200 + DTO
+                .orElse(ResponseEntity.noContent().build()); // Si no existe, devuelve 204 (o .ok(null))
     }
 
     @PostMapping("/abrir")
@@ -50,5 +52,10 @@ public class CajaTurnoController {
         // PERMISO: CERRAR_CAJA
         cajaService.cerrarCaja(dto);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/historial/{sucursalId}")
+    public ResponseEntity<List<CajaTurnoDto>> obtenerHistorial(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(cajaService.obtenerHistorial(sucursalId));
     }
 }

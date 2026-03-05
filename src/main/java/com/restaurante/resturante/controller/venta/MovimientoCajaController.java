@@ -1,5 +1,6 @@
 package com.restaurante.resturante.controller.venta;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurante.resturante.dto.venta.MovimientoCajaDto;
@@ -31,5 +33,12 @@ public class MovimientoCajaController {
     @GetMapping("/caja/{cajaId}")
     public ResponseEntity<List<MovimientoCajaResponseDto>> listarPorCaja(@PathVariable String cajaId) {
         return ResponseEntity.ok(service.listarMovimientosPorCaja(cajaId));
+    }
+
+    @GetMapping("/rango")
+    public ResponseEntity<List<MovimientoCajaResponseDto>> listarPorRangoFechas(
+            @RequestParam LocalDateTime inicio,
+            @RequestParam LocalDateTime fin) {
+        return ResponseEntity.ok(service.listarMovimientosPorRangoFechas(inicio, fin));
     }
 }

@@ -108,4 +108,13 @@ public class CajaTurnoService implements ICajaTurnoService {
 
                 cajaRepository.save(caja);
         }
+
+        @Override
+        @Transactional(readOnly = true)
+        public java.util.List<CajaTurnoDto> obtenerHistorial(String sucursalId) {
+                return cajaRepository.findBySucursalIdAndEstadoOrderByFechaAperturaDesc(sucursalId, "CERRADA")
+                                .stream()
+                                .map(mapper::toDto)
+                                .toList();
+        }
 }

@@ -25,6 +25,8 @@ public interface CajaTurnoRepository extends JpaRepository<CajaTurno, String> {
     // Validación por estado explícito
     Optional<CajaTurno> findBySucursalIdAndEstado(String sucursalId, String estado);
 
+    List<CajaTurno> findBySucursalIdAndEstadoOrderByFechaAperturaDesc(String sucursalId, String estado);
+
     boolean existsBySucursalIdAndEstado(String sucursalId, String estado);
 
     // 2. HISTORIAL: Buscar turnos por rango de fechas (Reporte de cierres)
