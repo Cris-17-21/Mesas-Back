@@ -10,6 +10,7 @@ import com.restaurante.resturante.domain.maestros.MedioPago;
 import com.restaurante.resturante.dto.maestro.CreateMedioPagoDto;
 import com.restaurante.resturante.dto.maestro.MedioPagoDto;
 import com.restaurante.resturante.mapper.maestros.MedioPagoMapper;
+import com.restaurante.resturante.repository.maestro.EmpresaRepository;
 import com.restaurante.resturante.repository.maestro.MedioPagoRepository;
 import com.restaurante.resturante.service.maestros.IMedioPagoService;
 
@@ -17,10 +18,11 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class MedioPagoService implements IMedioPagoService{
+public class MedioPagoService implements IMedioPagoService {
 
     private final MedioPagoRepository repository;
     private final MedioPagoMapper mapper;
+    private final EmpresaRepository empresaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,14 +43,16 @@ public class MedioPagoService implements IMedioPagoService{
 
         // 2. Convertir
         MedioPago entity = mapper.toEntity(dto);
-        
+        entity.setEmpresa(empresaRepository.findById(dto.empresaId())
+                .orElseThrow(() -> new RuntimeException("Empresa no encontrada")));
+
         // 3. Asegurar estado activo
         entity.setActive(true);
-        
-        // 4. Lógica automática SUNAT (Si el front no envía código)
-        if (dto.codigoSunat() == null || dto.codigoSunat().isBlank()) {
-            // Regla simple: Efectivo='009', Otros='001'
-            entity.setCodigoSunat(dto.esEfectivo() ? "009" : "001");
+
+        if (dto.nombre().equals("EFECTIVO")) {
+            entity.setEsEfectivo(true);
+        } else {
+            entity.setEsEfectivo(false);
         }
 
         // 5. Guardar
@@ -60,10 +64,17 @@ public class MedioPagoService implements IMedioPagoService{
     public MedioPagoDto actualizar(String id, CreateMedioPagoDto dto) {
         // Buscamos por ID y EMPRESA para asegurar que no editen datos de otro cliente
         MedioPago entity = repository.findByIdAndEmpresaIdAndIsActiveTrue(id, dto.empresaId())
-                .orElseThrow(() -> new RuntimeException("Medio de pago no encontrado o no pertenece a la empresa indicada"));
+                .orElseThrow(
+                        () -> new RuntimeException("Medio de pago no encontrado o no pertenece a la empresa indicada"));
 
         // Actualizamos campos
         mapper.updateEntityFromDto(dto, entity);
+
+        if (dto.nombre().equals("EFECTIVO")) {
+            entity.setEsEfectivo(true);
+        } else {
+            entity.setEsEfectivo(false);
+        }
 
         return mapper.toDto(repository.save(entity));
     }
@@ -73,7 +84,7 @@ public class MedioPagoService implements IMedioPagoService{
     public void eliminar(String id, String empresaId) {
         MedioPago entity = repository.findByIdAndEmpresaIdAndIsActiveTrue(id, empresaId)
                 .orElseThrow(() -> new RuntimeException("Medio de pago no encontrado"));
-        
+
         // Soft Delete
         entity.setActive(false);
         repository.save(entity);

@@ -59,7 +59,7 @@ public class ClienteService implements IClienteService {
                     nuevoCliente.setEmpresa(empresaRepository.findById(dto.empresaId())
                             .orElseThrow(() -> new RuntimeException("Empresa no encontrada")));
 
-                    nuevoCliente.setTipoDocumento(tipoDocumentoRepository.findById(dto.tipoDocumentoId())
+                    nuevoCliente.setTipoDocumento(tipoDocumentoRepository.findByName(dto.tipoDocumento())
                             .orElseThrow(() -> new RuntimeException("Tipo de Documento no encontrado")));
 
                     nuevoCliente.setActive(true); // Aseguramos que nazca activo
@@ -75,7 +75,7 @@ public class ClienteService implements IClienteService {
         entidad.setTelefono(dto.telefono());
         // También actualizamos el tipo por si cambió de DNI a RUC con el mismo número
         // (raro, pero posible)
-        entidad.setTipoDocumento(tipoDocumentoRepository.findById(dto.tipoDocumentoId())
+        entidad.setTipoDocumento(tipoDocumentoRepository.findByName(dto.tipoDocumento())
                 .orElseThrow(() -> new RuntimeException("Tipo de Documento no encontrado")));
     }
 

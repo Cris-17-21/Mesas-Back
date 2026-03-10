@@ -26,7 +26,7 @@ import lombok.ToString;
 @Builder
 @Entity
 @Table(name = "medios_pago")
-public class MedioPago extends Auditable{
+public class MedioPago extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -38,15 +38,7 @@ public class MedioPago extends Auditable{
 
     // IMPORTANTE: Para saber si suma en el arqueo de caja física
     @Column(name = "es_efectivo", nullable = false)
-    private boolean esEfectivo; 
-
-    // IMPORTANTE: Para Facturación Electrónica (Catálogo 59)
-    // Efectivo = "009", Tarjetas/Yape = "001"
-    @Column(name = "codigo_sunat") 
-    private String codigoSunat; 
-
-    @Column(name = "requiere_referencia")
-    private boolean requiereReferencia; // True para pedir Nro Operación
+    private boolean esEfectivo;
 
     @Column(name = "is_active")
     @Builder.Default
