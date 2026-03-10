@@ -20,5 +20,7 @@ public record PedidoCompraDto(
         String estadoPedido,
         BigDecimal totalPedido,
         Boolean aplicaIgv,
+        Boolean esCompraSimple,
+        String nombreProveedorInformal,
         List<DetallePedidoCompraDto> detalles) {
 }

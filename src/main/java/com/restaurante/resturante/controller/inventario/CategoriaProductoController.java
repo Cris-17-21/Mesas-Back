@@ -16,10 +16,12 @@ import com.restaurante.resturante.dto.inventario.CategoriaProductoDto;
 import com.restaurante.resturante.service.inventario.ICategoriaProductoService;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @RestController
 @RequestMapping("/api/categorias")
 @RequiredArgsConstructor
+@CrossOrigin("*")
 public class CategoriaProductoController {
 
     private final ICategoriaProductoService categoriaService;

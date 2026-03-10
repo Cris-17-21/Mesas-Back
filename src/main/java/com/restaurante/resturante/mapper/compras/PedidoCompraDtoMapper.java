@@ -39,6 +39,8 @@ public class PedidoCompraDtoMapper {
                 pedido.getEstadoPedido(),
                 pedido.getTotalPedido(),
                 pedido.getAplicaIgv(),
+                false, // esCompraSimple will typically be mapped as false for existing, handled properly on creation
+                pedido.getNombreProveedorInformal(),
                 detallesDto);
     }
 
@@ -52,7 +54,9 @@ public class PedidoCompraDtoMapper {
                 detalle.getCantidadPedida(),
                 detalle.getCostoUnitario(),
                 detalle.getSubtotalLinea(),
-                detalle.getCantidadRecibida());
+                detalle.getCantidadRecibida(),
+                false, // esProductoNuevo mainly for input
+                null); // idCategoriaNuevoProducto mainly for input
     }
 
     public PedidoCompra toEntity(PedidoCompraDto dto, Proveedor proveedor, User usuario, TiposPago tipoPago) {

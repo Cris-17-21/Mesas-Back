@@ -63,6 +63,9 @@ public class PedidoCompra extends Auditable {
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
 
+    @Column(name = "nombre_proveedor_informal", length = 150)
+    private String nombreProveedorInformal;
+
     @Column(name = "estado_pedido", nullable = false, length = 50)
     @Builder.Default
     private String estadoPedido = "Pendiente";

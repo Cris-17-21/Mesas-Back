@@ -9,5 +9,7 @@ public record DetallePedidoCompraDto(
         Integer cantidadPedida,
         BigDecimal costoUnitario,
         BigDecimal subtotalLinea,
-        Integer cantidadRecibida) {
+        Integer cantidadRecibida,
+        Boolean esProductoNuevo,
+        Integer idCategoriaNuevoProducto) {
 }

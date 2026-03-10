@@ -40,6 +40,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     // We need UserRepository to fetch the User entity by UUID
     private final UserRepository userRepository;
     private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
+    private final com.restaurante.resturante.repository.inventario.CategoriaProductoRepository categoriaProductoRepository;
     private final PedidoCompraDtoMapper pedidoMapper;
 
     @Override
@@ -119,21 +120,44 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         // 3. Create Header
         PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago);
         pedido.setEstadoPedido("Pendiente");
+        if (Boolean.TRUE.equals(dto.esCompraSimple())) {
+            pedido.setNombreProveedorInformal(dto.nombreProveedorInformal());
+        }
         pedido = pedidoRepository.save(pedido);
 
-        // 4. Save Details with Strict Provider Validation
+        // 4. Save Details with Strict Provider Validation (except for simple purchases)
         BigDecimal totalCalculado = BigDecimal.ZERO;
 
         if (dto.detalles() != null) {
             for (DetallePedidoCompraDto detDto : dto.detalles()) {
-                Producto producto = productoRepository.findById(detDto.idProducto())
-                        .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detDto.idProducto()));
+                Producto producto;
+                
+                // If simple purchase and new product, create it on the fly
+                if (Boolean.TRUE.equals(dto.esCompraSimple()) && Boolean.TRUE.equals(detDto.esProductoNuevo())) {
+                    com.restaurante.resturante.domain.inventario.CategoriaProducto categoria = 
+                        categoriaProductoRepository.findById(detDto.idCategoriaNuevoProducto())
+                            .orElseThrow(() -> new RuntimeException("Categoría no encontrada para el nuevo producto"));
+                            
+                    Producto nuevoProd = Producto.builder()
+                            .nombreProducto(detDto.nombreProducto())
+                            .precioVenta(detDto.costoUnitario()) // Default equal to cost as requested implicitly/fallback
+                            .costoCompra(detDto.costoUnitario())
+                            .categoria(categoria)
+                            .estado(true) // Active
+                            .controlarStock(true) // Start controlling stock
+                            .stockMinimo(5)
+                            .build();
+                    producto = productoRepository.save(nuevoProd);
+                } else {
+                    producto = productoRepository.findById(detDto.idProducto())
+                            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detDto.idProducto()));
 
-                // Strict Validation: Product must belong to the Provider
-                if (producto.getProveedor() != null
-                        && !producto.getProveedor().getIdProveedor().equals(proveedor.getIdProveedor())) {
-                    throw new RuntimeException("El producto '" + producto.getNombreProducto()
-                            + "' no pertenece al proveedor seleccionado.");
+                    // Strict Validation: Product must belong to the Provider (skip for informal)
+                    if (!Boolean.TRUE.equals(dto.esCompraSimple()) && producto.getProveedor() != null
+                            && !producto.getProveedor().getIdProveedor().equals(proveedor.getIdProveedor())) {
+                        throw new RuntimeException("El producto '" + producto.getNombreProducto()
+                                + "' no pertenece al proveedor seleccionado.");
+                    }
                 }
 
                 DetallePedidoCompra detalle = DetallePedidoCompra.builder()
