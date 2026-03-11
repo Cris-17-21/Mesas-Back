@@ -101,8 +101,15 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     @Transactional
     public PedidoCompraDto registrarPedido(PedidoCompraDto dto) {
         // 1. Fetch Dependencies
-        Proveedor proveedor = proveedorRepository.findById(dto.idProveedor())
-                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
+        Proveedor proveedor = null;
+        if (Boolean.TRUE.equals(dto.esCompraSimple())) {
+            proveedor = proveedorRepository.findById(dto.idProveedor())
+                .orElseGet(() -> proveedorRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("Debe existir al menos un proveedor en el sistema para usar como base para compras informales.")));
+        } else {
+            proveedor = proveedorRepository.findById(dto.idProveedor())
+                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado para la compra."));
+        }
 
         User usuario = userRepository.findById(dto.idUsuario())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
