@@ -31,6 +31,9 @@ public class ProductoDtoMapper {
                         : null,
                 producto.getPesoGramos(),
 
+                null, // fechaRegistro no existe en Producto (no hereda de Auditable)
+                producto.getStock(),
+
                 producto.getEstado(),
                 producto.getImagen());
     }

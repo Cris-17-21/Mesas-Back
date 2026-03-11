@@ -149,6 +149,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                             .nombreProducto(detDto.nombreProducto())
                             .precioVenta(detDto.costoUnitario()) // Default equal to cost as requested implicitly/fallback
                             .costoCompra(detDto.costoUnitario())
+                            .tipo("INFORMAL")
                             .categoria(categoria)
                             .estado(true) // Active
                             .controlarStock(true) // Start controlling stock

@@ -39,7 +39,7 @@ public class PedidoCompraDtoMapper {
                 pedido.getEstadoPedido(),
                 pedido.getTotalPedido(),
                 pedido.getAplicaIgv(),
-                false, // esCompraSimple will typically be mapped as false for existing, handled properly on creation
+                (pedido.getNombreProveedorInformal() != null && !pedido.getNombreProveedorInformal().trim().isEmpty()),
                 pedido.getNombreProveedorInformal(),
                 detallesDto);
     }

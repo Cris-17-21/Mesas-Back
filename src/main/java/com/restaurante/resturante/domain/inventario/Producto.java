@@ -19,6 +19,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -94,6 +95,13 @@ public class Producto {
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "producto_tipos", joinColumns = @JoinColumn(name = "id_producto"), inverseJoinColumns = @JoinColumn(name = "id_tipo"))
     private Set<TiposProducto> tipos;
+
+    @OneToOne(mappedBy = "producto", fetch = FetchType.LAZY)
+    private Inventario inventario;
+
+    public Integer getStock() {
+        return inventario != null && inventario.getStockActual() != null ? inventario.getStockActual() : 0;
+    }
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)
     @ToString.Exclude

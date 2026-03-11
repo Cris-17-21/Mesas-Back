@@ -16,6 +16,9 @@ public record ProductoDto(
                 java.util.List<Integer> idTipos,
                 Integer pesoGramos,
 
+                java.time.LocalDateTime fechaRegistro,
+                Integer stock,
+
                 Boolean estado,
                 String imagen) {
 }
