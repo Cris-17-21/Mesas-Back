@@ -31,7 +31,11 @@ public class ProductoDtoMapper {
                         : null,
                 producto.getPesoGramos(),
 
-                null, // fechaRegistro no existe en Producto (no hereda de Auditable)
+                producto.getInventario() != null && producto.getInventario().getLastModifiedDate() != null
+                        ? java.time.LocalDateTime.ofInstant(producto.getInventario().getLastModifiedDate(), java.time.ZoneId.systemDefault())
+                        : (producto.getInventario() != null && producto.getInventario().getCreatedDate() != null 
+                            ? java.time.LocalDateTime.ofInstant(producto.getInventario().getCreatedDate(), java.time.ZoneId.systemDefault()) 
+                            : null),
                 producto.getStock(),
 
                 producto.getEstado(),

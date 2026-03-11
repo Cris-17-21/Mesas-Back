@@ -42,6 +42,7 @@ public class PedidoCompraController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('CREATE_COMPRA')")
     public ResponseEntity<PedidoCompraDto> registrarPedido(@RequestBody PedidoCompraDto dto) {
         return ResponseEntity.ok(pedidoService.registrarPedido(dto));
     }
@@ -52,14 +53,14 @@ public class PedidoCompraController {
     }
 
     @PostMapping("/{id}/recepciones")
-    @PreAuthorize("hasAuthority('GESTIONAR_COMPRAS')")
+    @PreAuthorize("hasAuthority('CREATE_COMPRA')")
     public ResponseEntity<PedidoCompraDto> registrarRecepcion(@PathVariable Long id,
             @RequestBody RecepcionPedidoRequest request) {
         return ResponseEntity.ok(pedidoService.registrarRecepcion(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('GESTIONAR_COMPRAS')")
+    @PreAuthorize("hasAuthority('DELETE_COMPRA')")
     public ResponseEntity<Void> anularCompra(@PathVariable Long id) {
         pedidoService.anularPedido(id);
         return ResponseEntity.ok().build();

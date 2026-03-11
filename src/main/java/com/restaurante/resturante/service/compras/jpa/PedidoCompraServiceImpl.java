@@ -65,7 +65,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                     // Simple workaround for now: Return DTO without details for list view,
                     // or fetch them separately.
                     // Let's keep list view lightweight (no details).
-                    return pedidoMapper.toDto(pedido, null);
+                    return pedidoMapper.toDto(pedido, pedido.getDetalles());
                 })
                 .collect(Collectors.toList());
     }
@@ -93,7 +93,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             // But I can't edit it easily now without re-writing.
             // I'll stick to returning null details for now to avoid compilation error if
             // method missing.
-            return pedidoMapper.toDto(pedido, null);
+            return pedidoMapper.toDto(pedido, pedido.getDetalles());
         });
     }
 

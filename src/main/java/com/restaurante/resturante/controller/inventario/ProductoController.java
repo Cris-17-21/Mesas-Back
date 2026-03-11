@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,5 +51,12 @@ public class ProductoController {
     @GetMapping("/empresa/{empresaId}")
     public ResponseEntity<List<ProductoDto>> findByEmpresaId(@PathVariable String empresaId) {
         return ResponseEntity.ok(productoService.findByEmpresaId(empresaId));
+    }
+
+    @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('DELETE_PRODUCTO')")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        productoService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

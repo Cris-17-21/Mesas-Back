@@ -25,7 +25,7 @@ public class InventarioController {
     private final IInventarioService inventarioService;
 
     @GetMapping("/productos")
-    @PreAuthorize("hasAnyAuthority('GESTIONAR_COMPRAS', 'VER_COMPRAS')")
+    @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
     public ResponseEntity<List<InventarioDto>> listarProductosInventario() {
         try {
             return ResponseEntity.ok(inventarioService.listarProductosInventario());
@@ -35,7 +35,7 @@ public class InventarioController {
     }
 
     @GetMapping("/proveedores")
-    @PreAuthorize("hasAnyAuthority('GESTIONAR_COMPRAS', 'VER_COMPRAS')")
+    @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
     public ResponseEntity<List<Proveedor>> listarProveedoresConInventario() {
         try {
             return ResponseEntity.ok(inventarioService.listarProveedoresConInventario());
@@ -45,7 +45,7 @@ public class InventarioController {
     }
 
     @GetMapping("/productos/proveedor/{idProveedor}")
-    @PreAuthorize("hasAnyAuthority('GESTIONAR_COMPRAS', 'VER_COMPRAS')")
+    @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
     public ResponseEntity<List<InventarioDto>> listarProductosPorProveedor(@PathVariable Integer idProveedor) {
         try {
             return ResponseEntity.ok(inventarioService.listarProductosPorProveedor(idProveedor));

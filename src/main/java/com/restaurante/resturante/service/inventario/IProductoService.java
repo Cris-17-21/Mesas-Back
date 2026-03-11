@@ -18,4 +18,6 @@ public interface IProductoService {
     ProductoDto update(Integer id, ProductoDto dto);
 
     List<ProductoDto> findByEmpresaId(String empresaId);
+
+    void delete(Integer id);
 }

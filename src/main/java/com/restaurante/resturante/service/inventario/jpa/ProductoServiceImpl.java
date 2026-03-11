@@ -32,7 +32,7 @@ public class ProductoServiceImpl implements IProductoService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoDto> findAll() {
-        return productoRepository.findAll().stream()
+        return productoRepository.findByEstadoTrue().stream()
                 .map(productoMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -87,8 +87,17 @@ public class ProductoServiceImpl implements IProductoService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoDto> findByEmpresaId(String empresaId) {
-        return productoRepository.findByEmpresaId(empresaId).stream()
+        return productoRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
                 .map(productoMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void delete(Integer id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        producto.setEstado(false);
+        productoRepository.save(producto);
     }
 }

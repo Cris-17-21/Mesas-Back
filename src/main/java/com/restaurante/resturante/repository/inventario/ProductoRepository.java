@@ -10,5 +10,7 @@ import com.restaurante.resturante.domain.inventario.Producto;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
-    List<Producto> findByEmpresaId(String empresaId);
+    List<Producto> findByEstadoTrue();
+
+    List<Producto> findByEmpresaIdAndEstadoTrue(String empresaId);
 }
