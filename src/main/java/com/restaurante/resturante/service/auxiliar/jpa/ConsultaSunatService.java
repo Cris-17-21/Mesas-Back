@@ -9,7 +9,6 @@ import com.restaurante.resturante.dto.auxiliar.EmpresaDto;
 import com.restaurante.resturante.dto.auxiliar.PersonaDto;
 import com.restaurante.resturante.service.auxiliar.IConsultaSunatService;
 
-
 @Service
 public class ConsultaSunatService implements IConsultaSunatService {
 
@@ -26,22 +25,22 @@ public class ConsultaSunatService implements IConsultaSunatService {
     @Override
     public PersonaDto consultarDni(String dni) {
         return restClient.get()
-            .uri("/reniec/dni?numero={dni}", dni)
-            .retrieve()
-            .onStatus(HttpStatusCode::isError, (req, res) -> {
-                throw new RuntimeException("Error al consultar DNI: " + res.getStatusCode());
-            })
-            .body(PersonaDto.class);
+                .uri("/reniec/dni?numero={dni}", dni)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    throw new RuntimeException("Error al consultar DNI: " + res.getStatusCode());
+                })
+                .body(PersonaDto.class);
     }
 
     @Override
     public EmpresaDto consultarRuc(String ruc) {
         return restClient.get()
-            .uri("/sunat/ruc?numero={ruc}", ruc)
-            .retrieve()
-            .onStatus(HttpStatusCode::isError, (req, res) -> {
-                throw new RuntimeException("Error al consultar RUC: " + res.getStatusCode());
-            })
-            .body(EmpresaDto.class);
+                .uri("/sunat/ruc?numero={ruc}", ruc)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    throw new RuntimeException("Error al consultar RUC: " + res.getStatusCode());
+                })
+                .body(EmpresaDto.class);
     }
- }
+}

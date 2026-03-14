@@ -92,6 +92,9 @@ public class FacturacionComprobante {
     @Column(name = "archivo_pdf")
     private String archivoPdf;
 
+    @Column(name = "hash")
+    private String hash;
+
     @Column(name = "archivo_xml")
     private String archivoXml;
 
