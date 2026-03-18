@@ -31,4 +31,7 @@ public interface PedidoDetalleRepository extends JpaRepository<PedidoDetalle, St
     @Modifying
     @Query("DELETE FROM PedidoDetalle d WHERE d.pedido.id = :pedidoId")
     void deleteByPedidoId(String pedidoId);
+
+    // 5. PLATOS: Obtener detalles de venta de un plato especifico
+    List<PedidoDetalle> findByProductoIdProducto(Integer productoId);
 }

@@ -19,5 +19,9 @@ public interface IProductoService {
 
     List<ProductoDto> findByEmpresaId(String empresaId);
 
+    List<ProductoDto> findPlatosByEmpresaId(String empresaId);
+
+    List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String empresaId);
+
     void delete(Integer id);
 }

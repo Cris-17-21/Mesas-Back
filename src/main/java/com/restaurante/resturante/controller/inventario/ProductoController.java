@@ -53,6 +53,16 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.findByEmpresaId(empresaId));
     }
 
+    @GetMapping("/empresa/{empresaId}/platos")
+    public ResponseEntity<List<ProductoDto>> findPlatosByEmpresaId(@PathVariable String empresaId) {
+        return ResponseEntity.ok(productoService.findPlatosByEmpresaId(empresaId));
+    }
+
+    @GetMapping("/empresa/{empresaId}/platos/ventas")
+    public ResponseEntity<List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto>> getPlatoSalesHistory(@PathVariable String empresaId) {
+        return ResponseEntity.ok(productoService.getPlatoSalesHistory(empresaId));
+    }
+
     @DeleteMapping("/{id}")
     @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('DELETE_PRODUCTO')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {

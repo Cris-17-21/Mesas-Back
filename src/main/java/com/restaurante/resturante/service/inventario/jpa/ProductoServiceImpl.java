@@ -28,6 +28,7 @@ public class ProductoServiceImpl implements IProductoService {
     private final ProveedorRepository proveedorRepository;
     private final com.restaurante.resturante.repository.inventario.TiposProductoRepository tiposRepository;
     private final ProductoDtoMapper productoMapper;
+    private final com.restaurante.resturante.repository.venta.PedidoDetalleRepository pedidoDetalleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,7 +55,14 @@ public class ProductoServiceImpl implements IProductoService {
     @Transactional
     public ProductoDto save(ProductoDto dto) {
         CategoriaProducto categoria = null;
-        if (dto.idCategoria() != null) {
+        if (dto.esPlato() != null && dto.esPlato()) {
+            List<CategoriaProducto> categorias = categoriaRepository.findAll();
+            if (!categorias.isEmpty()) {
+                categoria = categorias.get(0);
+            } else {
+                throw new RuntimeException("Debe existir al menos una categoría en el sistema para registrar platos.");
+            }
+        } else if (dto.idCategoria() != null) {
             categoria = categoriaRepository.findById(dto.idCategoria()).orElse(null);
         }
 
@@ -99,5 +107,60 @@ public class ProductoServiceImpl implements IProductoService {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         producto.setEstado(false);
         productoRepository.save(producto);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoDto> findPlatosByEmpresaId(String empresaId) {
+        return productoRepository.findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(empresaId).stream()
+                .map(productoMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String empresaId) {
+        List<Producto> platos = productoRepository.findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(empresaId);
+        List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> history = new java.util.ArrayList<>();
+
+        for (Producto plato : platos) {
+            List<com.restaurante.resturante.domain.ventas.PedidoDetalle> detalles = pedidoDetalleRepository.findByProductoIdProducto(plato.getIdProducto());
+            int manana = 0;
+            int tarde = 0;
+            int noche = 0;
+            int total = 0;
+
+            for (com.restaurante.resturante.domain.ventas.PedidoDetalle detalle : detalles) {
+                if (detalle.getPedido() != null && !"ANULADO".equals(detalle.getPedido().getEstado())) {
+                    java.time.LocalDateTime fecha = detalle.getPedido().getFechaCreacion();
+                    if (fecha != null) {
+                        int hour = fecha.getHour();
+                        if (hour >= 6 && hour < 14) {
+                            manana += detalle.getCantidad();
+                        } else if (hour >= 14 && hour < 19) {
+                            tarde += detalle.getCantidad();
+                        } else {
+                            // Noche: 19:00 a 5:59
+                            noche += detalle.getCantidad();
+                        }
+                    }
+                    total += detalle.getCantidad();
+                }
+            }
+
+            history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
+                plato.getIdProducto(),
+                plato.getNombreProducto(),
+                manana,
+                tarde,
+                noche,
+                total,
+                plato.getPrecioVenta()
+            ));
+        }
+        
+        // Ordenar por total vendido
+        history.sort((a, b) -> Integer.compare(b.totalVendido(), a.totalVendido()));
+
+        return history;
     }
 }

@@ -137,6 +137,11 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("CREATE_PRODUCTO", "Crear productos", productosModule);
                 createPermissionIfNotExists("UPDATE_PRODUCTO", "Editar productos", productosModule);
                 createPermissionIfNotExists("DELETE_PRODUCTO", "Eliminar productos", productosModule);
+                
+                // Permisos específicos para Platos (dentro de Productos)
+                createPermissionIfNotExists("CREATE_PLATO", "Agregar nuevos platos", productosModule);
+                createPermissionIfNotExists("SELL_PLATO", "Vender platos", productosModule);
+                createPermissionIfNotExists("VIEW_PLATO_SALES", "Ver cantidad vendida de platos", productosModule);
 
                 // 2. Compras -> Gestión de Compras
                 PermissionModule pedidosCompraModule = createModuleIfNotExists("Gestión de Compras", "/gestion",

@@ -20,5 +20,10 @@ public record ProductoDto(
                 Integer stock,
 
                 Boolean estado,
-                String imagen) {
+                String imagen,
+                
+                // Platos fields
+                Boolean esPlato,
+                String horarioDisponible,
+                java.time.LocalDate fechaDisponible) {
 }

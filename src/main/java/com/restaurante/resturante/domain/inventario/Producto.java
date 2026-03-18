@@ -91,6 +91,17 @@ public class Producto {
     @Column(name = "imagen")
     private String imagen;
 
+    // ---- PLATOS (DISHES) FIELDS ----
+    @Column(name = "es_plato")
+    @Builder.Default
+    private Boolean esPlato = false;
+
+    @Column(name = "horario_disponible", length = 50)
+    private String horarioDisponible; // MAÑANA, TARDE, NOCHE
+
+    @Column(name = "fecha_disponible")
+    private java.time.LocalDate fechaDisponible;
+
     // ---- RELACIONES ----
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "producto_tipos", joinColumns = @JoinColumn(name = "id_producto"), inverseJoinColumns = @JoinColumn(name = "id_tipo"))

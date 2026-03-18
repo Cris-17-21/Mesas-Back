@@ -39,7 +39,11 @@ public class ProductoDtoMapper {
                 producto.getStock(),
 
                 producto.getEstado(),
-                producto.getImagen());
+                producto.getImagen(),
+                
+                producto.getEsPlato(),
+                producto.getHorarioDisponible(),
+                producto.getFechaDisponible());
     }
 
     public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor,
@@ -61,6 +65,9 @@ public class ProductoDtoMapper {
 
                 .estado(dto.estado())
                 .imagen(dto.imagen())
+                .esPlato(dto.esPlato())
+                .horarioDisponible(dto.horarioDisponible())
+                .fechaDisponible(dto.fechaDisponible())
                 .build();
     }
 }
