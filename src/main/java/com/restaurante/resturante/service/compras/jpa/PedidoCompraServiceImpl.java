@@ -126,9 +126,11 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
 
         // 3. Create Header
         PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago);
-        pedido.setEstadoPedido("Pendiente");
         if (Boolean.TRUE.equals(dto.esCompraSimple())) {
+            pedido.setEstadoPedido("COMPLETADO");
             pedido.setNombreProveedorInformal(dto.nombreProveedorInformal());
+        } else {
+            pedido.setEstadoPedido("Pendiente");
         }
         pedido = pedidoRepository.save(pedido);
 
@@ -168,17 +170,37 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                     }
                 }
 
+                int cantRecibida = Boolean.TRUE.equals(dto.esCompraSimple()) ? detDto.cantidadPedida() : 0;
                 DetallePedidoCompra detalle = DetallePedidoCompra.builder()
                         .pedidoCompra(pedido)
                         .producto(producto)
                         .cantidadPedida(detDto.cantidadPedida())
                         .costoUnitario(detDto.costoUnitario())
                         .subtotalLinea(detDto.costoUnitario().multiply(new BigDecimal(detDto.cantidadPedida())))
-                        .cantidadRecibida(0) // Initialize
+                        .cantidadRecibida(cantRecibida) // Initialize
                         .build();
 
                 detalleRepository.save(detalle);
                 totalCalculado = totalCalculado.add(detalle.getSubtotalLinea());
+
+                if (Boolean.TRUE.equals(dto.esCompraSimple())) {
+                    // Para compras simples, actualizar el inventario automáticamente
+                    com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
+                            .findByProducto_IdProducto(producto.getIdProducto())
+                            .orElseGet(() -> {
+                                com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
+                                        .builder()
+                                        .producto(producto)
+                                        .stockActual(0)
+                                        .stockMinimo(5)
+                                        .build();
+                                inv.setCreatedBy("SYSTEM");
+                                return inv;
+                            });
+
+                    inventario.setStockActual(inventario.getStockActual() + detDto.cantidadPedida());
+                    inventarioRepository.save(inventario);
+                }
             }
         }
 

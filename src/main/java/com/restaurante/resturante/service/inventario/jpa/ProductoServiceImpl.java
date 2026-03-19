@@ -29,6 +29,7 @@ public class ProductoServiceImpl implements IProductoService {
     private final com.restaurante.resturante.repository.inventario.TiposProductoRepository tiposRepository;
     private final ProductoDtoMapper productoMapper;
     private final com.restaurante.resturante.repository.venta.PedidoDetalleRepository pedidoDetalleRepository;
+    private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -102,23 +103,42 @@ public class ProductoServiceImpl implements IProductoService {
             tipos = new java.util.HashSet<>(tiposRepository.findAllById(dto.idTipos()));
         }
 
-        // Apply fields to existing entity
-        existente.setNombreProducto(dto.nombreProducto());
-        existente.setDescripcion(dto.descripcion());
-        existente.setPrecioVenta(dto.precioVenta());
-        existente.setCostoCompra(dto.costoCompra());
-        existente.setCategoria(categoria);
-        existente.setProveedor(proveedor);
-        existente.setTipo(dto.tipo());
-        existente.setTipos(tipos);
-        existente.setPesoGramos(dto.pesoGramos());
-        existente.setEstado(dto.estado() != null ? dto.estado() : existente.getEstado());
-        existente.setImagen(dto.imagen());
-        existente.setEsPlato(dto.esPlato() != null ? dto.esPlato() : existente.getEsPlato());
-        existente.setHorarioDisponible(dto.horarioDisponible());
-        existente.setFechaDisponible(dto.fechaDisponible());
+        // Apply fields to existing entity conditionally to avoid wiping non-DTO fields like 'tipo'
+        if (dto.nombreProducto() != null) existente.setNombreProducto(dto.nombreProducto());
+        if (dto.descripcion() != null) existente.setDescripcion(dto.descripcion());
+        if (dto.precioVenta() != null) existente.setPrecioVenta(dto.precioVenta());
+        if (dto.costoCompra() != null) existente.setCostoCompra(dto.costoCompra());
+        if (categoria != null) existente.setCategoria(categoria);
+        if (dto.idProveedor() != null) existente.setProveedor(proveedor); // only reset if explicit in form logic or handle if null means unassign, but form sends null when unchanged or unselected. Let's just set it. 
+        existente.setProveedor(proveedor); // form dropdown maps null to empty. It's safe to overwrite.
+        if (dto.tipo() != null) existente.setTipo(dto.tipo());
+        if (tipos != null) existente.setTipos(tipos);
+        if (dto.pesoGramos() != null) existente.setPesoGramos(dto.pesoGramos());
+        if (dto.estado() != null) existente.setEstado(dto.estado());
+        if (dto.imagen() != null) existente.setImagen(dto.imagen());
+        if (dto.esPlato() != null) existente.setEsPlato(dto.esPlato());
+        if (dto.horarioDisponible() != null) existente.setHorarioDisponible(dto.horarioDisponible());
+        if (dto.fechaDisponible() != null) existente.setFechaDisponible(dto.fechaDisponible());
 
-        return productoMapper.toDto(productoRepository.save(existente));
+        Producto saved = productoRepository.save(existente);
+
+        // Update Stock if provided
+        if (dto.stock() != null) {
+            com.restaurante.resturante.domain.inventario.Inventario inv = inventarioRepository.findByProducto_IdProducto(saved.getIdProducto())
+                    .orElseGet(() -> {
+                        com.restaurante.resturante.domain.inventario.Inventario newInv = com.restaurante.resturante.domain.inventario.Inventario.builder()
+                                .producto(saved)
+                                .stockActual(0)
+                                .stockMinimo(5)
+                                .build();
+                        newInv.setCreatedBy("SYSTEM");
+                        return newInv;
+                    });
+            inv.setStockActual(dto.stock());
+            inventarioRepository.save(inv);
+        }
+
+        return productoMapper.toDto(saved);
     }
 
     @Override
