@@ -83,13 +83,42 @@ public class ProductoServiceImpl implements IProductoService {
     @Override
     @Transactional
     public ProductoDto update(Integer id, ProductoDto dto) {
-        // Implementation for update would be similar to save but fetching existing
-        // first
-        // For brevity, using save logic which might overwrite if ID is present,
-        // but explicit update usually preferred to handle partials.
-        // Assuming full update for now or skipping detailed impl to focus on Purchase
-        // flow.
-        return save(dto);
+        // Fetch existing
+        Producto existente = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado para actualizar"));
+
+        CategoriaProducto categoria = null;
+        if (dto.idCategoria() != null) {
+            categoria = categoriaRepository.findById(dto.idCategoria()).orElse(null);
+        }
+
+        Proveedor proveedor = null;
+        if (dto.idProveedor() != null) {
+            proveedor = proveedorRepository.findById(dto.idProveedor()).orElse(null);
+        }
+
+        java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos = null;
+        if (dto.idTipos() != null && !dto.idTipos().isEmpty()) {
+            tipos = new java.util.HashSet<>(tiposRepository.findAllById(dto.idTipos()));
+        }
+
+        // Apply fields to existing entity
+        existente.setNombreProducto(dto.nombreProducto());
+        existente.setDescripcion(dto.descripcion());
+        existente.setPrecioVenta(dto.precioVenta());
+        existente.setCostoCompra(dto.costoCompra());
+        existente.setCategoria(categoria);
+        existente.setProveedor(proveedor);
+        existente.setTipo(dto.tipo());
+        existente.setTipos(tipos);
+        existente.setPesoGramos(dto.pesoGramos());
+        existente.setEstado(dto.estado() != null ? dto.estado() : existente.getEstado());
+        existente.setImagen(dto.imagen());
+        existente.setEsPlato(dto.esPlato() != null ? dto.esPlato() : existente.getEsPlato());
+        existente.setHorarioDisponible(dto.horarioDisponible());
+        existente.setFechaDisponible(dto.fechaDisponible());
+
+        return productoMapper.toDto(productoRepository.save(existente));
     }
 
     @Override
@@ -111,7 +140,7 @@ public class ProductoServiceImpl implements IProductoService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoDto> findPlatosByEmpresaId(String empresaId) {
-        return productoRepository.findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(empresaId).stream()
+        return productoRepository.findByEstadoTrueAndEsPlatoTrue().stream()
                 .map(productoMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -119,7 +148,7 @@ public class ProductoServiceImpl implements IProductoService {
     @Override
     @Transactional(readOnly = true)
     public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String empresaId) {
-        List<Producto> platos = productoRepository.findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(empresaId);
+        List<Producto> platos = productoRepository.findByEstadoTrueAndEsPlatoTrue();
         List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> history = new java.util.ArrayList<>();
 
         for (Producto plato : platos) {
@@ -147,19 +176,26 @@ public class ProductoServiceImpl implements IProductoService {
                 }
             }
 
-            history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
-                plato.getIdProducto(),
-                plato.getNombreProducto(),
-                manana,
-                tarde,
-                noche,
-                total,
-                plato.getPrecioVenta()
-            ));
+            String nombreCategoria = plato.getCategoria() != null ? plato.getCategoria().getNombreCategoria() : "Sin Categoría";
+            if (manana > 0) {
+                history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
+                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Mañana", manana, plato.getPrecioVenta()
+                ));
+            }
+            if (tarde > 0) {
+                history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
+                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Tarde", tarde, plato.getPrecioVenta()
+                ));
+            }
+            if (noche > 0) {
+                history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
+                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Noche", noche, plato.getPrecioVenta()
+                ));
+            }
         }
         
-        // Ordenar por total vendido
-        history.sort((a, b) -> Integer.compare(b.totalVendido(), a.totalVendido()));
+        // Ordenar por cantidad vendida
+        history.sort((a, b) -> Integer.compare(b.cantidadVendida(), a.cantidadVendida()));
 
         return history;
     }

@@ -5,10 +5,9 @@ import java.math.BigDecimal;
 public record PlatoSalesHistoryDto(
         Integer idProducto,
         String nombrePlato,
-        Integer cantidadVendidaManana,
-        Integer cantidadVendidaTarde,
-        Integer cantidadVendidaNoche,
-        Integer totalVendido,
+        String nombreCategoria,
+        String horario,
+        Integer cantidadVendida,
         BigDecimal precioVenta
 ) {
 }

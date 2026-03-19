@@ -15,4 +15,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     List<Producto> findByEmpresaIdAndEstadoTrue(String empresaId);
 
     List<Producto> findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(String empresaId);
+
+    List<Producto> findByEstadoTrueAndEsPlatoTrue();
 }
