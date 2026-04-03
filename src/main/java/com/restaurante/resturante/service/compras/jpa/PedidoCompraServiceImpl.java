@@ -22,6 +22,7 @@ import com.restaurante.resturante.repository.compras.PedidoCompraRepository;
 import com.restaurante.resturante.repository.compras.ProveedorRepository;
 import com.restaurante.resturante.repository.compras.TiposPagoRepository;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserRepository; // Assuming exists
 import com.restaurante.resturante.service.compras.IPedidoCompraService;
 import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
@@ -41,6 +42,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     private final UserRepository userRepository;
     private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
     private final com.restaurante.resturante.repository.inventario.CategoriaProductoRepository categoriaProductoRepository;
+    private final SucursalRepository sucursalRepository;
     private final PedidoCompraDtoMapper pedidoMapper;
 
     @Override
@@ -114,6 +116,9 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         User usuario = userRepository.findById(dto.idUsuario())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        com.restaurante.resturante.domain.maestros.Sucursal sucursalObj = sucursalRepository.findById(dto.sucursalId())
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada con id: " + dto.sucursalId()));
+
         TiposPago tipoPago = null;
         if (dto.idTipoPago() != null) {
             tipoPago = tiposPagoRepository.findById(dto.idTipoPago()).orElse(null);
@@ -125,7 +130,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         }
 
         // 3. Create Header
-        PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago);
+        PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago, sucursalObj);
         if (Boolean.TRUE.equals(dto.esCompraSimple())) {
             pedido.setEstadoPedido("COMPLETADO");
             pedido.setNombreProveedorInformal(dto.nombreProveedorInformal());
@@ -186,11 +191,12 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                 if (Boolean.TRUE.equals(dto.esCompraSimple())) {
                     // Para compras simples, actualizar el inventario automáticamente
                     com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
-                            .findByProducto_IdProducto(producto.getIdProducto())
+                            .findByProducto_IdProductoAndSucursal_Id(producto.getIdProducto(), sucursalObj.getId())
                             .orElseGet(() -> {
                                 com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
                                         .builder()
                                         .producto(producto)
+                                        .sucursal(sucursalObj)
                                         .stockActual(0)
                                         .stockMinimo(5)
                                         .build();
@@ -263,11 +269,12 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             // Update Real-Time Inventory
             Producto producto = detalle.getProducto();
             com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
-                    .findByProducto_IdProducto(producto.getIdProducto())
+                    .findByProducto_IdProductoAndSucursal_Id(producto.getIdProducto(), pedido.getSucursal().getId())
                     .orElseGet(() -> {
                         com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
                                 .builder()
                                 .producto(producto)
+                                .sucursal(pedido.getSucursal())
                                 .stockActual(0)
                                 .stockMinimo(5)
                                 .build();

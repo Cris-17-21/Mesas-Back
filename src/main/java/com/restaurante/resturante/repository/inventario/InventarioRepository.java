@@ -14,11 +14,11 @@ import com.restaurante.resturante.domain.inventario.Inventario;
 @Repository
 public interface InventarioRepository extends JpaRepository<Inventario, Long> {
 
-    Optional<Inventario> findByProducto_IdProducto(Integer idProducto);
+    Optional<Inventario> findByProducto_IdProductoAndSucursal_Id(Integer idProducto, String sucursalId);
 
-    @Query("SELECT DISTINCT p.proveedor FROM Inventario i JOIN i.producto p WHERE p.proveedor IS NOT NULL AND p.estado = true")
-    List<Proveedor> findDistinctProveedoresConInventario();
+    @Query("SELECT DISTINCT p.proveedor FROM Inventario i JOIN i.producto p WHERE p.proveedor IS NOT NULL AND p.estado = true AND i.sucursal.id = :sucursalId")
+    List<Proveedor> findDistinctProveedoresConInventario(@Param("sucursalId") String sucursalId);
 
-    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.proveedor prov WHERE p.proveedor.idProveedor = :idProveedor AND p.estado = true")
-    List<Inventario> findByProductoProveedorIdProveedorAndProductoEstadoTrue(@Param("idProveedor") Integer idProveedor);
+    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.proveedor prov WHERE p.proveedor.idProveedor = :idProveedor AND p.estado = true AND i.sucursal.id = :sucursalId")
+    List<Inventario> findByProductoProveedorIdProveedorAndProductoEstadoTrueAndSucursalId(@Param("idProveedor") Integer idProveedor, @Param("sucursalId") String sucursalId);
 }

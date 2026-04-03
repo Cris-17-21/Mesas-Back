@@ -15,6 +15,7 @@ import com.restaurante.resturante.mapper.inventario.ProductoDtoMapper;
 import com.restaurante.resturante.repository.compras.ProveedorRepository;
 import com.restaurante.resturante.repository.inventario.CategoriaProductoRepository;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.service.inventario.IProductoService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ProductoServiceImpl implements IProductoService {
     private final ProductoDtoMapper productoMapper;
     private final com.restaurante.resturante.repository.venta.PedidoDetalleRepository pedidoDetalleRepository;
     private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
+    private final SucursalRepository sucursalRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -123,11 +125,14 @@ public class ProductoServiceImpl implements IProductoService {
         Producto saved = productoRepository.save(existente);
 
         // Update Stock if provided
-        if (dto.stock() != null) {
-            com.restaurante.resturante.domain.inventario.Inventario inv = inventarioRepository.findByProducto_IdProducto(saved.getIdProducto())
+        if (dto.stock() != null && dto.sucursalId() != null) {
+            com.restaurante.resturante.domain.inventario.Inventario inv = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
                     .orElseGet(() -> {
+                        com.restaurante.resturante.domain.maestros.Sucursal sucursalObj = sucursalRepository.findById(dto.sucursalId())
+                            .orElseThrow(() -> new RuntimeException("Sucursal no encontrada con id: " + dto.sucursalId()));
                         com.restaurante.resturante.domain.inventario.Inventario newInv = com.restaurante.resturante.domain.inventario.Inventario.builder()
                                 .producto(saved)
+                                .sucursal(sucursalObj)
                                 .stockActual(0)
                                 .stockMinimo(5)
                                 .build();

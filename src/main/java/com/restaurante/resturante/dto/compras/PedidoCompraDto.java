@@ -10,6 +10,7 @@ public record PedidoCompraDto(
         Integer idProveedor,
         String razonSocialProveedor,
         String idUsuario, // UUID String from User entity
+        String sucursalId,
         String nombreUsuario,
         LocalDateTime fechaPedido,
         LocalDate fechaEntregaEsperada,

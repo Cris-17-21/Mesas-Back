@@ -24,31 +24,31 @@ public class InventarioController {
 
     private final IInventarioService inventarioService;
 
-    @GetMapping("/productos")
+    @GetMapping("/productos/sucursal/{sucursalId}")
     @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
-    public ResponseEntity<List<InventarioDto>> listarProductosInventario() {
+    public ResponseEntity<List<InventarioDto>> listarProductosInventario(@PathVariable String sucursalId) {
         try {
-            return ResponseEntity.ok(inventarioService.listarProductosInventario());
+            return ResponseEntity.ok(inventarioService.listarProductosInventario(sucursalId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList());
         }
     }
 
-    @GetMapping("/proveedores")
+    @GetMapping("/proveedores/sucursal/{sucursalId}")
     @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
-    public ResponseEntity<List<Proveedor>> listarProveedoresConInventario() {
+    public ResponseEntity<List<Proveedor>> listarProveedoresConInventario(@PathVariable String sucursalId) {
         try {
-            return ResponseEntity.ok(inventarioService.listarProveedoresConInventario());
+            return ResponseEntity.ok(inventarioService.listarProveedoresConInventario(sucursalId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @GetMapping("/productos/proveedor/{idProveedor}")
+    @GetMapping("/productos/proveedor/{idProveedor}/sucursal/{sucursalId}")
     @PreAuthorize("hasAnyAuthority('READ_COMPRA', 'VER_INVENTARIO')")
-    public ResponseEntity<List<InventarioDto>> listarProductosPorProveedor(@PathVariable Integer idProveedor) {
+    public ResponseEntity<List<InventarioDto>> listarProductosPorProveedor(@PathVariable Integer idProveedor, @PathVariable String sucursalId) {
         try {
-            return ResponseEntity.ok(inventarioService.listarProductosPorProveedor(idProveedor));
+            return ResponseEntity.ok(inventarioService.listarProductosPorProveedor(idProveedor, sucursalId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

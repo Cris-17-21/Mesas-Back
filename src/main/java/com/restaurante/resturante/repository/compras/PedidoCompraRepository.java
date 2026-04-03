@@ -5,6 +5,8 @@ import org.springframework.stereotype.Repository;
 
 import com.restaurante.resturante.domain.compras.PedidoCompra;
 
-@Repository
+import java.util.List;
+
 public interface PedidoCompraRepository extends JpaRepository<PedidoCompra, Long> {
+    List<PedidoCompra> findBySucursal_Id(String sucursalId);
 }

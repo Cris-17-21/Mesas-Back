@@ -107,11 +107,11 @@ public class Producto {
     @JoinTable(name = "producto_tipos", joinColumns = @JoinColumn(name = "id_producto"), inverseJoinColumns = @JoinColumn(name = "id_tipo"))
     private Set<TiposProducto> tipos;
 
-    @OneToOne(mappedBy = "producto", fetch = FetchType.LAZY)
-    private Inventario inventario;
+    @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)
+    private Set<Inventario> inventarios;
 
     public Integer getStock() {
-        return inventario != null && inventario.getStockActual() != null ? inventario.getStockActual() : 0;
+        return 0; // Calculado nivel de Service por Sucursal
     }
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)

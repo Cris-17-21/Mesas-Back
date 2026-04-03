@@ -7,9 +7,9 @@ import com.restaurante.resturante.dto.inventario.InventarioDto;
 
 public interface IInventarioService {
 
-    List<InventarioDto> listarProductosInventario();
+    List<InventarioDto> listarProductosInventario(String sucursalId);
 
-    List<Proveedor> listarProveedoresConInventario();
+    List<Proveedor> listarProveedoresConInventario(String sucursalId);
 
-    List<InventarioDto> listarProductosPorProveedor(Integer idProveedor);
+    List<InventarioDto> listarProductosPorProveedor(Integer idProveedor, String sucursalId);
 }

@@ -31,12 +31,9 @@ public class ProductoDtoMapper {
                         : null,
                 producto.getPesoGramos(),
 
-                producto.getInventario() != null && producto.getInventario().getLastModifiedDate() != null
-                        ? java.time.LocalDateTime.ofInstant(producto.getInventario().getLastModifiedDate(), java.time.ZoneId.systemDefault())
-                        : (producto.getInventario() != null && producto.getInventario().getCreatedDate() != null 
-                            ? java.time.LocalDateTime.ofInstant(producto.getInventario().getCreatedDate(), java.time.ZoneId.systemDefault()) 
-                            : null),
-                producto.getStock(),
+                null, // fechaRegistro calculated dynamically in service
+                0, // stock calculated dynamically in service
+                null, // sucursalId provided by context
 
                 producto.getEstado(),
                 producto.getImagen(),

@@ -30,8 +30,10 @@ public class InventarioServiceImpl implements IInventarioService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventarioDto> listarProductosInventario() {
-        List<Inventario> inventarios = inventarioRepository.findAll();
+    public List<InventarioDto> listarProductosInventario(String sucursalId) {
+        List<Inventario> inventarios = inventarioRepository.findAll().stream()
+                .filter(i -> i.getSucursal() != null && i.getSucursal().getId().equals(sucursalId))
+                .collect(Collectors.toList());
         Map<Integer, InventarioDto> productosMap = new LinkedHashMap<>();
 
         for (Inventario inventario : inventarios) {
@@ -70,15 +72,15 @@ public class InventarioServiceImpl implements IInventarioService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Proveedor> listarProveedoresConInventario() {
-        return inventarioRepository.findDistinctProveedoresConInventario();
+    public List<Proveedor> listarProveedoresConInventario(String sucursalId) {
+        return inventarioRepository.findDistinctProveedoresConInventario(sucursalId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventarioDto> listarProductosPorProveedor(Integer idProveedor) {
+    public List<InventarioDto> listarProductosPorProveedor(Integer idProveedor, String sucursalId) {
         List<Inventario> inventarios = inventarioRepository
-                .findByProductoProveedorIdProveedorAndProductoEstadoTrue(idProveedor);
+                .findByProductoProveedorIdProveedorAndProductoEstadoTrueAndSucursalId(idProveedor, sucursalId);
 
         Set<Integer> productosIncluidos = new HashSet<>();
         List<InventarioDto> dtos = new ArrayList<>();

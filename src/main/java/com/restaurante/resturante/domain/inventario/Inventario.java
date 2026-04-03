@@ -2,7 +2,9 @@ package com.restaurante.resturante.domain.inventario;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -35,9 +37,15 @@ public class Inventario extends Auditable {
     @Column(name = "id_inventario")
     private Long idInventario;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_producto", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_producto", nullable = false)
+    @JsonIgnore
     private Producto producto;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sucursal_id", nullable = false)
+    @JsonIgnore
+    private Sucursal sucursal;
 
     @Column(name = "stock_actual", nullable = false)
     @Builder.Default
