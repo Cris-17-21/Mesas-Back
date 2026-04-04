@@ -37,7 +37,12 @@ public class ProductoServiceImpl implements IProductoService {
     @Transactional(readOnly = true)
     public List<ProductoDto> findAll() {
         return productoRepository.findByEstadoTrue().stream()
-                .map(productoMapper::toDto)
+                .map(p -> {
+                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                            .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
+                            .orElse(0);
+                    return productoMapper.toDto(p, stock);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -45,7 +50,12 @@ public class ProductoServiceImpl implements IProductoService {
     @Transactional(readOnly = true)
     public Optional<ProductoDto> findById(Integer id) {
         return productoRepository.findById(id)
-                .map(productoMapper::toDto);
+                .map(p -> {
+                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                            .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
+                            .orElse(0);
+                    return productoMapper.toDto(p, stock);
+                });
     }
 
     @Override
@@ -88,7 +98,21 @@ public class ProductoServiceImpl implements IProductoService {
         }
 
         Producto entity = productoMapper.toEntity(dto, categoria, proveedor, tipos, sucursal);
-        return productoMapper.toDto(productoRepository.save(entity));
+        Producto saved = productoRepository.save(entity);
+        
+        // Ensure stock record exists if stock provided
+        if (dto.stock() != null) {
+            com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario.builder()
+                    .producto(saved)
+                    .sucursal(sucursal)
+                    .stockActual(dto.stock())
+                    .stockMinimo(5)
+                    .build();
+            inv.setCreatedBy("SYSTEM");
+            inventarioRepository.save(inv);
+        }
+
+        return productoMapper.toDto(saved, dto.stock() != null ? dto.stock() : 0);
     }
 
     @Override
@@ -131,6 +155,7 @@ public class ProductoServiceImpl implements IProductoService {
         if (dto.fechaDisponible() != null) existente.setFechaDisponible(dto.fechaDisponible());
 
         Producto saved = productoRepository.save(existente);
+        Integer finalStock = 0;
 
         // Update Stock if provided
         if (dto.stock() != null && dto.sucursalId() != null) {
@@ -149,16 +174,28 @@ public class ProductoServiceImpl implements IProductoService {
                     });
             inv.setStockActual(dto.stock());
             inventarioRepository.save(inv);
+            finalStock = dto.stock();
+        } else {
+            finalStock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
+                    .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
+                    .orElse(0);
         }
 
-        return productoMapper.toDto(saved);
+        return productoMapper.toDto(saved, finalStock);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductoDto> findBySucursalId(String sucursalId) {
-        return productoRepository.findBySucursal_IdAndEstadoTrue(sucursalId).stream()
-                .map(productoMapper::toDto)
+        List<Producto> productos = productoRepository.findBySucursal_Id(sucursalId);
+        System.out.println("DEBUG: Encontrados " + productos.size() + " productos para sucursal " + sucursalId);
+        return productos.stream()
+                .map(p -> {
+                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), sucursalId)
+                            .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
+                            .orElse(0);
+                    return productoMapper.toDto(p, stock);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -166,7 +203,12 @@ public class ProductoServiceImpl implements IProductoService {
     @Transactional(readOnly = true)
     public List<ProductoDto> findByEmpresaId(String empresaId) {
         return productoRepository.findBySucursal_Empresa_IdAndEstadoTrue(empresaId).stream()
-                .map(productoMapper::toDto)
+                .map(p -> {
+                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                            .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
+                            .orElse(0);
+                    return productoMapper.toDto(p, stock);
+                })
                 .collect(Collectors.toList());
     }
 

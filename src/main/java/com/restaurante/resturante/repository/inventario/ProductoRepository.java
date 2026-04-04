@@ -12,7 +12,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
     List<Producto> findByEstadoTrue();
 
-    List<Producto> findBySucursal_IdAndEstadoTrue(String sucursalId);
+    List<Producto> findBySucursal_Id(String sucursalId);
 
     List<Producto> findBySucursal_IdAndEstadoTrueAndEsPlatoTrue(String sucursalId);
 
