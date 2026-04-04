@@ -16,5 +16,8 @@ public interface ICategoriaProductoService {
 
     List<CategoriaProductoDto> findAll();
 
+    List<CategoriaProductoDto> findBySucursalId(String sucursalId);
+
+    // Legacy method for backward compatibility
     List<CategoriaProductoDto> findByEmpresaId(String empresaId);
 }

@@ -12,9 +12,12 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
     List<Producto> findByEstadoTrue();
 
-    List<Producto> findByEmpresaIdAndEstadoTrue(String empresaId);
+    List<Producto> findBySucursal_IdAndEstadoTrue(String sucursalId);
 
-    List<Producto> findByEmpresaIdAndEstadoTrueAndEsPlatoTrue(String empresaId);
+    List<Producto> findBySucursal_IdAndEstadoTrueAndEsPlatoTrue(String sucursalId);
 
     List<Producto> findByEstadoTrueAndEsPlatoTrue();
+
+    // Legacy method
+    List<Producto> findBySucursal_Empresa_IdAndEstadoTrue(String empresaId);
 }

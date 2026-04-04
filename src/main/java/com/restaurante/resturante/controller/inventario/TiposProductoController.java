@@ -19,6 +19,8 @@ import com.restaurante.resturante.dto.inventario.TiposProductoDto;
 import com.restaurante.resturante.mapper.inventario.TiposProductoMapper;
 import com.restaurante.resturante.repository.inventario.CategoriaProductoRepository;
 import com.restaurante.resturante.service.inventario.ITiposProductoService;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,11 +31,19 @@ public class TiposProductoController {
 
     private final ITiposProductoService service;
     private final CategoriaProductoRepository categoriaRepository;
+    private final SucursalRepository sucursalRepository;
     private final TiposProductoMapper mapper;
 
     @GetMapping
     public ResponseEntity<List<TiposProductoDto>> getAll() {
         return ResponseEntity.ok(service.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList()));
+    }
+
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<List<TiposProductoDto>> getBySucursal(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(service.findBySucursalId(sucursalId).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList()));
     }
@@ -66,7 +76,10 @@ public class TiposProductoController {
             return ResponseEntity.badRequest().build();
         }
 
-        TiposProducto entity = mapper.toEntity(dto, categoria);
+        Sucursal sucursal = sucursalRepository.findById(dto.sucursalId())
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+
+        TiposProducto entity = mapper.toEntity(dto, categoria, sucursal);
         return ResponseEntity.ok(mapper.toDto(service.save(entity)));
     }
 
@@ -82,6 +95,12 @@ public class TiposProductoController {
         } else if (existing.getCategoria() != null) {
             categoria = existing.getCategoria(); // Keep existing if not provided? Or allow unsetting? Assuming
                                                  // provided.
+        }
+
+        Sucursal sucursal = null;
+        if (dto.sucursalId() != null) {
+            sucursal = sucursalRepository.findById(dto.sucursalId()).orElse(null);
+            existing.setSucursal(sucursal);
         }
 
         existing.setNombreTipo(dto.nombreTipo());

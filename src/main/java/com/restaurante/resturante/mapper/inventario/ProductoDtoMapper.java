@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import com.restaurante.resturante.domain.compras.Proveedor;
 import com.restaurante.resturante.domain.inventario.CategoriaProducto;
 import com.restaurante.resturante.domain.inventario.Producto;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.dto.inventario.ProductoDto;
 
 @Component
@@ -33,7 +34,7 @@ public class ProductoDtoMapper {
 
                 null, // fechaRegistro calculated dynamically in service
                 0, // stock calculated dynamically in service
-                null, // sucursalId provided by context
+                producto.getSucursal() != null ? producto.getSucursal().getId() : null, // sucursalId provided by entity
 
                 producto.getEstado(),
                 producto.getImagen(),
@@ -44,7 +45,7 @@ public class ProductoDtoMapper {
     }
 
     public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor,
-            java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos) {
+            java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos, Sucursal sucursal) {
         if (dto == null)
             return null;
 
@@ -58,6 +59,7 @@ public class ProductoDtoMapper {
                 .proveedor(proveedor)
                 .tipo(dto.tipo())
                 .tipos(tipos)
+                .sucursal(sucursal)
                 .pesoGramos(dto.pesoGramos())
 
                 .estado(dto.estado())

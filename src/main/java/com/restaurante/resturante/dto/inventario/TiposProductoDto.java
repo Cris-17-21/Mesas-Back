@@ -4,5 +4,6 @@ public record TiposProductoDto(
         Integer idTipo,
         String nombreTipo,
         Integer idCategoria,
-        String nombreCategoria) {
+        String nombreCategoria,
+        String sucursalId) {
 }

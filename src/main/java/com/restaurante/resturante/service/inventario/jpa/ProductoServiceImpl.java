@@ -79,7 +79,15 @@ public class ProductoServiceImpl implements IProductoService {
             tipos = new java.util.HashSet<>(tiposRepository.findAllById(dto.idTipos()));
         }
 
-        Producto entity = productoMapper.toEntity(dto, categoria, proveedor, tipos);
+        com.restaurante.resturante.domain.maestros.Sucursal sucursal = null;
+        if (dto.sucursalId() != null) {
+            sucursal = sucursalRepository.findById(dto.sucursalId())
+                    .orElseThrow(() -> new RuntimeException("Sucursal no encontrada: " + dto.sucursalId()));
+        } else {
+            throw new RuntimeException("sucursalId es requerido para guardar un producto");
+        }
+
+        Producto entity = productoMapper.toEntity(dto, categoria, proveedor, tipos, sucursal);
         return productoMapper.toDto(productoRepository.save(entity));
     }
 
@@ -148,8 +156,16 @@ public class ProductoServiceImpl implements IProductoService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProductoDto> findBySucursalId(String sucursalId) {
+        return productoRepository.findBySucursal_IdAndEstadoTrue(sucursalId).stream()
+                .map(productoMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProductoDto> findByEmpresaId(String empresaId) {
-        return productoRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
+        return productoRepository.findBySucursal_Empresa_IdAndEstadoTrue(empresaId).stream()
                 .map(productoMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -164,16 +180,16 @@ public class ProductoServiceImpl implements IProductoService {
     }
     @Override
     @Transactional(readOnly = true)
-    public List<ProductoDto> findPlatosByEmpresaId(String empresaId) {
-        return productoRepository.findByEstadoTrueAndEsPlatoTrue().stream()
+    public List<ProductoDto> findPlatosBySucursalId(String sucursalId) {
+        return productoRepository.findBySucursal_IdAndEstadoTrueAndEsPlatoTrue(sucursalId).stream()
                 .map(productoMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String empresaId) {
-        List<Producto> platos = productoRepository.findByEstadoTrueAndEsPlatoTrue();
+    public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String sucursalId) {
+        List<Producto> platos = productoRepository.findBySucursal_IdAndEstadoTrueAndEsPlatoTrue(sucursalId);
         List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> history = new java.util.ArrayList<>();
 
         for (Producto plato : platos) {

@@ -43,4 +43,10 @@ public class TiposProductoServiceImpl implements ITiposProductoService {
     public List<TiposProducto> findByCategoryId(Integer idCategoria) {
         return repository.findByCategoria_IdCategoria(idCategoria);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TiposProducto> findBySucursalId(String sucursalId) {
+        return repository.findBySucursal_Id(sucursalId);
+    }
 }

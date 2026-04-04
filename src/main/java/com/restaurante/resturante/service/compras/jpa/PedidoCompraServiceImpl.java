@@ -74,6 +74,14 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PedidoCompraDto> findBySucursalId(String sucursalId) {
+        return pedidoRepository.findBySucursal_Id(sucursalId).stream()
+                .map(pedido -> pedidoMapper.toDto(pedido, pedido.getDetalles()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<PedidoCompraDto> findById(Long id) {
         return pedidoRepository.findById(id).map(pedido -> {
             // Find details manually since I didn't add bidirectional mapping
@@ -158,6 +166,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                             .costoCompra(detDto.costoUnitario())
                             .tipo("INFORMAL")
                             .categoria(categoria)
+                            .sucursal(sucursalObj)
                             .estado(true) // Active
                             .controlarStock(true) // Start controlling stock
                             .stockMinimo(5)

@@ -33,6 +33,10 @@ public class PedidoCompraController {
     public ResponseEntity<List<PedidoCompraDto>> getAll() {
         return ResponseEntity.ok(pedidoService.findAll());
     }
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<List<PedidoCompraDto>> getBySucursalId(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(pedidoService.findBySucursalId(sucursalId));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<PedidoCompraDto> getById(@PathVariable Long id) {

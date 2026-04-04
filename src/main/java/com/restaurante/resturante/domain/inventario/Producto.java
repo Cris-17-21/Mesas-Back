@@ -5,7 +5,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.compras.Proveedor;
-import com.restaurante.resturante.domain.maestros.Empresa;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
@@ -63,8 +63,8 @@ public class Producto {
     private Proveedor proveedor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "empresa_id", nullable = true) // Nullable por compatibilidad con datos existentes
-    private Empresa empresa;
+    @JoinColumn(name = "sucursal_id", nullable = true) // Nullable por compatibilidad
+    private Sucursal sucursal;
 
     @Column(name = "tipo", length = 20)
     private String tipo;

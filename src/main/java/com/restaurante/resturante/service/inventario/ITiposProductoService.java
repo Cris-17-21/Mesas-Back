@@ -13,4 +13,6 @@ public interface ITiposProductoService {
     void delete(Integer id);
 
     List<TiposProducto> findByCategoryId(Integer idCategoria);
+
+    List<TiposProducto> findBySucursalId(String sucursalId);
 }

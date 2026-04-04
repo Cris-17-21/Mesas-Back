@@ -9,6 +9,8 @@ import com.restaurante.resturante.domain.compras.Proveedor;
 public interface IProveedorService {
     List<ProveedorDto> findAll();
 
+    List<ProveedorDto> findByEmpresaId(String empresaId);
+
     Optional<ProveedorDto> findById(Integer id);
 
     Proveedor findEntityById(Integer id);

@@ -3,6 +3,7 @@ package com.restaurante.resturante.mapper.compras;
 import org.springframework.stereotype.Component;
 
 import com.restaurante.resturante.domain.compras.Proveedor;
+import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.dto.compras.ProveedorDto;
 
 @Component
@@ -19,6 +20,7 @@ public class ProveedorDtoMapper {
                 proveedor.getDireccion(),
                 proveedor.getTelefono(),
                 proveedor.getEstado(),
+                proveedor.getEmpresa() != null ? proveedor.getEmpresa().getId() : null,
                 proveedor.getMetodosPago() != null ? proveedor.getMetodosPago().stream()
                         .map(mp -> new com.restaurante.resturante.dto.compras.ProveedorMetodoPagoDto(
                                 mp.getIdTipoPago(),
@@ -28,7 +30,7 @@ public class ProveedorDtoMapper {
                         : java.util.Collections.emptyList());
     }
 
-    public Proveedor toEntity(ProveedorDto dto) {
+    public Proveedor toEntity(ProveedorDto dto, Empresa empresa) {
         if (dto == null)
             return null;
 
@@ -40,6 +42,7 @@ public class ProveedorDtoMapper {
                 .direccion(dto.direccion())
                 .telefono(dto.telefono())
                 .estado(dto.estado() != null ? dto.estado() : 1)
+                .empresa(empresa)
                 .build();
     }
 }

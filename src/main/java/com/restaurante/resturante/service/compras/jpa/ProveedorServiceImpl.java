@@ -8,9 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.restaurante.resturante.domain.compras.Proveedor;
+import com.restaurante.resturante.domain.compras.Proveedor;
+import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.dto.compras.ProveedorDto;
 import com.restaurante.resturante.mapper.compras.ProveedorDtoMapper;
 import com.restaurante.resturante.repository.compras.ProveedorRepository;
+import com.restaurante.resturante.repository.maestro.EmpresaRepository;
 import com.restaurante.resturante.service.compras.IProveedorService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,11 +25,20 @@ public class ProveedorServiceImpl implements IProveedorService {
     private final ProveedorRepository proveedorRepository;
     private final ProveedorDtoMapper proveedorMapper;
     private final com.restaurante.resturante.repository.compras.ProveedorMetodosPagoRepository metodosPagoRepository;
+    private final EmpresaRepository empresaRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<ProveedorDto> findAll() {
         return proveedorRepository.findAll().stream()
+                .map(proveedorMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorDto> findByEmpresaId(String empresaId) {
+        return proveedorRepository.findByEmpresa_Id(empresaId).stream()
                 .map(proveedorMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -47,7 +59,13 @@ public class ProveedorServiceImpl implements IProveedorService {
     @Override
     @Transactional
     public ProveedorDto save(ProveedorDto dto) {
-        Proveedor entity = proveedorMapper.toEntity(dto);
+        if (dto.empresaId() == null) {
+            throw new RuntimeException("El proveedor debe estar asignado a una empresa.");
+        }
+        Empresa empresa = empresaRepository.findById(dto.empresaId())
+                .orElseThrow(() -> new RuntimeException("Empresa no encontrada"));
+
+        Proveedor entity = proveedorMapper.toEntity(dto, empresa);
         Proveedor saved = proveedorRepository.save(entity);
 
         if (dto.metodosPago() != null && !dto.metodosPago().isEmpty()) {

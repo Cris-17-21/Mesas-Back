@@ -16,12 +16,14 @@ public interface IProductoService {
     ProductoDto save(ProductoDto dto);
 
     ProductoDto update(Integer id, ProductoDto dto);
+    List<ProductoDto> findBySucursalId(String sucursalId);
 
-    List<ProductoDto> findByEmpresaId(String empresaId);
+    List<ProductoDto> findPlatosBySucursalId(String sucursalId);
 
-    List<ProductoDto> findPlatosByEmpresaId(String empresaId);
-
-    List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String empresaId);
+    List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String sucursalId);
 
     void delete(Integer id);
+
+    // Legacy method for backward compatibility
+    List<ProductoDto> findByEmpresaId(String empresaId);
 }

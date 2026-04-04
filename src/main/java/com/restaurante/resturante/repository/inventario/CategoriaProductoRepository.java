@@ -9,6 +9,8 @@ import com.restaurante.resturante.domain.inventario.CategoriaProducto;
 
 @Repository
 public interface CategoriaProductoRepository extends JpaRepository<CategoriaProducto, Integer> {
-
-    List<CategoriaProducto> findByEmpresaId(String empresaId);
+    List<CategoriaProducto> findBySucursal_Id(String sucursalId);
+    
+    // Legacy method
+    List<CategoriaProducto> findBySucursal_Empresa_Id(String empresaId);
 }

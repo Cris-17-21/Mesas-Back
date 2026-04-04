@@ -23,12 +23,20 @@ public class CategoriaProductoService implements ICategoriaProductoService {
 
     private final CategoriaProductoDtoMapper categoriaMapper;
 
-    private final com.restaurante.resturante.repository.maestro.EmpresaRepository empresaRepository;
+    private final com.restaurante.resturante.repository.maestro.SucursalRepository sucursalRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoriaProductoDto> findBySucursalId(String sucursalId) {
+        return categoriaRepository.findBySucursal_Id(sucursalId).stream()
+                .map(categoriaMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional(readOnly = true)
     public List<CategoriaProductoDto> findByEmpresaId(String empresaId) {
-        return categoriaRepository.findByEmpresaId(empresaId).stream()
+        return categoriaRepository.findBySucursal_Empresa_Id(empresaId).stream()
                 .map(categoriaMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -36,16 +44,16 @@ public class CategoriaProductoService implements ICategoriaProductoService {
     @Override
     @Transactional
     public CategoriaProductoDto save(CategoriaProductoDto dto) {
-        if (dto.empresaId() == null || dto.empresaId().isBlank()) {
+        if (dto.sucursalId() == null || dto.sucursalId().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "empresaId es obligatorio para crear una categoría");
+                    "sucursalId es obligatorio para crear una categoría");
         }
-        com.restaurante.resturante.domain.maestros.Empresa empresa = empresaRepository
-                .findById(dto.empresaId())
+        com.restaurante.resturante.domain.maestros.Sucursal sucursal = sucursalRepository
+                .findById(dto.sucursalId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "No se encontró la empresa con ID: " + dto.empresaId() +
+                        "No se encontró la sucursal con ID: " + dto.sucursalId() +
                                 ". Por favor cierra sesión e ingresa de nuevo."));
-        com.restaurante.resturante.domain.inventario.CategoriaProducto entity = categoriaMapper.toEntity(dto, empresa);
+        com.restaurante.resturante.domain.inventario.CategoriaProducto entity = categoriaMapper.toEntity(dto, sucursal);
         return categoriaMapper.toDto(categoriaRepository.save(entity));
     }
 

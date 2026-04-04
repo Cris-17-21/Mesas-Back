@@ -34,4 +34,7 @@ public class TiposProducto {
     @jakarta.persistence.JoinColumn(name = "id_categoria")
     private CategoriaProducto categoria;
 
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "sucursal_id", nullable = false)
+    private com.restaurante.resturante.domain.maestros.Sucursal sucursal;
 }
