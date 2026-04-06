@@ -5,6 +5,8 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurante.resturante.domain.maestros.Empresa;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -28,7 +30,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "proveedores")
-public class Proveedor {
+public class Proveedor extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

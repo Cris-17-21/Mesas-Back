@@ -1,5 +1,7 @@
 package com.restaurante.resturante.domain.inventario;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,7 +22,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "tiposproducto")
-public class TiposProducto {
+public class TiposProducto extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

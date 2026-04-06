@@ -1,5 +1,7 @@
 package com.restaurante.resturante.domain.compras;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -17,7 +19,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "tipospago")
-public class TiposPago {
+public class TiposPago extends Auditable {
 
     @Id
     @Column(name = "id_tipopago")

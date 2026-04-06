@@ -38,7 +38,9 @@ public class ProductoServiceImpl implements IProductoService {
     public List<ProductoDto> findAll() {
         return productoRepository.findByEstadoTrue().stream()
                 .map(p -> {
-                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                    Integer stock = inventarioRepository
+                            .findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(),
+                                    p.getSucursal() != null ? p.getSucursal().getId() : null)
                             .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
                             .orElse(0);
                     return productoMapper.toDto(p, stock);
@@ -51,7 +53,9 @@ public class ProductoServiceImpl implements IProductoService {
     public Optional<ProductoDto> findById(Integer id) {
         return productoRepository.findById(id)
                 .map(p -> {
-                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                    Integer stock = inventarioRepository
+                            .findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(),
+                                    p.getSucursal() != null ? p.getSucursal().getId() : null)
                             .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
                             .orElse(0);
                     return productoMapper.toDto(p, stock);
@@ -68,15 +72,20 @@ public class ProductoServiceImpl implements IProductoService {
     @Transactional
     public ProductoDto save(ProductoDto dto) {
         CategoriaProducto categoria = null;
-        if (dto.esPlato() != null && dto.esPlato()) {
+        if (dto.idCategoria() != null) {
+            categoria = categoriaRepository.findById(dto.idCategoria()).orElse(null);
+            System.out.println("DEBUG: Categoría encontrada para ID " + dto.idCategoria() + ": " + (categoria != null ? categoria.getNombreCategoria() : "null"));
+        }
+
+        // Fallback or validation for Platos
+        if (dto.esPlato() != null && dto.esPlato() && categoria == null) {
             List<CategoriaProducto> categorias = categoriaRepository.findAll();
             if (!categorias.isEmpty()) {
                 categoria = categorias.get(0);
+                System.out.println("DEBUG: Usando categoría por defecto para Plato: " + categoria.getNombreCategoria());
             } else {
                 throw new RuntimeException("Debe existir al menos una categoría en el sistema para registrar platos.");
             }
-        } else if (dto.idCategoria() != null) {
-            categoria = categoriaRepository.findById(dto.idCategoria()).orElse(null);
         }
 
         Proveedor proveedor = null;
@@ -99,10 +108,11 @@ public class ProductoServiceImpl implements IProductoService {
 
         Producto entity = productoMapper.toEntity(dto, categoria, proveedor, tipos, sucursal);
         Producto saved = productoRepository.save(entity);
-        
+
         // Ensure stock record exists if stock provided
         if (dto.stock() != null) {
-            com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario.builder()
+            com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
+                    .builder()
                     .producto(saved)
                     .sucursal(sucursal)
                     .stockActual(dto.stock())
@@ -137,33 +147,53 @@ public class ProductoServiceImpl implements IProductoService {
             tipos = new java.util.HashSet<>(tiposRepository.findAllById(dto.idTipos()));
         }
 
-        // Apply fields to existing entity conditionally to avoid wiping non-DTO fields like 'tipo'
-        if (dto.nombreProducto() != null) existente.setNombreProducto(dto.nombreProducto());
-        if (dto.descripcion() != null) existente.setDescripcion(dto.descripcion());
-        if (dto.precioVenta() != null) existente.setPrecioVenta(dto.precioVenta());
-        if (dto.costoCompra() != null) existente.setCostoCompra(dto.costoCompra());
-        if (categoria != null) existente.setCategoria(categoria);
-        if (dto.idProveedor() != null) existente.setProveedor(proveedor); // only reset if explicit in form logic or handle if null means unassign, but form sends null when unchanged or unselected. Let's just set it. 
+        // Apply fields to existing entity conditionally to avoid wiping non-DTO fields
+        // like 'tipo'
+        if (dto.nombreProducto() != null)
+            existente.setNombreProducto(dto.nombreProducto());
+        if (dto.descripcion() != null)
+            existente.setDescripcion(dto.descripcion());
+        if (dto.precioVenta() != null)
+            existente.setPrecioVenta(dto.precioVenta());
+        if (dto.costoCompra() != null)
+            existente.setCostoCompra(dto.costoCompra());
+        if (categoria != null)
+            existente.setCategoria(categoria);
+        if (dto.idProveedor() != null)
+            existente.setProveedor(proveedor); // only reset if explicit in form logic or handle if null means unassign,
+                                               // but form sends null when unchanged or unselected. Let's just set it.
         existente.setProveedor(proveedor); // form dropdown maps null to empty. It's safe to overwrite.
-        if (dto.tipo() != null) existente.setTipo(dto.tipo());
-        if (tipos != null) existente.setTipos(tipos);
-        if (dto.pesoGramos() != null) existente.setPesoGramos(dto.pesoGramos());
-        if (dto.estado() != null) existente.setEstado(dto.estado());
-        if (dto.imagen() != null) existente.setImagen(dto.imagen());
-        if (dto.esPlato() != null) existente.setEsPlato(dto.esPlato());
-        if (dto.horarioDisponible() != null) existente.setHorarioDisponible(dto.horarioDisponible());
-        if (dto.fechaDisponible() != null) existente.setFechaDisponible(dto.fechaDisponible());
+        if (dto.tipo() != null)
+            existente.setTipo(dto.tipo());
+        if (tipos != null)
+            existente.setTipos(tipos);
+        if (dto.pesoGramos() != null)
+            existente.setPesoGramos(dto.pesoGramos());
+        if (dto.estado() != null)
+            existente.setEstado(dto.estado());
+        if (dto.imagen() != null)
+            existente.setImagen(dto.imagen());
+        if (dto.esPlato() != null)
+            existente.setEsPlato(dto.esPlato());
+        if (dto.horarioDisponible() != null)
+            existente.setHorarioDisponible(dto.horarioDisponible());
+        if (dto.fechaDisponible() != null)
+            existente.setFechaDisponible(dto.fechaDisponible());
 
         Producto saved = productoRepository.save(existente);
         Integer finalStock = 0;
 
         // Update Stock if provided
         if (dto.stock() != null && dto.sucursalId() != null) {
-            com.restaurante.resturante.domain.inventario.Inventario inv = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
+            com.restaurante.resturante.domain.inventario.Inventario inv = inventarioRepository
+                    .findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
                     .orElseGet(() -> {
-                        com.restaurante.resturante.domain.maestros.Sucursal sucursalObj = sucursalRepository.findById(dto.sucursalId())
-                            .orElseThrow(() -> new RuntimeException("Sucursal no encontrada con id: " + dto.sucursalId()));
-                        com.restaurante.resturante.domain.inventario.Inventario newInv = com.restaurante.resturante.domain.inventario.Inventario.builder()
+                        com.restaurante.resturante.domain.maestros.Sucursal sucursalObj = sucursalRepository
+                                .findById(dto.sucursalId())
+                                .orElseThrow(() -> new RuntimeException(
+                                        "Sucursal no encontrada con id: " + dto.sucursalId()));
+                        com.restaurante.resturante.domain.inventario.Inventario newInv = com.restaurante.resturante.domain.inventario.Inventario
+                                .builder()
                                 .producto(saved)
                                 .sucursal(sucursalObj)
                                 .stockActual(0)
@@ -176,7 +206,8 @@ public class ProductoServiceImpl implements IProductoService {
             inventarioRepository.save(inv);
             finalStock = dto.stock();
         } else {
-            finalStock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
+            finalStock = inventarioRepository
+                    .findByProducto_IdProductoAndSucursal_Id(saved.getIdProducto(), dto.sucursalId())
                     .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
                     .orElse(0);
         }
@@ -191,7 +222,8 @@ public class ProductoServiceImpl implements IProductoService {
         System.out.println("DEBUG: Encontrados " + productos.size() + " productos para sucursal " + sucursalId);
         return productos.stream()
                 .map(p -> {
-                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), sucursalId)
+                    Integer stock = inventarioRepository
+                            .findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), sucursalId)
                             .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
                             .orElse(0);
                     return productoMapper.toDto(p, stock);
@@ -204,7 +236,9 @@ public class ProductoServiceImpl implements IProductoService {
     public List<ProductoDto> findByEmpresaId(String empresaId) {
         return productoRepository.findBySucursal_Empresa_IdAndEstadoTrue(empresaId).stream()
                 .map(p -> {
-                    Integer stock = inventarioRepository.findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(), p.getSucursal() != null ? p.getSucursal().getId() : null)
+                    Integer stock = inventarioRepository
+                            .findByProducto_IdProductoAndSucursal_Id(p.getIdProducto(),
+                                    p.getSucursal() != null ? p.getSucursal().getId() : null)
                             .map(com.restaurante.resturante.domain.inventario.Inventario::getStockActual)
                             .orElse(0);
                     return productoMapper.toDto(p, stock);
@@ -220,6 +254,7 @@ public class ProductoServiceImpl implements IProductoService {
         producto.setEstado(false);
         productoRepository.save(producto);
     }
+
     @Override
     @Transactional(readOnly = true)
     public List<ProductoDto> findPlatosBySucursalId(String sucursalId) {
@@ -230,12 +265,14 @@ public class ProductoServiceImpl implements IProductoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(String sucursalId) {
+    public List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> getPlatoSalesHistory(
+            String sucursalId) {
         List<Producto> platos = productoRepository.findBySucursal_IdAndEstadoTrueAndEsPlatoTrue(sucursalId);
         List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto> history = new java.util.ArrayList<>();
 
         for (Producto plato : platos) {
-            List<com.restaurante.resturante.domain.ventas.PedidoDetalle> detalles = pedidoDetalleRepository.findByProductoIdProducto(plato.getIdProducto());
+            List<com.restaurante.resturante.domain.ventas.PedidoDetalle> detalles = pedidoDetalleRepository
+                    .findByProductoIdProducto(plato.getIdProducto());
             int manana = 0;
             int tarde = 0;
             int noche = 0;
@@ -259,24 +296,25 @@ public class ProductoServiceImpl implements IProductoService {
                 }
             }
 
-            String nombreCategoria = plato.getCategoria() != null ? plato.getCategoria().getNombreCategoria() : "Sin Categoría";
+            String nombreCategoria = plato.getCategoria() != null ? plato.getCategoria().getNombreCategoria()
+                    : "Sin Categoría";
             if (manana > 0) {
                 history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
-                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Mañana", manana, plato.getPrecioVenta()
-                ));
+                        plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Mañana", manana,
+                        plato.getPrecioVenta()));
             }
             if (tarde > 0) {
                 history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
-                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Tarde", tarde, plato.getPrecioVenta()
-                ));
+                        plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Tarde", tarde,
+                        plato.getPrecioVenta()));
             }
             if (noche > 0) {
                 history.add(new com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto(
-                    plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Noche", noche, plato.getPrecioVenta()
-                ));
+                        plato.getIdProducto(), plato.getNombreProducto(), nombreCategoria, "Noche", noche,
+                        plato.getPrecioVenta()));
             }
         }
-        
+
         // Ordenar por cantidad vendida
         history.sort((a, b) -> Integer.compare(b.cantidadVendida(), a.cantidadVendida()));
 

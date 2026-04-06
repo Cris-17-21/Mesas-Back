@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import com.restaurante.resturante.domain.inventario.Producto;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,7 +28,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "detallespedidocompra")
-public class DetallePedidoCompra {
+public class DetallePedidoCompra extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

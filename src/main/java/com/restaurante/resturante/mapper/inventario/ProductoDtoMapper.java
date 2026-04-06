@@ -32,28 +32,29 @@ public class ProductoDtoMapper {
                         : null,
                 producto.getPesoGramos(),
 
-                null, // fechaRegistro set to null temporarily to restore stability
+                producto.getCreatedDate() != null ? java.time.LocalDateTime.ofInstant(producto.getCreatedDate(), java.time.ZoneId.systemDefault()) : null, // fechaRegistro dynamically mapped from Auditable
                 0, // stock computed via overload or 0
                 producto.getSucursal() != null ? producto.getSucursal().getId() : null, // sucursalId provided by entity
 
                 producto.getEstado(),
                 producto.getImagen(),
-                
+
                 producto.getEsPlato(),
                 producto.getHorarioDisponible(),
                 producto.getFechaDisponible());
     }
 
     public ProductoDto toDto(Producto producto, Integer stockActual) {
-        if (producto == null) return null;
+        if (producto == null)
+            return null;
         ProductoDto dto = toDto(producto);
         return new ProductoDto(
                 dto.idProducto(), dto.nombreProducto(), dto.descripcion(), dto.precioVenta(), dto.costoCompra(),
                 dto.idCategoria(), dto.nombreCategoria(), dto.idProveedor(), dto.razonSocialProveedor(),
-                dto.tipo(), dto.idTipos(), dto.pesoGramos(), dto.fechaRegistro(), 
-                stockActual != null ? stockActual : 0, 
-                dto.sucursalId(), dto.estado(), dto.imagen(), dto.esPlato(), dto.horarioDisponible(), dto.fechaDisponible()
-        );
+                dto.tipo(), dto.idTipos(), dto.pesoGramos(), dto.fechaRegistro(),
+                stockActual != null ? stockActual : 0,
+                dto.sucursalId(), dto.estado(), dto.imagen(), dto.esPlato(), dto.horarioDisponible(),
+                dto.fechaDisponible());
     }
 
     public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor,

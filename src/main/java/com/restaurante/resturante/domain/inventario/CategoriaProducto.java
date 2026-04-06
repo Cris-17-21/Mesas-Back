@@ -3,6 +3,8 @@ package com.restaurante.resturante.domain.inventario;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -25,7 +27,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "categoriasproducto")
-public class CategoriaProducto {
+public class CategoriaProducto extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

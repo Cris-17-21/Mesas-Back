@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.compras.Proveedor;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
@@ -19,7 +20,6 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,7 +35,7 @@ import lombok.ToString;
 @Builder
 @Entity
 @Table(name = "productos")
-public class Producto {
+public class Producto extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
