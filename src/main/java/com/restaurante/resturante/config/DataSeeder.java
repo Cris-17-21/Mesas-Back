@@ -43,11 +43,10 @@ public class DataSeeder implements CommandLineRunner {
                 seedTiposPago();
 
                 // El resto solo se ejecuta la primera vez (cuando no existe superadmin)
-                if (userRepository.findByUsername("superadmin").isPresent()) {
-                        return;
-                }
-
-                System.out.println("🌱 Iniciando DataSeeder...");
+                // Pero permitimos que siga para que se actualicen los módulos y permisos
+                boolean isFirstRun = userRepository.findByUsername("superadmin").isEmpty();
+                
+                System.out.println("🌱 Sincronizando módulos y permisos...");
 
                 PermissionModule dashboardModule = createModuleIfNotExists("Dashboard", "/dashboard", "bi bi-house", 0,
                                 null);
@@ -93,10 +92,19 @@ public class DataSeeder implements CommandLineRunner {
                 PermissionModule maestrosModule = createModuleIfNotExists("Maestros", "/maestros",
                                 "bi bi-wrench-adjustable", 2,
                                 null);
-                PermissionModule empresaModule = createModuleIfNotExists("Empresas", "/empresas", "bi bi-building", 1,
+                PermissionModule empresaModule = createModuleIfNotExists("Empresas", "/empresa", "bi bi-building", 1,
                                 maestrosModule);
-                PermissionModule sucursalesModule = createModuleIfNotExists("Sucursales", "/sucursales",
+                PermissionModule sucursalesModule = createModuleIfNotExists("Sucursales", "/sucursal",
                                 "bi bi-buildings", 2,
+                                maestrosModule);
+
+                PermissionModule pisosModule = createModuleIfNotExists("Pisos", "/pisos", "bi bi-layers", 3,
+                                maestrosModule);
+                PermissionModule mesasModule = createModuleIfNotExists("Mesas", "/mesas", "bi bi-grid-3x3-gap", 4,
+                                maestrosModule);
+                PermissionModule clientesModule = createModuleIfNotExists("Clientes", "/clientes", "bi bi-person-lines-fill", 5,
+                                maestrosModule);
+                PermissionModule metodosModule = createModuleIfNotExists("Métodos de Pago", "/metodos", "bi bi-credit-card", 6,
                                 maestrosModule);
 
                 // Permisos de Maestros -> empresas
@@ -111,6 +119,27 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("CREATE_SUCURSAL", "Crear sucursales", sucursalesModule);
                 createPermissionIfNotExists("UPDATE_SUCURSAL", "Editar sucursales", sucursalesModule);
                 createPermissionIfNotExists("DELETE_SUCURSAL", "Eliminar sucursales", sucursalesModule);
+
+                // Permisos de Maestros -> Otros (CRUD Completo)
+                createPermissionIfNotExists("READ_PISO", "Ver pisos", pisosModule);
+                createPermissionIfNotExists("CREATE_PISO", "Crear pisos", pisosModule);
+                createPermissionIfNotExists("UPDATE_PISO", "Editar pisos", pisosModule);
+                createPermissionIfNotExists("DELETE_PISO", "Eliminar pisos", pisosModule);
+
+                createPermissionIfNotExists("READ_MESA", "Ver mesas", mesasModule);
+                createPermissionIfNotExists("CREATE_MESA", "Crear mesas", mesasModule);
+                createPermissionIfNotExists("UPDATE_MESA", "Editar mesas", mesasModule);
+                createPermissionIfNotExists("DELETE_MESA", "Eliminar mesas", mesasModule);
+
+                createPermissionIfNotExists("READ_CLIENTE", "Ver clientes", clientesModule);
+                createPermissionIfNotExists("CREATE_CLIENTE", "Crear clientes", clientesModule);
+                createPermissionIfNotExists("UPDATE_CLIENTE", "Editar clientes", clientesModule);
+                createPermissionIfNotExists("DELETE_CLIENTE", "Eliminar clientes", clientesModule);
+
+                createPermissionIfNotExists("READ_METODO_PAGO", "Ver métodos de pago", metodosModule);
+                createPermissionIfNotExists("CREATE_METODO_PAGO", "Crear métodos de pago", metodosModule);
+                createPermissionIfNotExists("UPDATE_METODO_PAGO", "Editar métodos de pago", metodosModule);
+                createPermissionIfNotExists("DELETE_METODO_PAGO", "Eliminar métodos de pago", metodosModule);
 
                 // --- MÓDULO DE COMPRAS (Padre) ---
                 PermissionModule comprasModule = createModuleIfNotExists("Compras", "/compras", "bi bi-cart4", 4, null);
@@ -185,8 +214,15 @@ public class DataSeeder implements CommandLineRunner {
                         return newRole;
                 });
 
-                // SIEMPRE actualizamos los permisos al reiniciar
-                Set<Permission> superAdminPermissions = new HashSet<>(permissionRepository.findAll());
+                // SIEMPRE actualizamos los permisos al reiniciar para incluir los nuevos
+                // Pero filtramos los que no debe tener el SuperAdmin (Pisos, Mesas, Métodos de Pago)
+                Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
+                Set<Permission> superAdminPermissions = allPermissions.stream()
+                        .filter(p -> !p.getName().contains("_PISO") && 
+                                     !p.getName().contains("_MESA") && 
+                                     !p.getName().contains("_METODO_PAGO"))
+                        .collect(java.util.stream.Collectors.toSet());
+                
                 superAdminRole.setPermissions(superAdminPermissions);
                 roleRepository.save(superAdminRole);
 
@@ -194,52 +230,59 @@ public class DataSeeder implements CommandLineRunner {
                 TipoDocumento dniTipo = tipoDocumentoRepository.findByName("DNI").orElseGet(() -> {
                         TipoDocumento nuevo = new TipoDocumento();
                         nuevo.setName("DNI");
-                        // CORRECCIÓN: Asignar auditoría manualmente
                         nuevo.setCreatedBy("SYSTEM");
                         return tipoDocumentoRepository.save(nuevo);
                 });
 
-                // --- 4. Crear el Usuario Super Admin ---
-                Role rolSuperAdmin = roleRepository.findByName("ROLE_SUPER_ADMIN").orElseThrow();
+                // --- 4. Crear el Usuario Super Admin (solo si no existe) ---
+                if (isFirstRun) {
+                        Role rolSuperAdmin = roleRepository.findByName("ROLE_SUPER_ADMIN").orElseThrow();
 
-                User superAdminUser = User.builder()
-                                .username("superadmin")
-                                .password(passwordEncoder.encode("admin123"))
-                                .nombres("Super")
-                                .apellidoPaterno("Admin")
-                                .apellidoMaterno("User")
-                                .tipoDocumento(dniTipo)
-                                .numeroDocumento("00000000")
-                                .telefono("943316756")
-                                .email("superadmin@sgrncr.com")
-                                .active(true)
-                                .role(rolSuperAdmin)
-                                .build();
+                        User superAdminUser = User.builder()
+                                        .username("superadmin")
+                                        .password(passwordEncoder.encode("admin123"))
+                                        .nombres("Super")
+                                        .apellidoPaterno("Admin")
+                                        .apellidoMaterno("User")
+                                        .tipoDocumento(dniTipo)
+                                        .numeroDocumento("00000000")
+                                        .telefono("943316756")
+                                        .email("superadmin@sgrncr.com")
+                                        .active(true)
+                                        .role(rolSuperAdmin)
+                                        .build();
 
-                // CORRECCIÓN: Si User extiende de una clase base y el builder no lo cubre,
-                // setters manuales:
-                superAdminUser.setCreatedBy("SYSTEM");
-
-                userRepository.save(superAdminUser);
+                        superAdminUser.setCreatedBy("SYSTEM");
+                        userRepository.save(superAdminUser);
+                }
 
                 System.out.println("✅ DataSeeder finalizado correctamente.");
         }
 
         private PermissionModule createModuleIfNotExists(String name, String relativePath, String iconName, int order,
                         PermissionModule parent) {
-                return permissionModuleRepository.findByName(name).orElseGet(() -> {
+                
+                String finalPath = relativePath;
+                if (parent != null && parent.getUrlPath() != null && relativePath != null) {
+                        finalPath = parent.getUrlPath() + relativePath;
+                }
+                final String urlPath = finalPath;
+
+                return permissionModuleRepository.findByName(name).map(existingModule -> {
+                        // Si ya existe, verificamos si la ruta ha cambiado
+                        if (!urlPath.equals(existingModule.getUrlPath())) {
+                                System.out.println("🔄 Actualizando ruta de " + name + ": " + existingModule.getUrlPath() + " -> " + urlPath);
+                                existingModule.setUrlPath(urlPath);
+                                return permissionModuleRepository.save(existingModule);
+                        }
+                        return existingModule;
+                }).orElseGet(() -> {
                         PermissionModule newModule = new PermissionModule();
                         newModule.setName(name);
                         newModule.setIconName(iconName);
                         newModule.setDisplayOrder(order);
                         newModule.setParent(parent);
-
-                        String finalPath = relativePath;
-                        if (parent != null && parent.getUrlPath() != null && relativePath != null) {
-                                finalPath = parent.getUrlPath() + relativePath;
-                        }
-                        newModule.setUrlPath(finalPath);
-
+                        newModule.setUrlPath(urlPath);
                         return permissionModuleRepository.save(newModule);
                 });
         }
