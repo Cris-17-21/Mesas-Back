@@ -31,6 +31,8 @@ import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
 import com.restaurante.resturante.service.maestros.IMesaService;
 import com.restaurante.resturante.service.venta.IPedidoService;
+import com.restaurante.resturante.service.inventario.IInventarioService;
+import com.restaurante.resturante.dto.inventario.MovimientoRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -50,6 +52,7 @@ public class PedidoService implements IPedidoService {
         private final UserRepository userRepository;
         private final com.restaurante.resturante.repository.venta.PedidoPagoRepository pagoRepository;
         private final com.restaurante.resturante.repository.maestro.MedioPagoRepository medioPagoRepository;
+        private final IInventarioService inventarioService;
 
         @Override
         @Transactional
@@ -101,8 +104,26 @@ public class PedidoService implements IPedidoService {
                         pedido.setMesa(mesa);
                         mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
                 }
+                
+                Pedido savedPedido = pedidoRepository.save(pedido);
 
-                return pedidoMapper.toDto(pedidoRepository.save(pedido));
+                // 5. Descontar stock (Hook Almacén)
+                for (PedidoDetalle d : detalles) {
+                        if (Boolean.TRUE.equals(d.getProducto().getControlarStock())) {
+                                MovimientoRequest movReq = new MovimientoRequest(
+                                                d.getProducto().getIdProducto(),
+                                                sucursal.getId(),
+                                                "SALIDA",
+                                                d.getCantidad(),
+                                                "PEDIDO",
+                                                usuario.getId(),
+                                                savedPedido.getCodigoPedido()
+                                );
+                                inventarioService.registrarMovimiento(movReq);
+                        }
+                }
+
+                return pedidoMapper.toDto(savedPedido);
         }
 
         @Override
@@ -125,7 +146,25 @@ public class PedidoService implements IPedidoService {
                 pedido.getPedidoDetalles().addAll(extras);
                 pedido.calcularTotales(); // Recalcula total_final
 
-                return pedidoMapper.toDto(pedidoRepository.save(pedido));
+                Pedido savedPedido = pedidoRepository.save(pedido);
+
+                // Descontar stock (Hook Almacén)
+                for (PedidoDetalle d : extras) {
+                        if (Boolean.TRUE.equals(d.getProducto().getControlarStock())) {
+                                MovimientoRequest movReq = new MovimientoRequest(
+                                                d.getProducto().getIdProducto(),
+                                                pedido.getSucursal().getId(),
+                                                "SALIDA",
+                                                d.getCantidad(),
+                                                "PEDIDO",
+                                                pedido.getUser().getId(),
+                                                savedPedido.getCodigoPedido()
+                                );
+                                inventarioService.registrarMovimiento(movReq);
+                        }
+                }
+
+                return pedidoMapper.toDto(savedPedido);
         }
 
         @Override
