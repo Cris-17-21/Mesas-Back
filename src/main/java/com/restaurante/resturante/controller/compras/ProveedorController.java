@@ -30,6 +30,10 @@ public class ProveedorController {
     public ResponseEntity<List<ProveedorDto>> getAll() {
         return ResponseEntity.ok(proveedorService.findAll());
     }
+    @GetMapping("/empresa/{empresaId}")
+    public ResponseEntity<List<ProveedorDto>> getByEmpresaId(@PathVariable String empresaId) {
+        return ResponseEntity.ok(proveedorService.findByEmpresaId(empresaId));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProveedorDto> getById(@PathVariable Integer id) {

@@ -10,6 +10,8 @@ import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
 public interface IPedidoCompraService {
     List<PedidoCompraDto> findAll();
 
+    List<PedidoCompraDto> findBySucursalId(String sucursalId);
+
     Optional<PedidoCompraDto> findById(Long id);
 
     PedidoCompraDto registrarPedido(PedidoCompraDto dto);

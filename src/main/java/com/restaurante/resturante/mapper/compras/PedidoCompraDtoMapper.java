@@ -13,6 +13,7 @@ import com.restaurante.resturante.domain.security.User;
 import com.restaurante.resturante.dto.compras.PedidoCompraDto;
 import com.restaurante.resturante.dto.compras.DetallePedidoCompraDto;
 import com.restaurante.resturante.domain.inventario.Producto;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 
 @Component
 public class PedidoCompraDtoMapper {
@@ -29,6 +30,7 @@ public class PedidoCompraDtoMapper {
                 pedido.getProveedor() != null ? pedido.getProveedor().getIdProveedor() : null,
                 pedido.getProveedor() != null ? pedido.getProveedor().getRazonSocial() : null,
                 pedido.getUsuario() != null ? pedido.getUsuario().getId() : null,
+                pedido.getSucursal() != null ? pedido.getSucursal().getId() : null,
                 pedido.getUsuario() != null ? pedido.getUsuario().getUsername() : null,
                 pedido.getFechaPedido(),
                 pedido.getFechaEntregaEsperada(),
@@ -59,13 +61,14 @@ public class PedidoCompraDtoMapper {
                 null); // idCategoriaNuevoProducto mainly for input
     }
 
-    public PedidoCompra toEntity(PedidoCompraDto dto, Proveedor proveedor, User usuario, TiposPago tipoPago) {
+    public PedidoCompra toEntity(PedidoCompraDto dto, Proveedor proveedor, User usuario, TiposPago tipoPago, Sucursal sucursal) {
         if (dto == null)
             return null;
 
         return PedidoCompra.builder()
                 .proveedor(proveedor)
                 .usuario(usuario)
+                .sucursal(sucursal)
                 .fechaEntregaEsperada(dto.fechaEntregaEsperada())
                 .tipoPago(tipoPago)
                 .referencia(dto.referencia())

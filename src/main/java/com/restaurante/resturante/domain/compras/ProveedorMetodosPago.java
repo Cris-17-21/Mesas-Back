@@ -1,5 +1,7 @@
 package com.restaurante.resturante.domain.compras;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -22,7 +24,7 @@ import java.io.Serializable;
 @Entity
 @Table(name = "proveedor_metodospago")
 @IdClass(ProveedorMetodosPagoId.class)
-public class ProveedorMetodosPago {
+public class ProveedorMetodosPago extends Auditable {
 
     @Id
     @Column(name = "id_proveedor")

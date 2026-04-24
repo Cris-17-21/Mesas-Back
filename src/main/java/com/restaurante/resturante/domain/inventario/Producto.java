@@ -4,8 +4,9 @@ import java.math.BigDecimal;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.restaurante.resturante.domain.audit.Auditable;
 import com.restaurante.resturante.domain.compras.Proveedor;
-import com.restaurante.resturante.domain.maestros.Empresa;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 import jakarta.persistence.Column;
@@ -19,7 +20,6 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,7 +35,7 @@ import lombok.ToString;
 @Builder
 @Entity
 @Table(name = "productos")
-public class Producto {
+public class Producto extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,8 +63,8 @@ public class Producto {
     private Proveedor proveedor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "empresa_id", nullable = true) // Nullable por compatibilidad con datos existentes
-    private Empresa empresa;
+    @JoinColumn(name = "sucursal_id", nullable = true) // Nullable por compatibilidad
+    private Sucursal sucursal;
 
     @Column(name = "tipo", length = 20)
     private String tipo;
@@ -107,11 +107,11 @@ public class Producto {
     @JoinTable(name = "producto_tipos", joinColumns = @JoinColumn(name = "id_producto"), inverseJoinColumns = @JoinColumn(name = "id_tipo"))
     private Set<TiposProducto> tipos;
 
-    @OneToOne(mappedBy = "producto", fetch = FetchType.LAZY)
-    private Inventario inventario;
+    @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)
+    private Set<Inventario> inventarios;
 
     public Integer getStock() {
-        return inventario != null && inventario.getStockActual() != null ? inventario.getStockActual() : 0;
+        return 0; // Calculado nivel de Service por Sucursal
     }
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY)

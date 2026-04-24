@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.restaurante.resturante.domain.audit.Auditable;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.security.User;
 
 import jakarta.persistence.CascadeType;
@@ -50,6 +51,10 @@ public class PedidoCompra extends Auditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario", nullable = false)
     private User usuario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sucursal_id", nullable = false)
+    private Sucursal sucursal;
 
     @Column(name = "fecha_pedido", nullable = false, updatable = false)
     @Builder.Default

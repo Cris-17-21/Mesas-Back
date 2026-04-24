@@ -5,6 +5,8 @@ import org.springframework.stereotype.Repository;
 
 import com.restaurante.resturante.domain.compras.Proveedor;
 
-@Repository
+import java.util.List;
+
 public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
+    List<Proveedor> findByEmpresa_Id(String empresaId);
 }

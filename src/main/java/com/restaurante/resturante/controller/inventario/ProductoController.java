@@ -48,19 +48,25 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.update(id, dto));
     }
 
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<List<ProductoDto>> findBySucursalId(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(productoService.findBySucursalId(sucursalId));
+    }
+
+    // Legacy method for backward compatibility
     @GetMapping("/empresa/{empresaId}")
     public ResponseEntity<List<ProductoDto>> findByEmpresaId(@PathVariable String empresaId) {
         return ResponseEntity.ok(productoService.findByEmpresaId(empresaId));
     }
 
-    @GetMapping("/empresa/{empresaId}/platos")
-    public ResponseEntity<List<ProductoDto>> findPlatosByEmpresaId(@PathVariable String empresaId) {
-        return ResponseEntity.ok(productoService.findPlatosByEmpresaId(empresaId));
+    @GetMapping("/sucursal/{sucursalId}/platos")
+    public ResponseEntity<List<ProductoDto>> findPlatosBySucursalId(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(productoService.findPlatosBySucursalId(sucursalId));
     }
 
-    @GetMapping("/empresa/{empresaId}/platos/ventas")
-    public ResponseEntity<List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto>> getPlatoSalesHistory(@PathVariable String empresaId) {
-        return ResponseEntity.ok(productoService.getPlatoSalesHistory(empresaId));
+    @GetMapping("/sucursal/{sucursalId}/platos/ventas")
+    public ResponseEntity<List<com.restaurante.resturante.dto.inventario.PlatoSalesHistoryDto>> getPlatoSalesHistory(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(productoService.getPlatoSalesHistory(sucursalId));
     }
 
     @DeleteMapping("/{id}")

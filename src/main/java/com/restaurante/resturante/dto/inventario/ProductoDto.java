@@ -18,6 +18,7 @@ public record ProductoDto(
 
                 java.time.LocalDateTime fechaRegistro,
                 Integer stock,
+                String sucursalId,
 
                 Boolean estado,
                 String imagen,

@@ -8,5 +8,6 @@ public record ProveedorDto(
                 String direccion,
                 String telefono,
                 Integer estado,
+                String empresaId,
                 java.util.List<ProveedorMetodoPagoDto> metodosPago) {
 }

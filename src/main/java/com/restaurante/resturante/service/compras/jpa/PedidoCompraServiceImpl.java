@@ -22,8 +22,11 @@ import com.restaurante.resturante.repository.compras.PedidoCompraRepository;
 import com.restaurante.resturante.repository.compras.ProveedorRepository;
 import com.restaurante.resturante.repository.compras.TiposPagoRepository;
 import com.restaurante.resturante.repository.inventario.ProductoRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserRepository; // Assuming exists
 import com.restaurante.resturante.service.compras.IPedidoCompraService;
+import com.restaurante.resturante.service.inventario.IInventarioService;
+import com.restaurante.resturante.dto.inventario.MovimientoRequest;
 import com.restaurante.resturante.dto.compras.RecepcionPedidoRequest;
 
 import lombok.RequiredArgsConstructor;
@@ -41,7 +44,9 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
     private final UserRepository userRepository;
     private final com.restaurante.resturante.repository.inventario.InventarioRepository inventarioRepository;
     private final com.restaurante.resturante.repository.inventario.CategoriaProductoRepository categoriaProductoRepository;
+    private final SucursalRepository sucursalRepository;
     private final PedidoCompraDtoMapper pedidoMapper;
+    private final IInventarioService inventarioService;
 
     @Override
     @Transactional(readOnly = true)
@@ -67,6 +72,14 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                     // Let's keep list view lightweight (no details).
                     return pedidoMapper.toDto(pedido, pedido.getDetalles());
                 })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PedidoCompraDto> findBySucursalId(String sucursalId) {
+        return pedidoRepository.findBySucursal_Id(sucursalId).stream()
+                .map(pedido -> pedidoMapper.toDto(pedido, pedido.getDetalles()))
                 .collect(Collectors.toList());
     }
 
@@ -114,6 +127,9 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         User usuario = userRepository.findById(dto.idUsuario())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        com.restaurante.resturante.domain.maestros.Sucursal sucursalObj = sucursalRepository.findById(dto.sucursalId())
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada con id: " + dto.sucursalId()));
+
         TiposPago tipoPago = null;
         if (dto.idTipoPago() != null) {
             tipoPago = tiposPagoRepository.findById(dto.idTipoPago()).orElse(null);
@@ -125,7 +141,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
         }
 
         // 3. Create Header
-        PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago);
+        PedidoCompra pedido = pedidoMapper.toEntity(dto, proveedor, usuario, tipoPago, sucursalObj);
         if (Boolean.TRUE.equals(dto.esCompraSimple())) {
             pedido.setEstadoPedido("COMPLETADO");
             pedido.setNombreProveedorInformal(dto.nombreProveedorInformal());
@@ -153,6 +169,7 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                             .costoCompra(detDto.costoUnitario())
                             .tipo("INFORMAL")
                             .categoria(categoria)
+                            .sucursal(sucursalObj)
                             .estado(true) // Active
                             .controlarStock(true) // Start controlling stock
                             .stockMinimo(5)
@@ -184,22 +201,17 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
                 totalCalculado = totalCalculado.add(detalle.getSubtotalLinea());
 
                 if (Boolean.TRUE.equals(dto.esCompraSimple())) {
-                    // Para compras simples, actualizar el inventario automáticamente
-                    com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
-                            .findByProducto_IdProducto(producto.getIdProducto())
-                            .orElseGet(() -> {
-                                com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
-                                        .builder()
-                                        .producto(producto)
-                                        .stockActual(0)
-                                        .stockMinimo(5)
-                                        .build();
-                                inv.setCreatedBy("SYSTEM");
-                                return inv;
-                            });
-
-                    inventario.setStockActual(inventario.getStockActual() + detDto.cantidadPedida());
-                    inventarioRepository.save(inventario);
+                    // Para compras simples, registrar movimiento de inventario usando el servicio
+                    MovimientoRequest movReq = new MovimientoRequest(
+                        producto.getIdProducto(),
+                        sucursalObj.getId(),
+                        "ENTRADA",
+                        detDto.cantidadPedida(),
+                        "COMPRA",
+                        usuario.getId(),
+                        pedido.getReferencia() != null ? pedido.getReferencia() : ("PED_COMPRA_" + pedido.getIdPedidoCompra())
+                    );
+                    inventarioService.registrarMovimiento(movReq);
                 }
             }
         }
@@ -260,23 +272,18 @@ public class PedidoCompraServiceImpl implements IPedidoCompraService {
             detalle.setCantidadRecibida(detalle.getCantidadRecibida() + cantidadRecibidaAhora);
             detalleRepository.save(detalle);
 
-            // Update Real-Time Inventory
+            // Update Real-Time Inventory using the Movement Service
             Producto producto = detalle.getProducto();
-            com.restaurante.resturante.domain.inventario.Inventario inventario = inventarioRepository
-                    .findByProducto_IdProducto(producto.getIdProducto())
-                    .orElseGet(() -> {
-                        com.restaurante.resturante.domain.inventario.Inventario inv = com.restaurante.resturante.domain.inventario.Inventario
-                                .builder()
-                                .producto(producto)
-                                .stockActual(0)
-                                .stockMinimo(5)
-                                .build();
-                        inv.setCreatedBy("SYSTEM");
-                        return inv;
-                    });
-
-            inventario.setStockActual(inventario.getStockActual() + cantidadRecibidaAhora);
-            inventarioRepository.save(inventario);
+            MovimientoRequest movReq = new MovimientoRequest(
+                producto.getIdProducto(),
+                pedido.getSucursal().getId(),
+                "ENTRADA",
+                cantidadRecibidaAhora,
+                "COMPRA",
+                pedido.getUsuario() != null ? pedido.getUsuario().getId() : null,
+                pedido.getReferencia() != null ? pedido.getReferencia() : ("PED_COMPRA_" + pedido.getIdPedidoCompra())
+            );
+            inventarioService.registrarMovimiento(movReq);
 
             algunaRecepcion = true;
         }

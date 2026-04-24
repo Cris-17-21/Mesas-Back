@@ -26,6 +26,12 @@ public class CategoriaProductoController {
 
     private final ICategoriaProductoService categoriaService;
 
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<List<CategoriaProductoDto>> findBySucursalId(@PathVariable String sucursalId) {
+        return ResponseEntity.ok(categoriaService.findBySucursalId(sucursalId));
+    }
+
+    // Legacy endpoint for backward compatibility
     @GetMapping("/empresa/{empresaId}")
     public ResponseEntity<List<CategoriaProductoDto>> findByEmpresaId(@PathVariable String empresaId) {
         return ResponseEntity.ok(categoriaService.findByEmpresaId(empresaId));

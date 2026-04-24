@@ -4,12 +4,20 @@ import java.util.List;
 
 import com.restaurante.resturante.domain.compras.Proveedor;
 import com.restaurante.resturante.dto.inventario.InventarioDto;
+import com.restaurante.resturante.dto.inventario.MovimientoInventarioDto;
+import com.restaurante.resturante.dto.inventario.MovimientoRequest;
 
 public interface IInventarioService {
 
-    List<InventarioDto> listarProductosInventario();
+    List<InventarioDto> listarProductosInventario(String sucursalId);
 
-    List<Proveedor> listarProveedoresConInventario();
+    List<Proveedor> listarProveedoresConInventario(String sucursalId);
 
-    List<InventarioDto> listarProductosPorProveedor(Integer idProveedor);
+    List<InventarioDto> listarProductosPorProveedor(Integer idProveedor, String sucursalId);
+
+    MovimientoInventarioDto registrarMovimiento(MovimientoRequest request);
+
+    List<MovimientoInventarioDto> obtenerHistorialMovimientos(String sucursalId);
+
+    List<MovimientoInventarioDto> obtenerHistorialMovimientosPorProducto(Integer idProducto, String sucursalId);
 }

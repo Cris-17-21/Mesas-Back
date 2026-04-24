@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import com.restaurante.resturante.domain.compras.Proveedor;
 import com.restaurante.resturante.domain.inventario.CategoriaProducto;
 import com.restaurante.resturante.domain.inventario.Producto;
+import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.dto.inventario.ProductoDto;
 
 @Component
@@ -31,23 +32,33 @@ public class ProductoDtoMapper {
                         : null,
                 producto.getPesoGramos(),
 
-                producto.getInventario() != null && producto.getInventario().getLastModifiedDate() != null
-                        ? java.time.LocalDateTime.ofInstant(producto.getInventario().getLastModifiedDate(), java.time.ZoneId.systemDefault())
-                        : (producto.getInventario() != null && producto.getInventario().getCreatedDate() != null 
-                            ? java.time.LocalDateTime.ofInstant(producto.getInventario().getCreatedDate(), java.time.ZoneId.systemDefault()) 
-                            : null),
-                producto.getStock(),
+                producto.getCreatedDate() != null ? java.time.LocalDateTime.ofInstant(producto.getCreatedDate(), java.time.ZoneId.systemDefault()) : null, // fechaRegistro dynamically mapped from Auditable
+                0, // stock computed via overload or 0
+                producto.getSucursal() != null ? producto.getSucursal().getId() : null, // sucursalId provided by entity
 
                 producto.getEstado(),
                 producto.getImagen(),
-                
+
                 producto.getEsPlato(),
                 producto.getHorarioDisponible(),
                 producto.getFechaDisponible());
     }
 
+    public ProductoDto toDto(Producto producto, Integer stockActual) {
+        if (producto == null)
+            return null;
+        ProductoDto dto = toDto(producto);
+        return new ProductoDto(
+                dto.idProducto(), dto.nombreProducto(), dto.descripcion(), dto.precioVenta(), dto.costoCompra(),
+                dto.idCategoria(), dto.nombreCategoria(), dto.idProveedor(), dto.razonSocialProveedor(),
+                dto.tipo(), dto.idTipos(), dto.pesoGramos(), dto.fechaRegistro(),
+                stockActual != null ? stockActual : 0,
+                dto.sucursalId(), dto.estado(), dto.imagen(), dto.esPlato(), dto.horarioDisponible(),
+                dto.fechaDisponible());
+    }
+
     public Producto toEntity(ProductoDto dto, CategoriaProducto categoria, Proveedor proveedor,
-            java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos) {
+            java.util.Set<com.restaurante.resturante.domain.inventario.TiposProducto> tipos, Sucursal sucursal) {
         if (dto == null)
             return null;
 
@@ -61,6 +72,7 @@ public class ProductoDtoMapper {
                 .proveedor(proveedor)
                 .tipo(dto.tipo())
                 .tipos(tipos)
+                .sucursal(sucursal)
                 .pesoGramos(dto.pesoGramos())
 
                 .estado(dto.estado())

@@ -2,6 +2,8 @@ package com.restaurante.resturante.domain.compras;
 
 import java.math.BigDecimal;
 
+import com.restaurante.resturante.domain.audit.Auditable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -22,7 +24,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "pagoscomprobante")
-public class PagosComprobante {
+public class PagosComprobante extends Auditable {
 
     @Id
     @Column(name = "id_pago")

@@ -42,7 +42,7 @@ public class Auditable {
     // ----- SINCRONIZACION ------
 
     @Column(name = "sincronizado_cloud", nullable = false)
-    private boolean sincronizadoCloud = false;
+    private Boolean sincronizadoCloud = false;
 
     @Version
     private Long version;
