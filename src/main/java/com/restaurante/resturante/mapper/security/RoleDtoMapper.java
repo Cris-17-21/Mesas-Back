@@ -22,31 +22,34 @@ public class RoleDtoMapper {
     }
 
     public RoleDto toDto(Role role) {
-        if (role == null) return null;
+        if (role == null)
+            return null;
         Set<PermissionDto> permissions = role.getPermissions().stream()
                 .map(permissionMapper::toDto)
                 .collect(Collectors.toSet());
 
         return new RoleDto(
                 role.getId(),
-                role.getName(),
+                role.getName().toUpperCase(),
                 role.getDescription(),
-                permissions
-        );
+                permissions);
     }
 
     public Role toEntity(CreateRoleDto dto, Set<Permission> permissions) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
         Role role = new Role();
-        role.setName(dto.name());
+        role.setName(dto.name().toUpperCase());
         role.setDescription(dto.description());
         role.setPermissions(permissions);
         return role;
     }
 
     public Role updateEntity(Role existing, CreateRoleDto dto, Set<Permission> permissions) {
-        if (dto.name() != null && !dto.name().isBlank()) existing.setName(dto.name());
-        if (dto.description() != null) existing.setDescription(dto.description());
+        if (dto.name() != null && !dto.name().isBlank())
+            existing.setName(dto.name().toUpperCase());
+        if (dto.description() != null)
+            existing.setDescription(dto.description());
         existing.setPermissions(permissions);
         return existing;
     }

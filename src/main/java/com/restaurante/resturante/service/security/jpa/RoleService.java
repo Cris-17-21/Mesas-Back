@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class RoleService implements IRoleService{
+public class RoleService implements IRoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
@@ -86,7 +86,7 @@ public class RoleService implements IRoleService{
                 })
                 .collect(Collectors.toSet());
 
-        existing.setName(dto.name());
+        existing.setName(dto.name().toUpperCase());
         existing.setPermissions(permissions);
 
         Role updated = roleRepository.save(existing);
@@ -107,8 +107,10 @@ public class RoleService implements IRoleService{
     }
 
     private void validateDto(CreateRoleDto dto) {
-        if (dto == null) throw new IllegalArgumentException("DTO no puede ser nulo");
-        if (dto.name() == null || dto.name().isBlank()) throw new IllegalArgumentException("El nombre es obligatorio");
+        if (dto == null)
+            throw new IllegalArgumentException("DTO no puede ser nulo");
+        if (dto.name() == null || dto.name().isBlank())
+            throw new IllegalArgumentException("El nombre es obligatorio");
         if (dto.description() != null && dto.description().length() > 50)
             throw new IllegalArgumentException("La descripción no puede exceder 50 caracteres");
     }

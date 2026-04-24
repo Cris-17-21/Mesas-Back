@@ -137,7 +137,7 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("CREATE_PRODUCTO", "Crear productos", productosModule);
                 createPermissionIfNotExists("UPDATE_PRODUCTO", "Editar productos", productosModule);
                 createPermissionIfNotExists("DELETE_PRODUCTO", "Eliminar productos", productosModule);
-                
+
                 // Permisos específicos para Platos (dentro de Productos)
                 createPermissionIfNotExists("CREATE_PLATO", "Agregar nuevos platos", productosModule);
                 createPermissionIfNotExists("SELL_PLATO", "Vender platos", productosModule);
@@ -159,12 +159,13 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("CREATE_PROVEEDOR", "Crear proveedores", proveedoresModule);
                 createPermissionIfNotExists("UPDATE_PROVEEDOR", "Editar proveedores", proveedoresModule);
                 createPermissionIfNotExists("DELETE_PROVEEDOR", "Eliminar proveedores", proveedoresModule);
-                // Modulo de creacion de ventas
+
+                // 4. Maestros ->
                 PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "null", 3, null);
                 PermissionModule comandaModule = createModuleIfNotExists("Pedido", "/pedido", "null", 1, ventasModule);
                 createPermissionIfNotExists("READ_PEDIDO", "Ver pedido", comandaModule);
 
-                // --- 4. Almacén / Inventario ---
+                // --- 5. Almacén / Inventario ---
                 PermissionModule almacenModule = createModuleIfNotExists("Almacén", "/almacen", "bi bi-archive", 5,
                                 null);
                 PermissionModule inventarioModule = createModuleIfNotExists("Inventario", "/inventario",
