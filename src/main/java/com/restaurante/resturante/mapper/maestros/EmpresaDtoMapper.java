@@ -28,11 +28,22 @@ public class EmpresaDtoMapper {
                 empresa.getId(),
                 empresa.getRuc(),
                 empresa.getRazonSocial(),
+                empresa.getNombreComercial(),
                 empresa.getDireccionFiscal(),
+                empresa.getUbigeo(),
+                empresa.getProvincia(),
+                empresa.getDepartamento(),
+                empresa.getDistrito(),
                 empresa.getTelefono(),
                 empresa.getEmail(),
-                empresa.getLogoUrl(),
+                empresa.getLogoUrl() != null ? new String(empresa.getLogoUrl(), java.nio.charset.StandardCharsets.UTF_8)
+                        : null,
                 empresa.getFechaAfiliacion() != null ? empresa.getFechaAfiliacion().toString() : null,
+                empresa.getUsuarioSol(),
+                empresa.getClaveSol(),
+                empresa.getClaveCertificado(),
+                empresa.getEntorno(),
+                empresa.getCertificadoDigital(),
                 empresa.getSucursales() != null
                         ? empresa.getSucursales().stream().map(sucursalMapper::toDto).collect(Collectors.toList())
                         : Collections.emptyList());
@@ -50,12 +61,22 @@ public class EmpresaDtoMapper {
         return Empresa.builder()
                 .ruc(rucSeguro)
                 .razonSocial(razonSocialSeguro.toUpperCase())
+                .nombreComercial(dto.nombreComercial())
                 .direccionFiscal(dto.direccionFiscal())
+                .ubigeo(dto.ubigeo())
+                .provincia(dto.provincia())
+                .departamento(dto.departamento())
+                .distrito(dto.distrito())
                 .telefono(dto.telefono())
                 .email(dto.email())
-                .logoUrl(dto.logoUrl())
+                .logoUrl(dto.logoUrl() != null ? dto.logoUrl().getBytes(java.nio.charset.StandardCharsets.UTF_8) : null)
                 .fechaAfiliacion(
                         dto.fechaAfiliacion() != null ? LocalDate.parse(dto.fechaAfiliacion()) : LocalDate.now())
+                .usuarioSol(dto.usuarioSol())
+                .claveSol(dto.claveSol())
+                .claveCertificado(dto.claveCertificado())
+                .entorno(dto.entorno() != null ? dto.entorno() : false)
+                .certificadoDigital(dto.certificadoDigital())
                 .active(true)
                 .build();
     }
@@ -75,11 +96,32 @@ public class EmpresaDtoMapper {
 
         if (dto.direccionFiscal() != null)
             entity.setDireccionFiscal(dto.direccionFiscal());
+        if (dto.nombreComercial() != null)
+            entity.setNombreComercial(dto.nombreComercial());
+        if (dto.ubigeo() != null)
+            entity.setUbigeo(dto.ubigeo());
+        if (dto.provincia() != null)
+            entity.setProvincia(dto.provincia());
+        if (dto.departamento() != null)
+            entity.setDepartamento(dto.departamento());
+        if (dto.distrito() != null)
+            entity.setDistrito(dto.distrito());
         if (dto.telefono() != null)
             entity.setTelefono(dto.telefono());
         if (dto.email() != null)
             entity.setEmail(dto.email());
         if (dto.logoUrl() != null)
-            entity.setLogoUrl(dto.logoUrl());
+            entity.setLogoUrl(dto.logoUrl().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        if (dto.usuarioSol() != null)
+            entity.setUsuarioSol(dto.usuarioSol());
+        if (dto.claveSol() != null)
+            entity.setClaveSol(dto.claveSol());
+        if (dto.claveCertificado() != null)
+            entity.setClaveCertificado(dto.claveCertificado());
+        if (dto.entorno() != null)
+            entity.setEntorno(dto.entorno());
+        if (dto.certificadoDigital() != null)
+            entity.setCertificadoDigital(dto.certificadoDigital());
     }
 }

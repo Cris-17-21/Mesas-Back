@@ -8,9 +8,19 @@ import jakarta.validation.constraints.Size;
 public record CreateEmpresaDto(
         @NotBlank(message = "El RUC es obligatorio.") @Size(min = 11, max = 11, message = "El RUC debe tener 11 dígitos.") String ruc,
         @NotBlank(message = "La razón social es obligatoria.") String razonSocial,
+        String nombreComercial,
         String direccionFiscal,
+        String ubigeo,
+        String provincia,
+        String departamento,
+        String distrito,
         @Pattern(regexp = "^[0-9]{9}$", message = "El teléfono debe tener 9 dígitos.") String telefono,
         @Email(message = "El email debe ser válido.") String email,
         String logoUrl,
-        String fechaAfiliacion) {
+        String fechaAfiliacion,
+        String usuarioSol,
+        String claveSol,
+        String claveCertificado,
+        Boolean entorno,
+        String certificadoDigital) {
 }

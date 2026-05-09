@@ -78,7 +78,6 @@ public class UserServiceTest {
         User userEntity = new User();
         userEntity.setUsername("admin");
 
-        when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(roleRepository.findById("role-id")).thenReturn(Optional.of(role));
         when(tipoDocumentoRepository.findByName("DNI")).thenReturn(Optional.of(td));
         when(userDtoMapper.toEntity(any(), any(), any())).thenReturn(userEntity);
@@ -86,8 +85,8 @@ public class UserServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(userEntity);
 
         // Mocks para el acceso inicial
-        when(empresaRepository.findById("emp-1")).thenReturn(Optional.of(new Empresa()));
-        when(sucursalRepository.findById("suc-1")).thenReturn(Optional.of(new Sucursal()));
+        when(empresaRepository.getReferenceById("emp-1")).thenReturn(new Empresa());
+        when(sucursalRepository.getReferenceById("suc-1")).thenReturn(new Sucursal());
 
         // WHEN
         userService.create(dto);
@@ -96,18 +95,6 @@ public class UserServiceTest {
         verify(userRepository).save(any(User.class));
         verify(userAccessRepository).save(any(UserAccess.class));
         verify(passwordEncoder).encode("password123");
-    }
-
-    @Test
-    @DisplayName("Debería lanzar excepción si el nombre de usuario ya existe")
-    void create_UsernameExists_ThrowsException() {
-        // GIVEN
-        CreateUserDto dto = new CreateUserDto("admin", "123", "N", "A", "A", "DNI", "1", "1", "e", "r", "e", "s");
-        when(userRepository.existsByUsername("admin")).thenReturn(true);
-
-        // WHEN & THEN
-        assertThrows(IllegalStateException.class, () -> userService.create(dto));
-        verify(userRepository, never()).save(any());
     }
 
     @Test

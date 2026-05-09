@@ -45,19 +45,21 @@ class EmpresaServiceTest {
     @DisplayName("Debería crear una empresa exitosamente con Razón Social en MAYÚSCULAS")
     void create_Success() {
         // GIVEN: Datos de entrada y comportamiento esperado
-        CreateEmpresaDto dto = new CreateEmpresaDto("20123456789", "Restaurante Mi Sazón", "Calle Real 123",
-                "987654321", "contacto@sazon.com", "logo.png", "2026-02-26");
+        CreateEmpresaDto dto = new CreateEmpresaDto("20123456789", "Restaurante Mi Sazón", "Nombre Comercial",
+                "Calle Real 123", "010101", "Prov", "Dep", "Dist",
+                "987654321", "contacto@sazon.com", "logo.png", "2026-02-26", null, null, null, null, null);
 
         Empresa empresaEntity = new Empresa();
         empresaEntity.setRuc("20123456789");
         empresaEntity.setRazonSocial("RESTAURANTE MI SAZÓN"); // Ya normalizada por el mapper
 
-        when(empresaRepository.existsByRuc(anyString())).thenReturn(false);
         when(empresaMapper.toEntity(any(CreateEmpresaDto.class))).thenReturn(empresaEntity);
         when(empresaRepository.save(any(Empresa.class))).thenReturn(empresaEntity);
         when(empresaMapper.toDto(any(Empresa.class)))
-                .thenReturn(new EmpresaDto("1", "20123456789", "RESTAURANTE MI SAZÓN", "Calle Real 123", "987654321",
-                        "contacto@sazon.com", "logo.png", "2026-02-26", java.util.Collections.emptyList()));
+                .thenReturn(new EmpresaDto("1", "20123456789", "RESTAURANTE MI SAZÓN", "Nombre Comercial",
+                        "Calle Real 123", "010101", "Prov", "Dep", "Dist", "987654321",
+                        "contacto@sazon.com", "logo.png", "2026-02-26", null, null, null, null, null,
+                        java.util.Collections.emptyList()));
 
         // WHEN: Ejecutamos la acción
         EmpresaDto result = empresaService.create(dto);
@@ -72,9 +74,12 @@ class EmpresaServiceTest {
     @DisplayName("Debería lanzar excepción si el RUC ya está registrado")
     void create_RucExists_ThrowsException() {
         // GIVEN
-        CreateEmpresaDto dto = new CreateEmpresaDto("20123456789", "Test", "Dir", "123", "a@a.com", "url",
-                "2026-01-01");
-        when(empresaRepository.existsByRuc("20123456789")).thenReturn(true);
+        CreateEmpresaDto dto = new CreateEmpresaDto("20123456789", "Test", null, "Dir", "010101", "Prov", "Dep", "Dist",
+                "123", "a@a.com", "url",
+                "2026-01-01", null, null, null, null, null);
+        Empresa existingEmpresa = new Empresa();
+        existingEmpresa.setActive(true);
+        when(empresaRepository.findByRuc("20123456789")).thenReturn(Optional.of(existingEmpresa));
 
         // WHEN & THEN
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> empresaService.create(dto));
@@ -88,8 +93,9 @@ class EmpresaServiceTest {
         // GIVEN
         String id = "uuid-123";
         // Enviamos un DTO donde solo cambia el email, el RUC es el mismo
-        CreateEmpresaDto updateDto = new CreateEmpresaDto("20123456789", "RAZON SOCIAL", null, null, "nuevo@email.com",
-                null, null);
+        CreateEmpresaDto updateDto = new CreateEmpresaDto("20123456789", "RAZON SOCIAL", null, null, null, null, null,
+                null, null, "nuevo@email.com",
+                null, null, null, null, null, null, null);
 
         Empresa existingEmpresa = new Empresa();
         existingEmpresa.setId(id);

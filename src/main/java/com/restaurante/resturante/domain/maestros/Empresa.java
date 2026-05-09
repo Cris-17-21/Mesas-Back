@@ -13,6 +13,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -38,12 +39,27 @@ public class Empresa extends Auditable {
 
     @Column(nullable = false, unique = true)
     private String ruc;
-    
+
     @Column(name = "razon_social", nullable = false, unique = true)
     private String razonSocial;
 
+    @Column(name = "nombre_comercial", nullable = true)
+    private String nombreComercial;
+
     @Column(name = "direccion_fiscal", nullable = true)
     private String direccionFiscal;
+
+    @Column(name = "ubigeo", length = 6)
+    private String ubigeo;
+
+    @Column(name = "provincia", length = 100)
+    private String provincia;
+
+    @Column(name = "departamento", length = 100)
+    private String departamento;
+
+    @Column(name = "distrito", length = 100)
+    private String distrito;
 
     @Column(nullable = true)
     private String telefono;
@@ -51,12 +67,13 @@ public class Empresa extends Auditable {
     @Column(nullable = true, unique = true)
     private String email;
 
-    @Column(nullable = true)
-    private String logoUrl;
+    @Lob
+    @Column(nullable = true, columnDefinition = "LONGBLOB")
+    private byte[] logoUrl;
 
     @Column(nullable = false)
     private LocalDate fechaAfiliacion;
-    
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
@@ -65,6 +82,22 @@ public class Empresa extends Auditable {
     @Column(name = "shadow_ban")
     @Builder.Default
     private Boolean shadowBan = false;
+
+    // Propiedades para Sunat
+    @Column(name = "usuario_sol")
+    private String usuarioSol;
+
+    @Column(name = "clave_sol")
+    private String claveSol;
+
+    @Column(name = "clave_certificado")
+    private String claveCertificado;
+
+    @Column(name = "entorno")
+    private Boolean entorno; // true = producción, false = desarrollo
+
+    @Column(name = "certificado_digital", columnDefinition = "TEXT")
+    private String certificadoDigital;
 
     // ---- RELACIONES ----
     @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)

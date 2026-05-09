@@ -1,11 +1,14 @@
 package com.restaurante.resturante.service.maestros.jpa;
 
+import java.io.IOException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.domain.maestros.Sucursal;
@@ -152,6 +155,33 @@ public class EmpresaService implements IEmpresaService {
         });
 
         userAccessRepository.saveAll(accesos);
+    }
+
+    @Override
+    @Transactional
+    public EmpresaDto uploadLogo(String id, MultipartFile file) {
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Empresa empresa = findExistingEmpresa(idSeguro);
+        try {
+            empresa.setLogoUrl(file.getBytes());
+            return empresaMapper.toDto(empresaRepository.save(empresa));
+        } catch (IOException e) {
+            throw new RuntimeException("Error al leer el archivo de logo", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public EmpresaDto uploadCertificado(String id, MultipartFile file) {
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Empresa empresa = findExistingEmpresa(idSeguro);
+        try {
+            String base64Cert = Base64.getEncoder().encodeToString(file.getBytes());
+            empresa.setCertificadoDigital(base64Cert);
+            return empresaMapper.toDto(empresaRepository.save(empresa));
+        } catch (IOException e) {
+            throw new RuntimeException("Error al leer el archivo de certificado", e);
+        }
     }
 
     // -------- MÉTODOS AUXILIARES --------
