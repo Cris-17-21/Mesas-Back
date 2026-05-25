@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -26,6 +25,12 @@ import com.restaurante.resturante.dto.maestro.CreateEmpresaDto;
 import com.restaurante.resturante.dto.maestro.EmpresaDto;
 import com.restaurante.resturante.mapper.maestros.EmpresaDtoMapper;
 import com.restaurante.resturante.repository.maestro.EmpresaRepository;
+import com.restaurante.resturante.repository.maestro.MedioPagoRepository;
+import com.restaurante.resturante.repository.maestro.SucursalRepository;
+import com.restaurante.resturante.repository.security.UserAccessRepository;
+import com.restaurante.resturante.repository.security.UserRepository;
+import com.restaurante.resturante.service.api_facturacion.FacturacionAuthService;
+import com.restaurante.resturante.service.api_facturacion.FacturacionEmpresaService.FacturacionEmpresaService;
 import com.restaurante.resturante.service.maestros.jpa.EmpresaService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -37,6 +42,24 @@ class EmpresaServiceTest {
 
     @Mock
     private EmpresaDtoMapper empresaMapper;
+
+    @Mock
+    private SucursalRepository sucursalRepository;
+
+    @Mock
+    private UserAccessRepository userAccessRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private FacturacionAuthService facturacionAuthService;
+
+    @Mock
+    private FacturacionEmpresaService facturacionEmpresaService;
+
+    @Mock
+    private MedioPagoRepository medioPagoRepository;
 
     @InjectMocks
     private EmpresaService empresaService;

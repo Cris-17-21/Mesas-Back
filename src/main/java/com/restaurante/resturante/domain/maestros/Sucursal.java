@@ -46,6 +46,9 @@ public class Sucursal extends Auditable{
     @Column(nullable = true)
     private String telefono;
 
+    @Column(name = "api_sucursal_id", length = 36, nullable = true)
+    private String apiSucursalId;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean estado = true;

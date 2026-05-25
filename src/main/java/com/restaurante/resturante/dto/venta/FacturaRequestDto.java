@@ -5,5 +5,6 @@ public record FacturaRequestDto(
         String tipoComprobante, // BOLETA, FACTURA
         String rucApellidos, // RUC para factura, DNI/Apellidos para boleta
         String razonSocialNombres,
-        String direccion) {
+        String direccion,
+        String fechaEmision) {
 }

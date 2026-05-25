@@ -18,11 +18,14 @@ import com.restaurante.resturante.repository.maestro.EmpresaRepository;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserAccessRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
+import com.restaurante.resturante.service.api_facturacion.FacturacionSucursalService;
 import com.restaurante.resturante.service.maestros.ISucursalService;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SucursalService implements ISucursalService {
@@ -31,6 +34,7 @@ public class SucursalService implements ISucursalService {
     private final SucursalDtoMapper sucursalMapper;
     private final UserAccessRepository userAccessRepository;
     private final UserRepository userRepository;
+    private final FacturacionSucursalService facturacionSucursalService;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,6 +90,7 @@ public class SucursalService implements ISucursalService {
         sucursal.setEmpresa(empresa);
         sucursal.setEstado(true);
         Sucursal saved = sucursalRepository.save(sucursal);
+        syncWithApi(saved);
         return sucursalMapper.toDto(saved);
     }
 
@@ -162,5 +167,13 @@ public class SucursalService implements ISucursalService {
     private Empresa findExistingEmpresa(String empresaId) {
         return empresaRepository.findById(empresaId)
                 .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+    }
+
+    private void syncWithApi(Sucursal sucursal) {
+        try {
+            facturacionSucursalService.syncSucursal(sucursal);
+        } catch (Exception e) {
+            log.warn("No se pudo sincronizar sucursal con API: {}", e.getMessage());
+        }
     }
 }

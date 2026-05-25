@@ -2,6 +2,7 @@ package com.restaurante.resturante.service.venta.jpa;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -181,27 +182,67 @@ public class PedidoService implements IPedidoService {
                 Pedido pedido = pedidoRepository.findById(dto.pedidoId())
                                 .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
 
-                com.restaurante.resturante.domain.maestros.MedioPago medioPago = medioPagoRepository
-                                .findByNombreAndEmpresaIdAndIsActiveTrue(
-                                                dto.metodoPago(), pedido.getSucursal().getEmpresa().getId())
-                                .orElseThrow(() -> new RuntimeException(
-                                                "MEDIO DE PAGO NO ENCONTRADO: " + dto.metodoPago()));
+                java.math.BigDecimal totalFinal = pedido.getTotalFinal();
+                java.math.BigDecimal pagado = pedido.getMontoPagado();
+                java.math.BigDecimal restante = totalFinal.subtract(pagado);
+                java.math.BigDecimal montoARegistrar = (dto.monto() != null && dto.monto().compareTo(java.math.BigDecimal.ZERO) > 0) 
+                                ? dto.monto() : restante;
 
-                // 1. Registrar Pago
-                com.restaurante.resturante.domain.ventas.PedidoPago pago = com.restaurante.resturante.domain.ventas.PedidoPago
-                                .builder()
-                                .pedido(pedido)
-                                .medioPago(medioPago)
-                                .monto(dto.monto())
-                                .referenciaPago(dto.referencia())
-                                .fechaPago(LocalDateTime.now())
-                                .cajaTurno(pedido.getCajaTurno()) // Se asocia al turno actual del pedido
-                                .build();
+                if (montoARegistrar.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                        throw new RuntimeException("EL PEDIDO YA SE ENCUENTRA TOTALMENTE PAGADO");
+                }
 
-                pagoRepository.save(pago);
+                String metodosRaw = dto.metodoPago();
+                String[] metodos = metodosRaw.split(",");
+
+                if (metodos.length > 1) {
+                        // Pago Mixto: dividimos el monto equitativamente para asociar a los medios correspondientes
+                        java.math.BigDecimal montoPorMetodo = montoARegistrar.divide(
+                                        java.math.BigDecimal.valueOf(metodos.length), 2, java.math.RoundingMode.HALF_UP);
+                        
+                        for (int i = 0; i < metodos.length; i++) {
+                                String name = metodos[i].trim();
+                                com.restaurante.resturante.domain.maestros.MedioPago medioPago = medioPagoRepository
+                                                .findByNombreAndEmpresaIdAndIsActiveTrue(name, pedido.getSucursal().getEmpresa().getId())
+                                                .orElseThrow(() -> new RuntimeException("MEDIO DE PAGO NO ENCONTRADO: " + name));
+
+                                // El último pago absorbe el residuo del redondeo
+                                java.math.BigDecimal montoFinal = (i == metodos.length - 1) 
+                                                ? montoARegistrar.subtract(montoPorMetodo.multiply(java.math.BigDecimal.valueOf(metodos.length - 1))) 
+                                                : montoPorMetodo;
+
+                                com.restaurante.resturante.domain.ventas.PedidoPago pago = com.restaurante.resturante.domain.ventas.PedidoPago
+                                                .builder()
+                                                .pedido(pedido)
+                                                .medioPago(medioPago)
+                                                .monto(montoFinal)
+                                                .referenciaPago(dto.referencia())
+                                                .fechaPago(LocalDateTime.now())
+                                                .cajaTurno(pedido.getCajaTurno())
+                                                .build();
+                                pagoRepository.save(pago);
+                        }
+                } else {
+                        // Pago Simple
+                        String name = metodosRaw.trim();
+                        com.restaurante.resturante.domain.maestros.MedioPago medioPago = medioPagoRepository
+                                        .findByNombreAndEmpresaIdAndIsActiveTrue(name, pedido.getSucursal().getEmpresa().getId())
+                                        .orElseThrow(() -> new RuntimeException("MEDIO DE PAGO NO ENCONTRADO: " + name));
+
+                        com.restaurante.resturante.domain.ventas.PedidoPago pago = com.restaurante.resturante.domain.ventas.PedidoPago
+                                        .builder()
+                                        .pedido(pedido)
+                                        .medioPago(medioPago)
+                                        .monto(montoARegistrar)
+                                        .referenciaPago(dto.referencia())
+                                        .fechaPago(LocalDateTime.now())
+                                        .cajaTurno(pedido.getCajaTurno())
+                                        .build();
+                        pagoRepository.save(pago);
+                }
 
                 // 2. Verificar si el pedido está pagado completamente
-                if (pedido.estaTotalmentePagado()) {
+                if (pedido.estaTotalmentePagado() || pedido.estaPagadoCompletamente()) {
                         pedido.setEstado("PAGADO");
                         pedido.setFechaCierre(LocalDateTime.now());
 
@@ -238,9 +279,15 @@ public class PedidoService implements IPedidoService {
         public List<PedidoResumenDto> listarPedidosActivos(String sucursalId) {
                 // Nota: Asegúrate de tener este método en el repository
                 return pedidoRepository.findBySucursalIdAndEstado(sucursalId, "ABIERTO")
-                                .stream()
-                                .map(pedidoMapper::toResumenDto)
-                                .toList();
+                        .stream()
+                        .map(pedidoMapper::toResumenDto)
+                        .toList();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<Pedido> findPedidosActivos(String sucursalId) {
+                return pedidoRepository.findBySucursalIdAndEstado(sucursalId, "ABIERTO");
         }
 
         @Override
@@ -339,15 +386,15 @@ public class PedidoService implements IPedidoService {
         @Transactional(readOnly = true)
         public PreCuentaDto generarPreCuenta(String pedidoId) {
                 Pedido pedido = pedidoRepository.findById(pedidoId)
-                                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
+                        .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
 
                 List<PreCuentaDto.PreCuentaDetalleDto> detalles = pedido.getPedidoDetalles().stream()
-                                .map(d -> new PreCuentaDto.PreCuentaDetalleDto(
-                                                d.getProducto().getNombreProducto(),
-                                                d.getCantidad(),
-                                                d.getPrecioUnitario(),
-                                                d.getTotalLinea()))
-                                .toList();
+                        .map(d -> new PreCuentaDto.PreCuentaDetalleDto(
+                                d.getProducto().getNombreProducto(),
+                                d.getCantidad(),
+                                d.getPrecioUnitario(),
+                                d.getTotalLinea()))
+                        .toList();
 
                 return new PreCuentaDto(
                                 pedido.getId(),
@@ -359,5 +406,29 @@ public class PedidoService implements IPedidoService {
                                 pedido.getTotalProductos(),
                                 pedido.getDescuentoGlobal(),
                                 pedido.getTotalFinal());
+        }
+
+        @Override
+        @Transactional
+        public PedidoResponseDto actualizarEstadoPreparacion(String detalleId, String estadoPreparacion) {
+                PedidoDetalle detalle = pedidoRepository.findDetalleById(detalleId)
+                        .orElseThrow(() -> new RuntimeException("DETALLE DE PEDIDO NO ENCONTRADO"));
+                
+                // Validate estadoPreparacion if needed
+                List<String> estadosValidos = List.of("PENDIENTE", "EN_PREPARACION", "LISTO", "ENTREGADO");
+                if (!estadosValidos.contains(estadoPreparacion)) {
+                        throw new IllegalArgumentException("ESTADO DE PREPARACIÓN NO VÁLIDO: " + estadoPreparacion);
+                }
+                
+                detalle.setEstadoPreparacion(estadoPreparacion);
+                pedidoRepository.save(detalle.getPedido()); // Save the pedido to cascade
+                
+                return pedidoMapper.toDto(detalle.getPedido());
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<Pedido> findBySucursalIdAndDetallesEstadoPreparacion(String sucursalId, String estadoPreparacion) {
+                return pedidoRepository.findBySucursalIdAndDetallesEstadoPreparacion(sucursalId, estadoPreparacion);
         }
 }

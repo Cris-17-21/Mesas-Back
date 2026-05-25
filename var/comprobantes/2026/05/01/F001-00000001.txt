@@ -1,0 +1,30 @@
+COMPROBANTE ELECTRÓNICO
+=====================
+
+EMISOR:
+RUC: 20123456789
+Razón Social: Test Empresa
+Dirección: Av. Lima 123
+
+COMPROBANTE:
+Tipo: 01
+Serie: F001
+Número: 00000001
+Fecha de emisión: 2026-05-24T15:29:08.667104483
+Moneda: PEN
+
+CLIENTE:
+Tipo doc: RUC
+Número doc: 20987654321
+Razón Social: Empresa Compradora SAC
+
+DETALLES:
+Cant. Descripción                  Valor Unit.  Importe
+--------------------------------------------------------
+1    Lomo Saltado                          35.00        35.00
+--------------------------------------------------------
+                           Sub Total:        35.00
+                           IGV (18%):         6.30
+                               TOTAL:        41.30
+
+Leyenda: Comprobante electrónico generado en sistema interno.

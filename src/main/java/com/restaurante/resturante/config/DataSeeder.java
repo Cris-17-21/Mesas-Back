@@ -189,10 +189,23 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("UPDATE_PROVEEDOR", "Editar proveedores", proveedoresModule);
                 createPermissionIfNotExists("DELETE_PROVEEDOR", "Eliminar proveedores", proveedoresModule);
 
-                // 4. Maestros ->
-                PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "null", 3, null);
-                PermissionModule comandaModule = createModuleIfNotExists("Pedido", "/pedido", "null", 1, ventasModule);
-                createPermissionIfNotExists("READ_PEDIDO", "Ver pedido", comandaModule);
+                // 4. Ventas -> Submódulos y Permisos
+                PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "bi bi-shop", 3, null);
+                
+                PermissionModule cajaModule = createModuleIfNotExists("Caja", "/caja", "bi bi-cash-register", 1, ventasModule);
+                createPermissionIfNotExists("READ_CAJA", "Ver caja y movimientos", cajaModule);
+                createPermissionIfNotExists("ABRIR_CAJA", "Abrir turnos de caja", cajaModule);
+                createPermissionIfNotExists("CERRAR_CAJA", "Cerrar turnos de caja", cajaModule);
+
+                PermissionModule comandaModule = createModuleIfNotExists("Punto de Venta", "/pos", "bi bi-shop", 2, ventasModule);
+                createPermissionIfNotExists("READ_PEDIDO", "Ver pedidos activos", comandaModule);
+                createPermissionIfNotExists("REGISTRAR_PAGO", "Cobrar pedidos (Pagos)", comandaModule);
+
+                PermissionModule preCuentaModule = createModuleIfNotExists("Despachos / Delivery", "/pre-cuenta", "bi bi-truck", 3, ventasModule);
+                createPermissionIfNotExists("READ_DELIVERY", "Ver despachos y delivery", preCuentaModule);
+
+                PermissionModule facturacionHistorialModule = createModuleIfNotExists("Historial Facturación", "/facturacion-historial", "bi bi-file-earmark-bar-graph", 4, ventasModule);
+                createPermissionIfNotExists("READ_COMPROBANTE", "Ver historial de comprobantes", facturacionHistorialModule);
 
                 // --- 5. Almacén / Inventario ---
                 PermissionModule almacenModule = createModuleIfNotExists("Almacén", "/almacen", "bi bi-archive", 5,
@@ -204,9 +217,11 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("VER_INVENTARIO", "Ver stock de inventario", inventarioModule);
                 createPermissionIfNotExists("READ_INVENTARIO", "Leer datos de inventario", inventarioModule);
 
-                // --- 3. Crear o Actualizar el Rol "SUPER_ADMIN" y asignarle TODOS los permisos
+                // --- 3. Crear o Actualizar los 5 Roles y asignar sus respectivos permisos
                 // ---
-                // Buscamos si existe, si no, lo creamos.
+                Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
+
+                // 1. ROLE_SUPER_ADMIN: Solo configuración y maestros de Empresa/Sucursal
                 Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN").orElseGet(() -> {
                         Role newRole = new Role();
                         newRole.setName("ROLE_SUPER_ADMIN");
@@ -214,18 +229,94 @@ public class DataSeeder implements CommandLineRunner {
                         newRole.setCreatedBy("SYSTEM");
                         return newRole;
                 });
-
-                // SIEMPRE actualizamos los permisos al reiniciar para incluir los nuevos
-                // Pero filtramos los que no debe tener el SuperAdmin (Pisos, Mesas, Métodos de Pago)
-                Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
                 Set<Permission> superAdminPermissions = allPermissions.stream()
-                        .filter(p -> !p.getName().contains("_PISO") && 
-                                     !p.getName().contains("_MESA") && 
-                                     !p.getName().contains("_METODO_PAGO"))
+                        .filter(p -> p.getModule() != null && p.getModule().getName() != null && 
+                                    (p.getModule().getName().equals("Dashboard") ||
+                                     p.getModule().getName().equals("Configuración") ||
+                                     p.getModule().getName().equals("Módulos") ||
+                                     p.getModule().getName().equals("Permisos") ||
+                                     p.getModule().getName().equals("Roles") ||
+                                     p.getModule().getName().equals("Usuarios") ||
+                                     p.getModule().getName().equals("Empresas") ||
+                                     p.getModule().getName().equals("Sucursales")))
                         .collect(java.util.stream.Collectors.toSet());
-                
                 superAdminRole.setPermissions(superAdminPermissions);
                 roleRepository.save(superAdminRole);
+
+                // 2. ROLE_ADMIN_RESTAURANTE: Todo excepto configuración global y Empresas
+                Role adminRestauranteRole = roleRepository.findByName("ROLE_ADMIN_RESTAURANTE").orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName("ROLE_ADMIN_RESTAURANTE");
+                        newRole.setDescription("Administrador de Restaurante");
+                        newRole.setCreatedBy("SYSTEM");
+                        return newRole;
+                });
+                Set<Permission> adminRestaurantePermissions = allPermissions.stream()
+                        .filter(p -> p.getModule() != null && p.getModule().getName() != null && 
+                                    !p.getModule().getName().equals("Módulos") &&
+                                     !p.getModule().getName().equals("Permisos") &&
+                                     !p.getModule().getName().equals("Roles") &&
+                                     !p.getModule().getName().equals("Empresas"))
+                        .collect(java.util.stream.Collectors.toSet());
+                // Asegurar permisos clave de usuarios locales
+                permissionRepository.findByName("READ_USER").ifPresent(adminRestaurantePermissions::add);
+                permissionRepository.findByName("CREATE_USER").ifPresent(adminRestaurantePermissions::add);
+                permissionRepository.findByName("UPDATE_USER").ifPresent(adminRestaurantePermissions::add);
+                adminRestauranteRole.setPermissions(adminRestaurantePermissions);
+                roleRepository.save(adminRestauranteRole);
+
+                // 3. ROLE_CAJERO: Caja, Cobros (POS), Delivery, Historial de Facturación y Clientes
+                Role cajeroRole = roleRepository.findByName("ROLE_CAJERO").orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName("ROLE_CAJERO");
+                        newRole.setDescription("Cajero");
+                        newRole.setCreatedBy("SYSTEM");
+                        return newRole;
+                });
+                Set<Permission> cajeroPermissions = allPermissions.stream()
+                        .filter(p -> p.getModule() != null && p.getModule().getName() != null && 
+                                    (p.getModule().getName().equals("Caja") ||
+                                     p.getModule().getName().equals("Punto de Venta") ||
+                                     p.getModule().getName().equals("Despachos / Delivery") ||
+                                     p.getModule().getName().equals("Historial Facturación") ||
+                                     p.getModule().getName().equals("Clientes")))
+                        .collect(java.util.stream.Collectors.toSet());
+                cajeroRole.setPermissions(cajeroPermissions);
+                roleRepository.save(cajeroRole);
+
+                // 4. ROLE_MOZO: Lectura de pedidos/comandas y registrar/modificar clientes
+                Role mozoRole = roleRepository.findByName("ROLE_MOZO").orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName("ROLE_MOZO");
+                        newRole.setDescription("Mozo");
+                        newRole.setCreatedBy("SYSTEM");
+                        return newRole;
+                });
+                Set<Permission> mozoPermissions = allPermissions.stream()
+                        .filter(p -> p.getName() != null && 
+                                    (p.getName().equals("READ_PEDIDO") ||
+                                     p.getName().equals("READ_CLIENTE") ||
+                                     p.getName().equals("CREATE_CLIENTE")))
+                        .collect(java.util.stream.Collectors.toSet());
+                mozoRole.setPermissions(mozoPermissions);
+                roleRepository.save(mozoRole);
+
+                // 5. ROLE_COCINERO: Lectura de comandas y stock de inventario
+                Role cocineroRole = roleRepository.findByName("ROLE_COCINERO").orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName("ROLE_COCINERO");
+                        newRole.setDescription("Cocinero");
+                        newRole.setCreatedBy("SYSTEM");
+                        return newRole;
+                });
+                Set<Permission> cocineroPermissions = allPermissions.stream()
+                        .filter(p -> p.getModule() != null && p.getModule().getName() != null && 
+                                    (p.getName().equals("READ_PEDIDO") ||
+                                     p.getModule().getName().equals("Inventario") ||
+                                     p.getModule().getName().equals("Almacén")))
+                        .collect(java.util.stream.Collectors.toSet());
+                cocineroRole.setPermissions(cocineroPermissions);
+                roleRepository.save(cocineroRole);
 
                 // --- Crear Tipo Documento ---
                 TipoDocumento dniTipo = tipoDocumentoRepository.findByName("DNI").orElseGet(() -> {

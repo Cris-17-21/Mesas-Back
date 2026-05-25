@@ -52,6 +52,9 @@ public class Cliente {
     @Column(name = "telefono", nullable = true)
     private String telefono;
 
+    @Column(name = "api_cliente_id", length = 36, nullable = true)
+    private String apiClienteId;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;

@@ -8,9 +8,8 @@ public record CerrarCajaDto(
         BigDecimal tarjetaReal,
         String comentario) {
     public BigDecimal montoCierreReal() {
-        // En un cierre simple, asumimos que el total real es la suma,
-        // o si el DTO solo trae efectivo, retornamos efectivo.
-        // Dado el servicio, parece esperar un total único.
-        return efectivoReal != null ? efectivoReal : BigDecimal.ZERO;
+        BigDecimal cash = efectivoReal != null ? efectivoReal : BigDecimal.ZERO;
+        BigDecimal card = tarjetaReal != null ? tarjetaReal : BigDecimal.ZERO;
+        return cash.add(card);
     }
 }

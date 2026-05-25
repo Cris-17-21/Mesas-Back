@@ -8,9 +8,11 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.restaurante.resturante.domain.maestros.Empresa;
+import com.restaurante.resturante.domain.maestros.MedioPago;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.domain.security.User;
 import com.restaurante.resturante.domain.security.UserAccess;
@@ -18,9 +20,12 @@ import com.restaurante.resturante.dto.maestro.CreateEmpresaDto;
 import com.restaurante.resturante.dto.maestro.EmpresaDto;
 import com.restaurante.resturante.mapper.maestros.EmpresaDtoMapper;
 import com.restaurante.resturante.repository.maestro.EmpresaRepository;
+import com.restaurante.resturante.repository.maestro.MedioPagoRepository;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserAccessRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
+import com.restaurante.resturante.service.api_facturacion.FacturacionAuthService;
+import com.restaurante.resturante.service.api_facturacion.FacturacionEmpresaService.FacturacionEmpresaService;
 import com.restaurante.resturante.service.maestros.IEmpresaService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -35,6 +40,10 @@ public class EmpresaService implements IEmpresaService {
     private final SucursalRepository sucursalRepository;
     private final UserAccessRepository userAccessRepository;
     private final UserRepository userRepository;
+    private final FacturacionAuthService facturacionAuthService;
+    private final FacturacionEmpresaService facturacionEmpresaService;
+    private final MedioPagoRepository medioPagoRepository;
+    private RestClient restClient;
 
     @Override
     @Transactional(readOnly = true)
@@ -93,6 +102,8 @@ public class EmpresaService implements IEmpresaService {
 
         Empresa empresa = empresaMapper.toEntity(dto);
         Empresa saved = empresaRepository.save(empresa);
+        seedDefaultPaymentMethods(saved);
+        syncWithApi(saved);
         return empresaMapper.toDto(saved);
     }
 
@@ -185,6 +196,23 @@ public class EmpresaService implements IEmpresaService {
     }
 
     // -------- MÉTODOS AUXILIARES --------
+
+    private void seedDefaultPaymentMethods(Empresa empresa) {
+        List.of(
+            MedioPago.builder().nombre("EFECTIVO").esEfectivo(true).empresa(empresa).build(),
+            MedioPago.builder().nombre("YAPE").esEfectivo(false).empresa(empresa).build(),
+            MedioPago.builder().nombre("PLIN").esEfectivo(false).empresa(empresa).build(),
+            MedioPago.builder().nombre("TARJETA").esEfectivo(false).empresa(empresa).build()
+        ).forEach(medioPagoRepository::save);
+    }
+
+    private void syncWithApi(Empresa empresa) {
+        try {
+            facturacionEmpresaService.crearEmpresa(empresa);
+        } catch (Exception e) {
+            // No bloquear la creación local si falla la sincronización con la API
+        }
+    }
 
     private Empresa findExistingEmpresa(String id) {
         return empresaRepository.findById(id)

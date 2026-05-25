@@ -2,6 +2,7 @@ package com.restaurante.resturante.domain.api_facturacion;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -16,13 +17,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ApiCredencial {
     @Id
-    private Long id; // Siempre 1 para el acceso maestro
-    private String accessToken;
-    private String refreshToken;
-    private LocalDateTime expiryDate; // Calculado: ahora + 1 hora
+    private Long id = 1L; // Solo un registro para el SuperAdmin
 
-    // Método helper para saber si expiró
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(this.expiryDate.minusMinutes(5)); // Margen de seguridad de 5 min
+    @Column(length = 1000) // Los tokens suelen ser largos
+    private String accessToken;
+
+    @Column(length = 1000)
+    private String refreshToken;
+
+    private LocalDateTime expiryDate;
+
+    @Column(name = "api_company_id", length = 36)
+    private String apiCompanyId;
+
+    // Getters, Setters y Helper para expiración
+    public boolean needsRefresh() {
+        return LocalDateTime.now().isAfter(this.expiryDate.minusMinutes(5));
     }
 }

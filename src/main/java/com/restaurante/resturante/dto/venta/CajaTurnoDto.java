@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record CajaTurnoDto(
     String id,
+    String codigoApertura,
     String estado, // "ABIERTO" o "CERRADO"
     LocalDateTime fechaApertura,
     LocalDateTime fechaCierre,

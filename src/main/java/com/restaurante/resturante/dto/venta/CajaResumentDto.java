@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record CajaResumentDto(
         // --- Metadatos ---
         String id,
+        String codigoApertura,
         String estado,
         LocalDateTime fechaApertura,
         LocalDateTime fechaCierre,

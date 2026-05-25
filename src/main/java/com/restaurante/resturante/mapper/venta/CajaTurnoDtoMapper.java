@@ -21,6 +21,7 @@ public class CajaTurnoDtoMapper {
 
         return new CajaTurnoDto(
                 entity.getId(),
+                entity.getCodigoApertura(),
                 entity.getEstado(),
                 entity.getFechaApertura(),
                 entity.getFechaCierre(),
@@ -38,19 +39,19 @@ public class CajaTurnoDtoMapper {
             BigDecimal ingresos, BigDecimal egresos) {
         BigDecimal totalVentas = ventasEfectivo.add(ventasVirtual);
 
-        // Total Esperado (Caja Física) = Apertura + VentasEfectivo + Ingresos - Egresos
-        BigDecimal totalEsperado = entity.getMontoApertura()
+        BigDecimal cashApertura = entity.getMontoAperturaEfectivo() != null ? entity.getMontoAperturaEfectivo() : entity.getMontoApertura();
+        BigDecimal totalEsperado = cashApertura
                 .add(ventasEfectivo)
                 .add(ingresos)
                 .subtract(egresos);
 
-        // Usamos montoCierreReal que es el que definiste en la entidad
-        BigDecimal cierreReal = entity.getMontoCierreReal() != null ? entity.getMontoCierreReal() : BigDecimal.ZERO;
-        BigDecimal diferencia = cierreReal.subtract(totalEsperado);
+        BigDecimal cashCierreReal = entity.getMontoCierreRealEfectivo() != null ? entity.getMontoCierreRealEfectivo() : (entity.getMontoCierreReal() != null ? entity.getMontoCierreReal() : BigDecimal.ZERO);
+        BigDecimal diferencia = cashCierreReal.subtract(totalEsperado);
 
         return new CajaResumentDto(
                 // Metadatos
                 entity.getId(),
+                entity.getCodigoApertura(),
                 entity.getEstado(),
                 entity.getFechaApertura(),
                 entity.getFechaCierre(),
@@ -69,7 +70,7 @@ public class CajaTurnoDtoMapper {
 
                 // Bloque 3: Arqueo
                 totalEsperado,
-                cierreReal,
+                cashCierreReal,
                 diferencia);
     }
 }

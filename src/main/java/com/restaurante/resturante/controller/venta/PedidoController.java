@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.restaurante.resturante.dto.maestro.UnionMesaRequest;
+import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
@@ -20,6 +22,7 @@ import com.restaurante.resturante.dto.venta.PedidoResumenDto;
 import com.restaurante.resturante.dto.venta.PreCuentaDto;
 import com.restaurante.resturante.dto.venta.RegistrarPagoDto;
 import com.restaurante.resturante.dto.venta.SepararCuentaDto;
+import com.restaurante.resturante.mapper.venta.PedidoMapper;
 import com.restaurante.resturante.service.venta.IPedidoService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class PedidoController {
 
     private final IPedidoService pedidoService;
+    private final PedidoMapper pedidoMapper;
 
     @PostMapping
     public ResponseEntity<PedidoResponseDto> crearPedido(@RequestBody PedidoRequestDto dto) {
@@ -78,9 +82,43 @@ public class PedidoController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{pedidoId}/pagar")
+    public ResponseEntity<Void> registrarPagoPath(
+            @PathVariable String pedidoId,
+            @RequestParam String metodoPago) {
+        RegistrarPagoDto dto = new RegistrarPagoDto(pedidoId, null, metodoPago, "Pago Completo", null);
+        pedidoService.registrarPago(dto);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/pre-cuenta")
     public ResponseEntity<PreCuentaDto> verPreCuenta(@PathVariable String id) {
         return ResponseEntity.ok(pedidoService.generarPreCuenta(id));
+    }
+
+    // Cocina endpoints
+    @PatchMapping("/cocina/pedidos/{detalleId}/estado-preparacion")
+    public ResponseEntity<PedidoResponseDto> actualizarEstadoPreparacion(
+            @PathVariable String detalleId,
+            @RequestBody String estadoPreparacion) {
+        // PERMISO: ACTUALIZAR_ESTADO_PREPARACION
+        return ResponseEntity.ok(pedidoService.actualizarEstadoPreparacion(detalleId, estadoPreparacion));
+    }
+
+    @GetMapping("/cocina/pedidos")
+    public ResponseEntity<List<PedidoResponseDto>> listarParaCocina(
+            @RequestParam String sucursalId,
+            @RequestParam(required = false) String estadoPreparacion) {
+        // PERMISO: VER_PEDIDOS_COCINA
+        List<Pedido> pedidos;
+        if (estadoPreparacion != null && !estadoPreparacion.isBlank()) {
+            pedidos = pedidoService.findBySucursalIdAndDetallesEstadoPreparacion(sucursalId, estadoPreparacion);
+        } else {
+            pedidos = pedidoService.findPedidosActivos(sucursalId);
+        }
+        return ResponseEntity.ok(pedidos.stream()
+                .map(pedidoMapper::toDto)
+                .toList());
     }
 
     @PostMapping("/separar-cuenta")

@@ -70,6 +70,10 @@ public class FacturacionComprobante {
     @Builder.Default
     private BigDecimal montoIgv = BigDecimal.ZERO;
 
+    @Column(name = "monto_total", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal montoTotal = BigDecimal.ZERO;
+
     @Column(name = "total_venta", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalVenta;
 
@@ -91,6 +95,9 @@ public class FacturacionComprobante {
 
     @Column(name = "archivo_pdf")
     private String archivoPdf;
+
+    @Column(name = "archivo_txt")
+    private String archivoTxt;
 
     @Column(name = "hash")
     private String hash;

@@ -2,6 +2,7 @@ package com.restaurante.resturante.service.venta.jpa;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -54,8 +55,19 @@ public class CajaTurnoService implements ICajaTurnoService {
                 var sucursal = sucursalRepository.findById(dto.sucursalId())
                                 .orElseThrow(() -> new RuntimeException("SUCURSAL NO ENCONTRADA"));
 
+                String codigoApertura = "AP-"
+                                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+                                + "-" + sucursal.getId().substring(0, 4).toUpperCase();
+
+                BigDecimal cashApertura = dto.montoAperturaEfectivo() != null ? dto.montoAperturaEfectivo() : dto.montoApertura();
+                BigDecimal cardApertura = dto.montoAperturaVirtual() != null ? dto.montoAperturaVirtual() : BigDecimal.ZERO;
+                BigDecimal totalApertura = dto.montoApertura() != null ? dto.montoApertura() : cashApertura.add(cardApertura);
+
                 CajaTurno caja = CajaTurno.builder()
-                                .montoApertura(dto.montoApertura())
+                                .codigoApertura(codigoApertura)
+                                .montoApertura(totalApertura)
+                                .montoAperturaEfectivo(cashApertura)
+                                .montoAperturaVirtual(cardApertura)
                                 .fechaApertura(LocalDateTime.now())
                                 .estado("ABIERTA")
                                 .user(user)
@@ -96,13 +108,31 @@ public class CajaTurnoService implements ICajaTurnoService {
                 CajaTurno caja = cajaRepository.findById(dto.id())
                                 .orElseThrow(() -> new RuntimeException("CAJA NO ENCONTRADA"));
 
-                // 1. Obtenemos el resumen actual para guardar el "Esperado" al momento del
-                // cierre
+                // 1. Obtenemos el resumen actual para guardar el "Esperado" al momento del cierre
                 CajaResumentDto resumen = obtenerResumenArqueo(caja.getId());
 
-                caja.setMontoCierreEsperado(resumen.totalEsperado());
-                caja.setMontoCierreReal(dto.montoCierreReal());
-                caja.setDiferencia(dto.montoCierreReal().subtract(resumen.totalEsperado()));
+                BigDecimal cashEsperado = resumen.saldoEsperadoEnCaja();
+                BigDecimal cardEsperado = resumen.totalVentasTarjeta();
+                BigDecimal overallEsperado = cashEsperado.add(cardEsperado);
+
+                BigDecimal cashReal = dto.efectivoReal() != null ? dto.efectivoReal() : BigDecimal.ZERO;
+                BigDecimal cardReal = dto.tarjetaReal() != null ? dto.tarjetaReal() : BigDecimal.ZERO;
+                BigDecimal overallReal = cashReal.add(cardReal);
+
+                BigDecimal diff = overallReal.subtract(overallEsperado);
+
+                if (diff.compareTo(BigDecimal.ZERO) != 0 && (dto.comentario() == null || dto.comentario().trim().isEmpty())) {
+                        throw new IllegalArgumentException("DEBE INGRESAR UNA OBSERVACIÓN/JUSTIFICACIÓN POR LA DIFERENCIA EN EL ARQUEO DE CAJA");
+                }
+
+                caja.setMontoCierreEsperado(overallEsperado);
+                caja.setMontoCierreEsperadoEfectivo(cashEsperado);
+                caja.setMontoCierreEsperadoVirtual(cardEsperado);
+                caja.setMontoCierreReal(overallReal);
+                caja.setMontoCierreRealEfectivo(cashReal);
+                caja.setMontoCierreRealVirtual(cardReal);
+                caja.setDiferencia(diff);
+                caja.setObservaciones(dto.comentario());
                 caja.setFechaCierre(LocalDateTime.now());
                 caja.setEstado("CERRADA");
 

@@ -38,14 +38,35 @@ public class CajaTurno extends Auditable{
     @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
+    @Column(name = "codigo_apertura", unique = true, nullable = false, length = 50)
+    private String codigoApertura;
+
     @Column(name = "monto_apertura", nullable = false, precision = 12, scale = 2)
     private BigDecimal montoApertura;
+
+    @Column(name = "monto_apertura_efectivo", precision = 12, scale = 2)
+    private BigDecimal montoAperturaEfectivo;
+
+    @Column(name = "monto_apertura_virtual", precision = 12, scale = 2)
+    private BigDecimal montoAperturaVirtual;
 
     @Column(name = "monto_cierre_esperado", precision = 12, scale = 2)
     private BigDecimal montoCierreEsperado; // Lo que el sistema dice que hay
 
+    @Column(name = "monto_cierre_esperado_efectivo", precision = 12, scale = 2)
+    private BigDecimal montoCierreEsperadoEfectivo;
+
+    @Column(name = "monto_cierre_esperado_virtual", precision = 12, scale = 2)
+    private BigDecimal montoCierreEsperadoVirtual;
+
     @Column(name = "monto_cierre_real", precision = 12, scale = 2)
     private BigDecimal montoCierreReal; // Lo que el cajero cuenta
+
+    @Column(name = "monto_cierre_real_efectivo", precision = 12, scale = 2)
+    private BigDecimal montoCierreRealEfectivo;
+
+    @Column(name = "monto_cierre_real_virtual", precision = 12, scale = 2)
+    private BigDecimal montoCierreRealVirtual;
 
     @Column(name = "diferencia", precision = 12, scale = 2)
     private BigDecimal diferencia; // Real - Esperado

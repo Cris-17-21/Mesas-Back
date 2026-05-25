@@ -84,7 +84,7 @@ class CajaTurnoServiceTest {
             BigDecimal esperado = c.getMontoApertura().add(ef).add(ing).subtract(egr);
 
             return new CajaResumentDto(
-                    c.getId(), c.getEstado(), c.getFechaApertura(), null, "cajero1",
+                    c.getId(), c.getCodigoApertura(), c.getEstado(), c.getFechaApertura(), null, "cajero1",
                     c.getMontoApertura(), ing, egr,
                     ef, vi, BigDecimal.ZERO, ef.add(vi),
                     esperado, BigDecimal.ZERO, esperado.negate());

@@ -3,6 +3,7 @@ package com.restaurante.resturante.service.venta;
 import java.util.List;
 
 import com.restaurante.resturante.dto.maestro.UnionMesaRequest;
+import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
@@ -36,4 +37,13 @@ public interface IPedidoService {
 
     // Generar Pre-cuenta (Vista previa para el cliente)
     PreCuentaDto generarPreCuenta(String pedidoId);
+
+    // Cocina: Actualizar estado de preparación de un detalle
+    PedidoResponseDto actualizarEstadoPreparacion(String detalleId, String estadoPreparacion);
+
+    // Cocina: Listar pedidos para cocina (por sucursal y estado de preparación)
+    List<Pedido> findBySucursalIdAndDetallesEstadoPreparacion(String sucursalId, String estadoPreparacion);
+
+    // Cocina: Listar pedidos activos (para reutilizar en controller)
+    List<Pedido> findPedidosActivos(String sucursalId);
 }
