@@ -25,6 +25,9 @@ public class PedidoMapper {
                 return Pedido.builder()
                                 .tipoEntrega(dto.tipoEntrega())
                                 .estado("ABIERTO")
+                                .nombreCliente(dto.nombreCliente())
+                                .telefono(dto.telefono())
+                                .direccion(dto.direccion())
                                 // Nota: Las relaciones (Mesa, Cliente, Sucursal)
                                 // se asignan en el Service buscando en el Repo
                                 .build();
@@ -35,19 +38,19 @@ public class PedidoMapper {
                         return null;
 
                 // 1. Lógica para campos calculados o condicionales
-                String clienteNombre = (entity.getCliente() != null)
-                                ? entity.getCliente().getNombreRazonSocial()
-                                : "CLIENTE GENERAL";
+                String clienteNombre = entity.getNombreCliente() != null && !entity.getNombreCliente().isBlank()
+                                ? entity.getNombreCliente()
+                                : (entity.getCliente() != null ? entity.getCliente().getNombreRazonSocial() : "CLIENTE GENERAL");
 
                 String mesaCodigo = (entity.getMesa() != null)
                                 ? entity.getMesa().getCodigoMesa()
-                                : "N/A";
+                                : null;
 
                 List<PedidoDetalleResponseDto> listaDetalles = (entity.getPedidoDetalles() != null)
                                 ? entity.getPedidoDetalles().stream().map(detalleMapper::toDto).toList()
                                 : java.util.Collections.emptyList();
 
-                // 2. Constructor de 10 parámetros según tu nuevo Record
+                // 2. Constructor de 12 parámetros según tu nuevo Record
                 return new PedidoResponseDto(
                                 entity.getId(), // 1
                                 entity.getCodigoPedido(), // 2
@@ -58,7 +61,9 @@ public class PedidoMapper {
                                 clienteNombre, // 7
                                 mesaCodigo, // 8
                                 listaDetalles, // 9
-                                entity.getSucursal() != null ? entity.getSucursal().getId() : null // 10. sucursalId
+                                entity.getSucursal() != null ? entity.getSucursal().getId() : null, // 10. sucursalId
+                                entity.getTelefono(), // 11
+                                entity.getDireccion() // 12
                 );
         }
 
@@ -67,13 +72,13 @@ public class PedidoMapper {
                         return null;
 
                 // 1. Extraemos valores con lógica de nulos
-                String clienteNombre = (entity.getCliente() != null)
-                                ? entity.getCliente().getNombreRazonSocial()
-                                : "CLIENTE GENERAL";
+                String clienteNombre = entity.getNombreCliente() != null && !entity.getNombreCliente().isBlank()
+                                ? entity.getNombreCliente()
+                                : (entity.getCliente() != null ? entity.getCliente().getNombreRazonSocial() : "CLIENTE GENERAL");
 
                 String mesaCodigo = (entity.getMesa() != null)
                                 ? entity.getMesa().getCodigoMesa()
-                                : "N/A";
+                                : null;
 
                 // 2. Constructor con los 9 parámetros en el orden exacto del Record
                 return new PedidoResumenDto(

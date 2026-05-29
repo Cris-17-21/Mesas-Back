@@ -71,6 +71,15 @@ public class Pedido {
     @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre;
 
+    @Column(name = "nombre_cliente")
+    private String nombreCliente;
+
+    @Column(name = "telefono")
+    private String telefono;
+
+    @Column(name = "direccion")
+    private String direccion;
+
     // ---- RELACIONES ----
     // FALTA RELACION CON SUCURSAL, MESA, USUARIO Y CLIENTE
     @ManyToOne(fetch = FetchType.LAZY)

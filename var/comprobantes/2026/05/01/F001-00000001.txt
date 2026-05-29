@@ -10,7 +10,7 @@ COMPROBANTE:
 Tipo: 01
 Serie: F001
 Número: 00000001
-Fecha de emisión: 2026-05-27T22:23:49.223441455
+Fecha de emisión: 2026-05-29T14:44:35.406022987
 Moneda: PEN
 
 CLIENTE:

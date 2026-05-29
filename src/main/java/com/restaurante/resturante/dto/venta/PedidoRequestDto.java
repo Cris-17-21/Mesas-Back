@@ -7,5 +7,8 @@ public record PedidoRequestDto(
         String sucursalId,
         String mesaId,
         String usuarioId,
-        List<PedidoDetalleRequestDto> detalles) {
+        List<PedidoDetalleRequestDto> detalles,
+        String nombreCliente,
+        String telefono,
+        String direccion) {
 }

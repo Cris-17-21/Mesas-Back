@@ -14,5 +14,7 @@ public record PedidoResponseDto(
     String nombreCliente,
     String codigoMesa,
     List<PedidoDetalleResponseDto> detalles,
-    String sucursalId
+    String sucursalId,
+    String telefono,
+    String direccion
 ) {}

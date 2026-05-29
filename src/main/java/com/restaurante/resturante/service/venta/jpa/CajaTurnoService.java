@@ -14,6 +14,7 @@ import com.restaurante.resturante.dto.venta.CajaResumentDto;
 import com.restaurante.resturante.dto.venta.CajaTurnoDto;
 import com.restaurante.resturante.dto.venta.CerrarCajaDto;
 import com.restaurante.resturante.mapper.venta.CajaTurnoDtoMapper;
+import com.restaurante.resturante.repository.maestro.MesaRepository;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
@@ -35,6 +36,7 @@ public class CajaTurnoService implements ICajaTurnoService {
         private final CajaTurnoDtoMapper mapper;
         private final UserRepository userRepository;
         private final SucursalRepository sucursalRepository;
+        private final MesaRepository mesaRepository;
 
         @Override
         @Transactional(readOnly = true)
@@ -110,7 +112,21 @@ public class CajaTurnoService implements ICajaTurnoService {
                 CajaTurno caja = cajaRepository.findById(dto.id())
                                 .orElseThrow(() -> new RuntimeException("CAJA NO ENCONTRADA"));
 
-                // 1. Obtenemos el resumen actual para guardar el "Esperado" al momento del cierre
+                String sucursalId = caja.getSucursal().getId();
+
+                // 1. Validar que no haya pedidos abiertos en la sucursal
+                boolean tienePedidosAbiertos = !pedidoRepository.findBySucursalIdAndEstado(sucursalId, "ABIERTO").isEmpty();
+                if (tienePedidosAbiertos) {
+                        throw new RuntimeException("NO SE PUEDE CERRAR LA CAJA: EXISTEN PEDIDOS ABIERTOS (SIN FINALIZAR) EN LA SUCURSAL");
+                }
+
+                // 2. Validar que no haya mesas ocupadas o unidas en el salón
+                long mesasOcupadas = mesaRepository.countOccupiedTablesBySucursal(sucursalId);
+                if (mesasOcupadas > 0) {
+                        throw new RuntimeException("NO SE PUEDE CERRAR LA CAJA: EXISTEN MESAS OCUPADAS O UNIDAS EN EL SALÓN");
+                }
+
+                // 3. Obtenemos el resumen actual para guardar el "Esperado" al momento del cierre
                 CajaResumentDto resumen = obtenerResumenArqueo(caja.getId());
 
                 BigDecimal cashEsperado = resumen.saldoEsperadoEnCaja();

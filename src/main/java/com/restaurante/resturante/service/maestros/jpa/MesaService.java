@@ -101,9 +101,8 @@ public class MesaService implements IMesaService {
         Mesa principal = mesaRepository.findById(idPrincipal)
                 .orElseThrow(() -> new RuntimeException("MESA PRINCIPAL NO ENCONTRADA"));
 
-        // Validar que la principal esté ocupada (con pedido)
-        if (!"OCUPADA".equals(principal.getEstado())) {
-            throw new RuntimeException("LA MESA PRINCIPAL DEBE ESTAR OCUPADA PARA UNIR OTRAS");
+        if (principal.getPrincipal() != null) {
+            throw new RuntimeException("LA MESA PRINCIPAL NO PUEDE SER UNA MESA YA UNIDA A OTRA");
         }
 
         List<Mesa> secundarias = mesaRepository.findAllById(idsSecundarios);

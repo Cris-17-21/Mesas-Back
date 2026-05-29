@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.restaurante.resturante.domain.maestros.Mesa;
@@ -29,4 +30,7 @@ public interface MesaRepository extends JpaRepository<Mesa, String> {
     Optional<Mesa> findByCodigoMesaAndPisoSucursalId(String codigo, String sucursalId);
 
     List<Mesa> findByPrincipalId(String principalId); // <--- ESTO ES CLAVE
+
+    @Query("SELECT COUNT(m) FROM Mesa m WHERE m.piso.sucursal.id = :sucursalId AND m.estado <> 'LIBRE' AND m.active = true")
+    long countOccupiedTablesBySucursal(@Param("sucursalId") String sucursalId);
 }

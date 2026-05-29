@@ -9,7 +9,7 @@ public record CreateEmpresaDto(
         @NotBlank(message = "El RUC es obligatorio.") @Size(min = 11, max = 11, message = "El RUC debe tener 11 dígitos.") String ruc,
         @NotBlank(message = "La razón social es obligatoria.") String razonSocial,
         String nombreComercial,
-        String direccionFiscal,
+        @NotBlank(message = "La dirección fiscal es obligatoria.") String direccionFiscal,
         String ubigeo,
         String provincia,
         String departamento,

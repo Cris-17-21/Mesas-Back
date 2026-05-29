@@ -102,8 +102,14 @@ public class PedidoService implements IPedidoService {
                 if (dto.mesaId() != null && !dto.mesaId().isBlank()) {
                         Mesa mesa = mesaRepository.findById(dto.mesaId())
                                         .orElseThrow(() -> new RuntimeException("Mesa no encontrada: " + dto.mesaId()));
+                        
+                        // Si la mesa seleccionada es una mesa secundaria (unida), asociamos el pedido a la principal
+                        if (mesa.getPrincipal() != null) {
+                                mesa = mesa.getPrincipal();
+                        }
+                        
                         pedido.setMesa(mesa);
-                        mesaService.cambiarEstado(dto.mesaId(), "OCUPADA");
+                        mesaService.cambiarEstado(mesa.getId(), "OCUPADA");
                 }
                 
                 Pedido savedPedido = pedidoRepository.save(pedido);
@@ -136,36 +142,53 @@ public class PedidoService implements IPedidoService {
                 if (!"ABIERTO".equals(pedido.getEstado())) {
                         throw new RuntimeException("EL PEDIDO YA NO ESTÁ ABIERTO");
                 }
+                
+                List<PedidoDetalle> extras = new java.util.ArrayList<>();
 
-                List<PedidoDetalle> extras = nuevosDetalles.stream()
-                                .map(d -> {
-                                        PedidoDetalle det = detalleMapper.toEntity(d);
-                                        det.setPedido(pedido);
+                for (PedidoDetalleRequestDto d : nuevosDetalles) {
+                        Integer prodId = Integer.parseInt(d.productoId());
 
-                                        Integer prodId = Integer.parseInt(d.productoId());
-                                        Producto producto = productoRepository.findById(prodId)
-                                                        .orElseThrow(() -> new RuntimeException(
-                                                                        "PRODUCTO NO ENCONTRADO: " + d.productoId()));
-                                        det.setProducto(producto);
-                                        det.setPrecioUnitario(producto.getPrecioVenta());
-                                        det.setTotalLinea(producto.getPrecioVenta()
-                                                        .multiply(new java.math.BigDecimal(det.getCantidad())));
-                                        return det;
-                                }).toList();
+                        java.util.Optional<PedidoDetalle> existingDetailOpt = pedido.getPedidoDetalles().stream()
+                                        .filter(det -> det.getProducto().getIdProducto().equals(prodId))
+                                        .findFirst();
 
-                pedido.getPedidoDetalles().addAll(extras);
+                        if (existingDetailOpt.isPresent()) {
+                                PedidoDetalle det = existingDetailOpt.get();
+                                det.setCantidad(det.getCantidad() + d.cantidad());
+                                det.setTotalLinea(det.getPrecioUnitario().multiply(new java.math.BigDecimal(det.getCantidad())));
+                        } else {
+                                PedidoDetalle det = detalleMapper.toEntity(d);
+                                det.setPedido(pedido);
+
+                                Producto producto = productoRepository.findById(prodId)
+                                                .orElseThrow(() -> new RuntimeException(
+                                                                "PRODUCTO NO ENCONTRADO: " + d.productoId()));
+                                det.setProducto(producto);
+                                det.setPrecioUnitario(producto.getPrecioVenta());
+                                det.setTotalLinea(producto.getPrecioVenta()
+                                                .multiply(new java.math.BigDecimal(det.getCantidad())));
+                                extras.add(det);
+                        }
+                }
+
+                if (!extras.isEmpty()) {
+                        pedido.getPedidoDetalles().addAll(extras);
+                }
                 pedido.calcularTotales(); // Recalcula total_final
 
                 Pedido savedPedido = pedidoRepository.save(pedido);
 
                 // Descontar stock (Hook Almacén)
-                for (PedidoDetalle d : extras) {
-                        if (Boolean.TRUE.equals(d.getProducto().getControlarStock())) {
+                for (PedidoDetalleRequestDto d : nuevosDetalles) {
+                        Integer prodId = Integer.parseInt(d.productoId());
+                        Producto producto = productoRepository.findById(prodId)
+                                        .orElseThrow(() -> new RuntimeException("PRODUCTO NO ENCONTRADO: " + d.productoId()));
+                        if (Boolean.TRUE.equals(producto.getControlarStock())) {
                                 MovimientoRequest movReq = new MovimientoRequest(
-                                                d.getProducto().getIdProducto(),
+                                                producto.getIdProducto(),
                                                 pedido.getSucursal().getId(),
                                                 "SALIDA",
-                                                d.getCantidad(),
+                                                d.cantidad(),
                                                 "PEDIDO",
                                                 pedido.getUser().getId(),
                                                 savedPedido.getCodigoPedido()
