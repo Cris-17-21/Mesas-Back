@@ -66,28 +66,36 @@ class CajaTurnoServiceTest {
         when(pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, true)).thenReturn(new BigDecimal("50.00"));
         when(pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, false)).thenReturn(new BigDecimal("30.00"));
 
-        // Movimientos: 20 ingreso, 10 egreso
-        when(movimientoRepository.sumarPorTipoYTurno(eq(cajaId), eq(TipoMovimiento.INGRESO)))
+        // Movimientos: 20 ingreso efectivo, 10 egreso efectivo, 0 virtual
+        when(movimientoRepository.sumarPorTipoTurnoyEsEfectivo(eq(cajaId), eq(TipoMovimiento.INGRESO), eq(true)))
                 .thenReturn(new BigDecimal("20.00"));
-        when(movimientoRepository.sumarPorTipoYTurno(eq(cajaId), eq(TipoMovimiento.EGRESO)))
+        when(movimientoRepository.sumarPorTipoTurnoyEsEfectivo(eq(cajaId), eq(TipoMovimiento.EGRESO), eq(true)))
                 .thenReturn(new BigDecimal("10.00"));
+        when(movimientoRepository.sumarPorTipoTurnoyEsEfectivo(eq(cajaId), eq(TipoMovimiento.INGRESO), eq(false)))
+                .thenReturn(BigDecimal.ZERO);
+        when(movimientoRepository.sumarPorTipoTurnoyEsEfectivo(eq(cajaId), eq(TipoMovimiento.EGRESO), eq(false)))
+                .thenReturn(BigDecimal.ZERO);
 
         // Mock del mapper (Simula el comportamiento real para validar la lógica del
         // service)
-        when(mapper.toResumenDto(any(), any(), any(), any(), any())).thenAnswer(invocation -> {
+        when(mapper.toResumenDto(any(), any(), any(), any(), any(), any(), any())).thenAnswer(invocation -> {
             CajaTurno c = invocation.getArgument(0);
             BigDecimal ef = invocation.getArgument(1);
             BigDecimal vi = invocation.getArgument(2);
-            BigDecimal ing = invocation.getArgument(3);
-            BigDecimal egr = invocation.getArgument(4);
+            BigDecimal ingEf = invocation.getArgument(3);
+            BigDecimal egrEf = invocation.getArgument(4);
+            BigDecimal ingVi = invocation.getArgument(5);
+            BigDecimal egrVi = invocation.getArgument(6);
 
-            BigDecimal esperado = c.getMontoApertura().add(ef).add(ing).subtract(egr);
+            BigDecimal esperadoEf = c.getMontoApertura().add(ef).add(ingEf).subtract(egrEf);
+            BigDecimal esperadoVi = vi.add(ingVi).subtract(egrVi);
 
             return new CajaResumentDto(
                     c.getId(), c.getCodigoApertura(), c.getEstado(), c.getFechaApertura(), null, "cajero1",
-                    c.getMontoApertura(), ing, egr,
+                    c.getMontoApertura(), ingEf.add(ingVi), egrEf.add(egrVi),
                     ef, vi, BigDecimal.ZERO, ef.add(vi),
-                    esperado, BigDecimal.ZERO, esperado.negate());
+                    esperadoEf, esperadoVi, BigDecimal.ZERO, esperadoEf.negate(),
+                    c.getMontoApertura(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         });
 
         // WHEN

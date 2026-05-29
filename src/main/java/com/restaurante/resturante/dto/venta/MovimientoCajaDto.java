@@ -7,5 +7,6 @@ public record MovimientoCajaDto(
         String tipo, // INGRESO, EGRESO
         BigDecimal monto,
         String descripcion,
-        String usuarioId) {
+        String usuarioId,
+        Boolean esEfectivo) {
 }

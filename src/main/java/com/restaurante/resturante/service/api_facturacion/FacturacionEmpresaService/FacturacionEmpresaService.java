@@ -5,8 +5,10 @@ import java.util.Base64;
 import java.util.List;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.restaurante.resturante.domain.api_facturacion.ApiCredencial;
 import com.restaurante.resturante.domain.maestros.Empresa;
@@ -36,6 +38,129 @@ public class FacturacionEmpresaService {
         }
 
         return findAndSaveExisting(saved, token);
+    }
+
+    public void actualizarEmpresa(Empresa updated) {
+        String token = authService.getValidToken();
+        String companyId = authService.getApiCompanyId();
+
+        if (companyId == null) {
+            log.warn("companyId no encontrado en credenciales, intentando crear/buscar la empresa en la API primero.");
+            crearEmpresa(updated);
+            companyId = authService.getApiCompanyId();
+            if (companyId == null) {
+                log.error("No se pudo obtener el companyId de la API para el RUC {}", updated.getRuc());
+                return;
+            }
+        }
+
+        String logoBase64 = updated.getLogoUrl() != null
+                ? Base64.getEncoder().encodeToString(updated.getLogoUrl())
+                : null;
+
+        FacturacionEmpresaRequest request = new FacturacionEmpresaRequest(
+                updated.getRuc(),
+                updated.getRazonSocial(),
+                updated.getNombreComercial(),
+                updated.getDireccionFiscal(),
+                updated.getUbigeo(),
+                updated.getDepartamento(),
+                updated.getProvincia(),
+                updated.getDistrito(),
+                updated.getUsuarioSol(),
+                updated.getClaveSol(),
+                null,
+                null,
+                updated.getCertificadoDigital(),
+                logoBase64,
+                updated.getEntorno());
+
+        try {
+            log.info("Actualizando empresa en API facturacion: ruc={}, companyId={}", updated.getRuc(), companyId);
+
+            final String finalCompanyId = companyId;
+            restClient.put()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/companies/me")
+                            .queryParam("idCompany", finalCompanyId)
+                            .build())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Bearer " + token)
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Empresa actualizada exitosamente en API, companyId={}", companyId);
+        } catch (Exception e) {
+            log.error("Error al actualizar empresa en API facturacion: {}", e.getMessage(), e);
+        }
+    }
+
+    public void actualizarLogo(Empresa empresa, MultipartFile file) {
+        String token = authService.getValidToken();
+        String companyId = authService.getApiCompanyId();
+
+        if (companyId == null) {
+            log.warn("companyId no encontrado en credenciales al actualizar logo.");
+            return;
+        }
+
+        try {
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+            builder.part("logo", file.getResource());
+
+            log.info("Subiendo logo a la API de facturación para la empresa: {}", empresa.getRuc());
+
+            final String finalCompanyId = companyId;
+            restClient.patch()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/companies/me/logo")
+                            .queryParam("idCompany", finalCompanyId)
+                            .build())
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .header("Authorization", "Bearer " + token)
+                    .body(builder.build())
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Logo sincronizado exitosamente con la API.");
+        } catch (Exception e) {
+            log.error("Error al sincronizar el logo con la API: {}", e.getMessage(), e);
+        }
+    }
+
+    public void actualizarCertificado(Empresa empresa, MultipartFile file, String clave) {
+        String token = authService.getValidToken();
+        String companyId = authService.getApiCompanyId();
+
+        if (companyId == null) {
+            log.warn("companyId no encontrado en credenciales al actualizar certificado.");
+            return;
+        }
+
+        try {
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+            builder.part("certificado", file.getResource());
+            builder.part("clave", clave);
+
+            log.info("Subiendo certificado a la API de facturación para la empresa: {}", empresa.getRuc());
+
+            final String finalCompanyId = companyId;
+            restClient.patch()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/companies/me/certificado")
+                            .queryParam("idCompany", finalCompanyId)
+                            .build())
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .header("Authorization", "Bearer " + token)
+                    .body(builder.build())
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Certificado sincronizado exitosamente con la API.");
+        } catch (Exception e) {
+            log.error("Error al sincronizar el certificado con la API: {}", e.getMessage(), e);
+        }
     }
 
     private FacturacionEmpresaResponse tryCreate(Empresa saved, String token) {

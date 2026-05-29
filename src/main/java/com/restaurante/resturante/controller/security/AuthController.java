@@ -81,7 +81,7 @@ public class AuthController {
                 boolean isSuperAdmin = user.getAuthorities().stream()
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
                 boolean isAdmin = user.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ADMIN_RESTAURANTE"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN_RESTAURANTE"));
 
                 // SI ES SUPERADMIN, entra directo sin buscar en UserAccess
                 if (isSuperAdmin) {
@@ -155,7 +155,7 @@ public class AuthController {
 
                 // 3. LÓGICA DINÁMICA
                 boolean isAdmin = user.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ADMIN_RESTAURANTE"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN_RESTAURANTE"));
                 boolean isSuperAdmin = user.getAuthorities().stream()
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
 

@@ -3,9 +3,14 @@ package com.restaurante.resturante.service.security.jpa;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.restaurante.resturante.domain.maestros.Sucursal;
 
 import com.restaurante.resturante.domain.security.Role;
 import com.restaurante.resturante.domain.security.TipoDocumento;
@@ -55,13 +60,27 @@ public class UserService implements IUserService {
     @Transactional(readOnly = true)
     @Override
     public UserDto getUserById(String id) {
-        // Aprovechamos el método privado de soporte para mantener la limpieza
-        return userDtoMapper.toUserDto(getUserOrThrow(id));
+        User target = getUserOrThrow(id);
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            validateTargetUserBelongsToCompany(target, empresaId);
+        }
+        return userDtoMapper.toUserDto(target);
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getAllUsers() {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId != null) {
+                return userAccessRepository.findByEmpresaId(empresaId).stream()
+                        .map(UserAccess::getUser)
+                        .distinct()
+                        .map(userDtoMapper::toUserDto)
+                        .toList();
+            }
+        }
         return userRepository.findAll().stream()
                 .map(userDtoMapper::toUserDto)
                 .toList();
@@ -70,6 +89,15 @@ public class UserService implements IUserService {
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getAllActiveUsers() {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId != null) {
+                return userAccessRepository.findActiveUsersByEmpresaId(empresaId).stream()
+                        .filter(User::getActive)
+                        .map(userDtoMapper::toUserDto)
+                        .toList();
+            }
+        }
         return userRepository.findAllByActiveTrue().stream()
                 .map(userDtoMapper::toUserDto)
                 .toList();
@@ -81,6 +109,28 @@ public class UserService implements IUserService {
         Role rol = getRoleOrThrow(dto.role());
         TipoDocumento tipoDoc = getTipoDocOrThrow(dto.tipoDocumento());
 
+        String targetEmpresaId = dto.empresaId();
+        String targetSucursalId = dto.sucursalId();
+
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            if (rol.getName().equals("ROLE_SUPER_ADMIN")) {
+                throw new AccessDeniedException("No tienes permiso para asignar este rol.");
+            }
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (adminEmpresaId == null) {
+                throw new AccessDeniedException("No se encontró tu empresa.");
+            }
+            targetEmpresaId = adminEmpresaId;
+
+            if (targetSucursalId != null) {
+                Sucursal sucursal = sucursalRepository.findById(targetSucursalId)
+                        .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+                if (!sucursal.getEmpresa().getId().equals(adminEmpresaId)) {
+                    throw new AccessDeniedException("La sucursal indicada no pertenece a tu empresa.");
+                }
+            }
+        }
+
         // Buscamos si el usuario existe por DNI o Username (sin importar si está activo
         // o no)
         Optional<User> userByUsername = userRepository.findByUsername(dto.username());
@@ -90,6 +140,9 @@ public class UserService implements IUserService {
 
         if (existing != null) {
             // --- CASO: EL USUARIO YA EXISTE (ACTIVO O INACTIVO) ---
+            if (isAuthenticatedUserRestaurantAdmin()) {
+                validateTargetUserBelongsToCompany(existing, targetEmpresaId);
+            }
             // Actualizamos sus datos básicos por si cambiaron
             userDtoMapper.updateEntityFromDto(dto, existing);
             existing.setRole(rol);
@@ -99,7 +152,7 @@ public class UserService implements IUserService {
             User savedUser = userRepository.save(existing);
 
             // Asignamos el acceso (Aquí se aplica la regla de MAYÚSCULAS)
-            assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
+            assignInitialAccess(savedUser, targetEmpresaId, targetSucursalId);
 
             return userDtoMapper.toUserDto(savedUser);
         }
@@ -110,7 +163,7 @@ public class UserService implements IUserService {
         user.setActive(true);
         User savedUser = userRepository.save(user);
 
-        assignInitialAccess(savedUser, dto.empresaId(), dto.sucursalId());
+        assignInitialAccess(savedUser, targetEmpresaId, targetSucursalId);
 
         return userDtoMapper.toUserDto(savedUser);
     }
@@ -120,14 +173,37 @@ public class UserService implements IUserService {
     public UserDto update(String id, CreateUserDto dto) {
         User existing = getUserOrThrow(id);
 
+        Role rol = getRoleOrThrow(dto.role());
+        String targetEmpresaId = dto.empresaId();
+        String targetSucursalId = dto.sucursalId();
+
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            validateTargetUserBelongsToCompany(existing, adminEmpresaId);
+
+            if (existing.getRole() != null && existing.getRole().getName().equals("ROLE_SUPER_ADMIN")) {
+                throw new AccessDeniedException("No tienes permiso para modificar a un super administrador.");
+            }
+            if (rol.getName().equals("ROLE_SUPER_ADMIN")) {
+                throw new AccessDeniedException("No tienes permiso para asignar el rol de super administrador.");
+            }
+            targetEmpresaId = adminEmpresaId;
+
+            if (targetSucursalId != null) {
+                Sucursal sucursal = sucursalRepository.findById(targetSucursalId)
+                        .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada"));
+                if (!sucursal.getEmpresa().getId().equals(adminEmpresaId)) {
+                    throw new AccessDeniedException("La sucursal indicada no pertenece a tu empresa.");
+                }
+            }
+        }
+
         if (!existing.getUsername().equalsIgnoreCase(dto.username())) {
             validateUsernameUnique(dto.username());
         }
         if (!existing.getNumeroDocumento().equalsIgnoreCase(dto.numeroDocumento())) {
             validateDocumentoUnique(dto.numeroDocumento());
         }
-
-        Role rol = getRoleOrThrow(dto.role());
 
         // Usamos el método que ya tienes en el mapper para actualizar campos básicos
         userDtoMapper.updateEntityFromDto(dto, existing);
@@ -140,8 +216,8 @@ public class UserService implements IUserService {
         User savedUser = userRepository.save(existing);
 
         // Actualizamos el acceso si se proporcionan los datos
-        if (dto.empresaId() != null || dto.sucursalId() != null) {
-            updateUserAccess(savedUser, dto.empresaId(), dto.sucursalId());
+        if (targetEmpresaId != null || targetSucursalId != null) {
+            updateUserAccess(savedUser, targetEmpresaId, targetSucursalId);
         }
 
         return userDtoMapper.toUserDto(savedUser);
@@ -151,6 +227,13 @@ public class UserService implements IUserService {
     @Transactional
     public void delete(String id) {
         User user = getUserOrThrow(id);
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            validateTargetUserBelongsToCompany(user, adminEmpresaId);
+            if (user.getRole() != null && user.getRole().getName().equals("ROLE_SUPER_ADMIN")) {
+                throw new AccessDeniedException("No tienes permiso para eliminar a un super administrador.");
+            }
+        }
         user.setActive(false);
         userRepository.save(user);
     }
@@ -160,12 +243,23 @@ public class UserService implements IUserService {
     @Transactional(readOnly = true)
     @Override
     public UserDto getUserByUsername(String username) {
-        return userDtoMapper.toUserDto(getUserByUsernameOrThrow(username));
+        User target = getUserByUsernameOrThrow(username);
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            validateTargetUserBelongsToCompany(target, empresaId);
+        }
+        return userDtoMapper.toUserDto(target);
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getUserByEmpresaId(String empresaId) {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (adminEmpresaId == null || !adminEmpresaId.equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para consultar los usuarios de esta empresa.");
+            }
+        }
         // Validamos que la empresa exista antes de buscar
         if (!empresaRepository.existsById(empresaId)) {
             throw new EntityNotFoundException("Empresa no encontrada con ID: " + empresaId);
@@ -179,6 +273,12 @@ public class UserService implements IUserService {
     @Transactional(readOnly = true)
     @Override
     public List<UserDto> getUserByEmpresaIdAndSucursalId(String empresaId, String sucursalId) {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (adminEmpresaId == null || !adminEmpresaId.equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para consultar los usuarios de esta empresa.");
+            }
+        }
         List<User> users = userAccessRepository.findUsersByEmpresaIdAndSucursalId(empresaId, sucursalId);
         if (users.isEmpty())
             throw new EntityNotFoundException("No se encontraron usuarios para la sede indicada.");
@@ -252,5 +352,40 @@ public class UserService implements IUserService {
     private TipoDocumento getTipoDocOrThrow(String name) {
         return tipoDocumentoRepository.findByName(name)
                 .orElseThrow(() -> new EntityNotFoundException("Tipo de documento no encontrado: " + name));
+    }
+
+    private boolean isAuthenticatedUserRestaurantAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN_RESTAURANTE"));
+    }
+
+    private String getAuthenticatedUserEmpresaIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        String username = auth.getName();
+        List<UserAccess> accesses = userAccessRepository.findByUserUsername(username);
+        return accesses.stream()
+                .filter(UserAccess::getActive)
+                .map(acc -> acc.getEmpresa().getId())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void validateTargetUserBelongsToCompany(User targetUser, String empresaId) {
+        if (targetUser == null || empresaId == null) {
+            throw new AccessDeniedException("No tienes permiso para acceder a este usuario.");
+        }
+        List<UserAccess> targetAccesses = userAccessRepository.findByUserIdAndActiveTrue(targetUser.getId());
+        boolean sameCompany = targetAccesses.stream()
+                .anyMatch(acc -> acc.getEmpresa().getId().equals(empresaId));
+        if (!sameCompany) {
+            throw new AccessDeniedException("No tienes permiso para acceder a este usuario.");
+        }
     }
 }

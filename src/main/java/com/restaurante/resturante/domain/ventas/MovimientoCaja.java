@@ -57,6 +57,10 @@ public class MovimientoCaja {
     @ToString.Exclude
     private CajaTurno cajaTurno; // Afecta al turno actual
 
+    @Builder.Default
+    @Column(name = "es_efectivo", nullable = false)
+    private Boolean esEfectivo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private User usuario; // Quién hizo el movimiento

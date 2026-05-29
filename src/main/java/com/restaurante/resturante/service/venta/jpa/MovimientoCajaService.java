@@ -48,6 +48,7 @@ public class MovimientoCajaService {
                                 .monto(dto.monto())
                                 .descripcion(dto.descripcion())
                                 .fecha(LocalDateTime.now(ZoneId.of("America/Lima")))
+                                .esEfectivo(dto.esEfectivo() != null ? dto.esEfectivo() : true)
                                 .build();
 
                 movimiento = movimientoRepository.save(movimiento);
@@ -58,7 +59,8 @@ public class MovimientoCajaService {
                                 movimiento.getMonto(),
                                 movimiento.getDescripcion(),
                                 movimiento.getFecha(),
-                                user.getUsername());
+                                user.getUsername(),
+                                movimiento.getEsEfectivo());
         }
 
         @Transactional(readOnly = true)
@@ -70,7 +72,8 @@ public class MovimientoCajaService {
                                                 m.getMonto(),
                                                 m.getDescripcion(),
                                                 m.getFecha(),
-                                                m.getUsuario().getUsername()))
+                                                m.getUsuario().getUsername(),
+                                                m.getEsEfectivo()))
                                 .toList();
         }
 
@@ -84,7 +87,8 @@ public class MovimientoCajaService {
                                                 m.getMonto(),
                                                 m.getDescripcion(),
                                                 m.getFecha(),
-                                                m.getUsuario().getUsername()))
+                                                m.getUsuario().getUsername(),
+                                                m.getEsEfectivo()))
                                 .toList();
         }
 }

@@ -24,6 +24,9 @@ import com.restaurante.resturante.service.maestros.ISucursalService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Slf4j
 @Service
@@ -39,6 +42,14 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional(readOnly = true)
     public List<SucursalDto> findAll() {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId != null) {
+                return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
+                        .map(sucursalMapper::toDto)
+                        .toList();
+            }
+        }
         return sucursalRepository.findAll().stream()
                 .map(sucursalMapper::toDto)
                 .toList();
@@ -47,6 +58,14 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional(readOnly = true)
     public List<SucursalDto> findAllActive() {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId != null) {
+                return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
+                        .map(sucursalMapper::toDto)
+                        .toList();
+            }
+        }
         return sucursalRepository.findAllByEstadoTrue().stream()
                 .map(sucursalMapper::toDto)
                 .toList();
@@ -55,23 +74,38 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional(readOnly = true)
     public SucursalDto findById(String id) {
-        return sucursalRepository.findById(id)
-                .map(sucursalMapper::toDto)
+        Sucursal sucursal = sucursalRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sucursal no encontrada con ID: " + id));
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId != null && !sucursal.getEmpresa().getId().equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para acceder a esta sucursal.");
+            }
+        }
+        return sucursalMapper.toDto(sucursal);
     }
 
     @Override
     @Transactional
     public SucursalDto create(CreateSucursalDto dto) {
+        String targetEmpresaId = dto.empresaId();
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null) {
+                throw new AccessDeniedException("No se encontró tu empresa.");
+            }
+            targetEmpresaId = empresaId;
+        }
+
         // 1. Validar que la empresa exista y esté activa
-        Empresa empresa = findExistingEmpresa(dto.empresaId());
+        Empresa empresa = findExistingEmpresa(targetEmpresaId);
         if (!empresa.getActive()) {
             throw new IllegalStateException("No se puede crear una sucursal para una empresa inactiva.");
         }
 
         // 2. Buscar si ya existe una sucursal con ese nombre en esa misma empresa
         Optional<Sucursal> sucursalExistente = sucursalRepository
-                .findByNombreIgnoreCaseAndEmpresaId(dto.nombre(), dto.empresaId());
+                .findByNombreIgnoreCaseAndEmpresaId(dto.nombre(), targetEmpresaId);
 
         if (sucursalExistente.isPresent()) {
             Sucursal existing = sucursalExistente.get();
@@ -99,12 +133,21 @@ public class SucursalService implements ISucursalService {
     public SucursalDto update(String id, CreateSucursalDto dto) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
         Sucursal existing = findExistingSucursal(idSeguro);
+        String targetEmpresaId = dto.empresaId();
+
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !existing.getEmpresa().getId().equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para modificar esta sucursal.");
+            }
+            targetEmpresaId = empresaId;
+        }
 
         // Validar cambio de nombre (para evitar duplicados en la misma empresa)
         if (dto.nombre() != null && !existing.getNombre().equalsIgnoreCase(dto.nombre())) {
             Optional<Sucursal> nombreEnUso = sucursalRepository.findByNombreIgnoreCaseAndEmpresaId(
                     dto.nombre(),
-                    dto.empresaId());
+                    targetEmpresaId);
             if (nombreEnUso.isPresent() && nombreEnUso.get().getEstado()) {
                 throw new IllegalStateException(
                         "El nombre '" + dto.nombre() + "' ya está en uso por otra sucursal activa de esta empresa.");
@@ -124,8 +167,8 @@ public class SucursalService implements ISucursalService {
         }
 
         // Validar cambio de empresa (caso raro)
-        if (dto.empresaId() != null && !existing.getEmpresa().getId().equals(dto.empresaId())) {
-            Empresa nuevaEmpresa = findExistingEmpresa(dto.empresaId());
+        if (targetEmpresaId != null && !existing.getEmpresa().getId().equals(targetEmpresaId)) {
+            Empresa nuevaEmpresa = findExistingEmpresa(targetEmpresaId);
             if (!nuevaEmpresa.getActive()) {
                 throw new IllegalStateException("No se puede transferir la sucursal a una empresa inactiva.");
             }
@@ -144,6 +187,13 @@ public class SucursalService implements ISucursalService {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
         Sucursal sucursal = findExistingSucursal(idSeguro);
 
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !sucursal.getEmpresa().getId().equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para eliminar esta sucursal.");
+            }
+        }
+
         // 1. Apagamos la sucursal
         sucursal.setEstado(false);
         sucursalRepository.save(sucursal);
@@ -152,6 +202,12 @@ public class SucursalService implements ISucursalService {
     @Override
     @Transactional(readOnly = true)
     public List<SucursalDto> findSucursalesByEmpresaId(String empresaId) {
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String adminEmpresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (adminEmpresaId == null || !adminEmpresaId.equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para consultar las sucursales de esta empresa.");
+            }
+        }
         return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId)
                 .stream()
                 .map(sucursalMapper::toDto)
@@ -175,5 +231,28 @@ public class SucursalService implements ISucursalService {
         } catch (Exception e) {
             log.warn("No se pudo sincronizar sucursal con API: {}", e.getMessage());
         }
+    }
+
+    private boolean isAuthenticatedUserRestaurantAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN_RESTAURANTE"));
+    }
+
+    private String getAuthenticatedUserEmpresaIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        String username = auth.getName();
+        List<UserAccess> accesses = userAccessRepository.findByUserUsername(username);
+        return accesses.stream()
+                .filter(UserAccess::getActive)
+                .map(acc -> acc.getEmpresa().getId())
+                .findFirst()
+                .orElse(null);
     }
 }

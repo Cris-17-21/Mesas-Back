@@ -131,12 +131,15 @@ public class EmpresaService implements IEmpresaService {
                 empresaMapper.updateEntityFromDto(dto, existing);
                 existing.setActive(true); // Revivimos la empresa
                 Empresa reactivated = empresaRepository.save(existing);
+                syncUpdateWithApi(reactivated);
                 return empresaMapper.toDto(reactivated);
             }
         }
 
         empresaMapper.updateEntityFromDto(dto, existing);
-        return empresaMapper.toDto(empresaRepository.save(existing));
+        Empresa saved = empresaRepository.save(existing);
+        syncUpdateWithApi(saved);
+        return empresaMapper.toDto(saved);
     }
 
     @Override
@@ -175,7 +178,13 @@ public class EmpresaService implements IEmpresaService {
         Empresa empresa = findExistingEmpresa(idSeguro);
         try {
             empresa.setLogoUrl(file.getBytes());
-            return empresaMapper.toDto(empresaRepository.save(empresa));
+            Empresa saved = empresaRepository.save(empresa);
+            try {
+                facturacionEmpresaService.actualizarLogo(saved, file);
+            } catch (Exception e) {
+                // No bloquear si falla sincronización
+            }
+            return empresaMapper.toDto(saved);
         } catch (IOException e) {
             throw new RuntimeException("Error al leer el archivo de logo", e);
         }
@@ -189,7 +198,13 @@ public class EmpresaService implements IEmpresaService {
         try {
             String base64Cert = Base64.getEncoder().encodeToString(file.getBytes());
             empresa.setCertificadoDigital(base64Cert);
-            return empresaMapper.toDto(empresaRepository.save(empresa));
+            Empresa saved = empresaRepository.save(empresa);
+            try {
+                facturacionEmpresaService.actualizarCertificado(saved, file, saved.getClaveCertificado());
+            } catch (Exception e) {
+                // No bloquear si falla sincronización
+            }
+            return empresaMapper.toDto(saved);
         } catch (IOException e) {
             throw new RuntimeException("Error al leer el archivo de certificado", e);
         }
@@ -211,6 +226,14 @@ public class EmpresaService implements IEmpresaService {
             facturacionEmpresaService.crearEmpresa(empresa);
         } catch (Exception e) {
             // No bloquear la creación local si falla la sincronización con la API
+        }
+    }
+
+    private void syncUpdateWithApi(Empresa empresa) {
+        try {
+            facturacionEmpresaService.actualizarEmpresa(empresa);
+        } catch (Exception e) {
+            // No bloquear la actualización local si falla la sincronización con la API
         }
     }
 

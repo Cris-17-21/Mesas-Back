@@ -141,6 +141,15 @@ public class PedidoService implements IPedidoService {
                                 .map(d -> {
                                         PedidoDetalle det = detalleMapper.toEntity(d);
                                         det.setPedido(pedido);
+
+                                        Integer prodId = Integer.parseInt(d.productoId());
+                                        Producto producto = productoRepository.findById(prodId)
+                                                        .orElseThrow(() -> new RuntimeException(
+                                                                        "PRODUCTO NO ENCONTRADO: " + d.productoId()));
+                                        det.setProducto(producto);
+                                        det.setPrecioUnitario(producto.getPrecioVenta());
+                                        det.setTotalLinea(producto.getPrecioVenta()
+                                                        .multiply(new java.math.BigDecimal(det.getCantidad())));
                                         return det;
                                 }).toList();
 

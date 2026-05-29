@@ -88,19 +88,21 @@ public class CajaTurnoService implements ICajaTurnoService {
                 BigDecimal efectivo = pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, true);
                 BigDecimal virtual = pedidoRepository.sumTotalByCajaAndEsEfectivo(cajaId, false);
 
-                // 2. Movimientos Manuales
-                BigDecimal ingresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
-                                TipoMovimiento.INGRESO);
-                BigDecimal egresos = movimientoRepository.sumarPorTipoYTurno(cajaId,
-                                TipoMovimiento.EGRESO);
+                // 2. Movimientos Manuales Desglosados
+                BigDecimal ingresosEf = movimientoRepository.sumarPorTipoTurnoyEsEfectivo(cajaId, TipoMovimiento.INGRESO, true);
+                BigDecimal egresosEf = movimientoRepository.sumarPorTipoTurnoyEsEfectivo(cajaId, TipoMovimiento.EGRESO, true);
+                BigDecimal ingresosVir = movimientoRepository.sumarPorTipoTurnoyEsEfectivo(cajaId, TipoMovimiento.INGRESO, false);
+                BigDecimal egresosVir = movimientoRepository.sumarPorTipoTurnoyEsEfectivo(cajaId, TipoMovimiento.EGRESO, false);
 
-                // 3. Mapper -> Incluye (Apertura + VentasEfectivo + Ingresos - Egresos)
+                // 3. Mapper -> Incluye desglosado
                 return mapper.toResumenDto(
                                 caja,
                                 efectivo != null ? efectivo : BigDecimal.ZERO,
                                 virtual != null ? virtual : BigDecimal.ZERO,
-                                ingresos != null ? ingresos : BigDecimal.ZERO,
-                                egresos != null ? egresos : BigDecimal.ZERO);
+                                ingresosEf != null ? ingresosEf : BigDecimal.ZERO,
+                                egresosEf != null ? egresosEf : BigDecimal.ZERO,
+                                ingresosVir != null ? ingresosVir : BigDecimal.ZERO,
+                                egresosVir != null ? egresosVir : BigDecimal.ZERO);
         }
 
         @Override
@@ -112,11 +114,11 @@ public class CajaTurnoService implements ICajaTurnoService {
                 CajaResumentDto resumen = obtenerResumenArqueo(caja.getId());
 
                 BigDecimal cashEsperado = resumen.saldoEsperadoEnCaja();
-                BigDecimal cardEsperado = resumen.totalVentasTarjeta();
+                BigDecimal cardEsperado = resumen.saldoEsperadoVirtual();
                 BigDecimal overallEsperado = cashEsperado.add(cardEsperado);
 
-                BigDecimal cashReal = dto.efectivoReal() != null ? dto.efectivoReal() : BigDecimal.ZERO;
-                BigDecimal cardReal = dto.tarjetaReal() != null ? dto.tarjetaReal() : BigDecimal.ZERO;
+                BigDecimal cashReal = dto.efectivoCierreReal() != null ? dto.efectivoCierreReal() : BigDecimal.ZERO;
+                BigDecimal cardReal = dto.virtualCierreReal() != null ? dto.virtualCierreReal() : BigDecimal.ZERO;
                 BigDecimal overallReal = cashReal.add(cardReal);
 
                 BigDecimal diff = overallReal.subtract(overallEsperado);

@@ -122,6 +122,14 @@ public class CajaReporteService {
             saldosTable.addCell(new Phrase("S/ " + resumen.totalIngresosCajaChica(), valueFont));
             saldosTable.addCell(new Phrase("-", valueFont));
 
+            // Entrada Caja Chica (Ventas + Ingresos Manuales)
+            BigDecimal totalVentas = resumen.totalVentasGlobal() != null ? resumen.totalVentasGlobal() : BigDecimal.ZERO;
+            BigDecimal totalIngresos = resumen.totalIngresosCajaChica() != null ? resumen.totalIngresosCajaChica() : BigDecimal.ZERO;
+            BigDecimal totalEntradas = totalVentas.add(totalIngresos);
+            saldosTable.addCell(new Phrase("ENTRADA CAJA CHICA (Ventas + Ingresos)", labelFont));
+            saldosTable.addCell(new Phrase("S/ " + totalEntradas, labelFont));
+            saldosTable.addCell(new Phrase("-", valueFont));
+
             saldosTable.addCell(new Phrase("Movimientos Caja Chica (Egresos)", valueFont));
             saldosTable.addCell(new Phrase("S/ " + resumen.totalEgresosCajaChica(), valueFont));
             saldosTable.addCell(new Phrase("-", valueFont));
@@ -133,7 +141,7 @@ public class CajaReporteService {
             saldosTable.addCell(new Phrase("S/ " + cashEsperado, labelFont));
             saldosTable.addCell(new Phrase("S/ " + cashReal, labelFont));
 
-            BigDecimal cardEsperado = resumen.totalVentasTarjeta();
+            BigDecimal cardEsperado = resumen.saldoEsperadoVirtual() != null ? resumen.saldoEsperadoVirtual() : BigDecimal.ZERO;
             BigDecimal cardReal = caja.getMontoCierreRealVirtual() != null ? caja.getMontoCierreRealVirtual() : BigDecimal.ZERO;
             saldosTable.addCell(new Phrase("TOTAL VIRTUAL/TARJETA", labelFont));
             saldosTable.addCell(new Phrase("S/ " + cardEsperado, labelFont));

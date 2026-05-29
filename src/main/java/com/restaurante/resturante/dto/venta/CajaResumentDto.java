@@ -25,8 +25,15 @@ public record CajaResumentDto(
 
         // --- Bloque 3: Arqueo (La prueba de fuego) ---
         BigDecimal saldoEsperadoEnCaja, // (Inicial + VentasEfectivo + Ingresos) - Egresos
-        BigDecimal saldoRealEnCaja, // Lo que contó el cajero al cerrar
-        BigDecimal diferencia) {
+        BigDecimal saldoEsperadoVirtual,
+        BigDecimal saldoRealEnCaja, // Lo que contó el cajero al cerrar (Efectivo)
+        BigDecimal diferencia,
+        
+        // --- Nuevos campos de desglose de apertura y cierre ---
+        BigDecimal montoAperturaEfectivo,
+        BigDecimal montoAperturaVirtual,
+        BigDecimal montoCierreRealEfectivo,
+        BigDecimal montoCierreRealVirtual) {
     public BigDecimal totalEsperado() {
         return saldoEsperadoEnCaja;
     }

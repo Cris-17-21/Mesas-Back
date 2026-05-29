@@ -36,17 +36,25 @@ public class CajaTurnoDtoMapper {
      * ventasOtros, totalEsperado, fechaApertura.
      */
     public CajaResumentDto toResumenDto(CajaTurno entity, BigDecimal ventasEfectivo, BigDecimal ventasVirtual,
-            BigDecimal ingresos, BigDecimal egresos) {
+            BigDecimal ingresosEfectivo, BigDecimal egresosEfectivo,
+            BigDecimal ingresosVirtual, BigDecimal egresosVirtual) {
         BigDecimal totalVentas = ventasEfectivo.add(ventasVirtual);
 
         BigDecimal cashApertura = entity.getMontoAperturaEfectivo() != null ? entity.getMontoAperturaEfectivo() : entity.getMontoApertura();
-        BigDecimal totalEsperado = cashApertura
+        BigDecimal totalEsperadoEfectivo = cashApertura
                 .add(ventasEfectivo)
-                .add(ingresos)
-                .subtract(egresos);
+                .add(ingresosEfectivo)
+                .subtract(egresosEfectivo);
+
+        BigDecimal cardApertura = entity.getMontoAperturaVirtual() != null ? entity.getMontoAperturaVirtual() : BigDecimal.ZERO;
+        BigDecimal totalEsperadoVirtual = cardApertura
+                .add(ventasVirtual)
+                .add(ingresosVirtual)
+                .subtract(egresosVirtual);
 
         BigDecimal cashCierreReal = entity.getMontoCierreRealEfectivo() != null ? entity.getMontoCierreRealEfectivo() : (entity.getMontoCierreReal() != null ? entity.getMontoCierreReal() : BigDecimal.ZERO);
-        BigDecimal diferencia = cashCierreReal.subtract(totalEsperado);
+        BigDecimal cardCierreReal = entity.getMontoCierreRealVirtual() != null ? entity.getMontoCierreRealVirtual() : BigDecimal.ZERO;
+        BigDecimal diferencia = entity.getDiferencia() != null ? entity.getDiferencia() : (cashCierreReal.add(cardCierreReal)).subtract(totalEsperadoEfectivo.add(totalEsperadoVirtual));
 
         return new CajaResumentDto(
                 // Metadatos
@@ -57,10 +65,10 @@ public class CajaTurnoDtoMapper {
                 entity.getFechaCierre(),
                 entity.getUser().getUsername(),
 
-                // Bloque 1: Flujo
+                // Bloque 1: Flujo (Caja Chica Total)
                 entity.getMontoApertura(),
-                ingresos, // Ingresos caja chica
-                egresos, // Egresos caja chica
+                ingresosEfectivo.add(ingresosVirtual), // Ingresos caja chica
+                egresosEfectivo.add(egresosVirtual), // Egresos caja chica
 
                 // Bloque 2: Ventas
                 ventasEfectivo,
@@ -69,8 +77,15 @@ public class CajaTurnoDtoMapper {
                 totalVentas, // Global
 
                 // Bloque 3: Arqueo
-                totalEsperado,
+                totalEsperadoEfectivo,
+                totalEsperadoVirtual,
                 cashCierreReal,
-                diferencia);
+                diferencia,
+
+                // Bloque 4: Desglose Apertura / Cierre
+                cashApertura,
+                cardApertura,
+                cashCierreReal,
+                cardCierreReal);
     }
 }

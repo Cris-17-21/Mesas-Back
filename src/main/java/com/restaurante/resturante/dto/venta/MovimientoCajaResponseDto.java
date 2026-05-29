@@ -9,5 +9,6 @@ public record MovimientoCajaResponseDto(
         BigDecimal monto,
         String descripcion,
         LocalDateTime fecha,
-        String usuarioNombre) {
+        String usuarioNombre,
+        Boolean esEfectivo) {
 }

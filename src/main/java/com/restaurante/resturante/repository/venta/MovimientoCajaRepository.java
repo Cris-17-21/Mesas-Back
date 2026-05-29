@@ -26,6 +26,9 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
     @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.cajaTurno.id = :cajaTurnoId AND m.tipo = :tipo")
     BigDecimal sumarPorTipoYTurno(String cajaTurnoId, TipoMovimiento tipo);
 
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.cajaTurno.id = :cajaTurnoId AND m.tipo = :tipo AND m.esEfectivo = :esEfectivo")
+    BigDecimal sumarPorTipoTurnoyEsEfectivo(String cajaTurnoId, TipoMovimiento tipo, boolean esEfectivo);
+
     // 3. SEGURIDAD: Buscar movimientos hechos por un usuario específico (Auditoría)
     // Asumiendo que guardas el usuario que hizo el movimiento
     List<MovimientoCaja> findByUsuarioId(String usuarioId);

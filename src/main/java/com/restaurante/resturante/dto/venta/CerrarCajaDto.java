@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 
 public record CerrarCajaDto(
         String id,
-        BigDecimal efectivoReal,
-        BigDecimal tarjetaReal,
+        BigDecimal efectivoCierreReal,
+        BigDecimal virtualCierreReal,
+        BigDecimal efectivoCierreEsperado,
+        BigDecimal virtualCierreEsperado,
         String comentario) {
     public BigDecimal montoCierreReal() {
-        BigDecimal cash = efectivoReal != null ? efectivoReal : BigDecimal.ZERO;
-        BigDecimal card = tarjetaReal != null ? tarjetaReal : BigDecimal.ZERO;
+        BigDecimal cash = efectivoCierreReal != null ? efectivoCierreReal : BigDecimal.ZERO;
+        BigDecimal card = virtualCierreReal != null ? virtualCierreReal : BigDecimal.ZERO;
         return cash.add(card);
     }
 }

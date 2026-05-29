@@ -6,5 +6,6 @@ public record MovivmientoCajaRequest(
     String cajaTurnoId,
     BigDecimal monto,
     String descripcion,
-    String tipo
+    String tipo,
+    Boolean esEfectivo
 ) {}

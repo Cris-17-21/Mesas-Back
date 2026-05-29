@@ -87,6 +87,7 @@ public class DataSeeder implements CommandLineRunner {
                 createPermissionIfNotExists("CREATE_USER", "Crear usuarios", userModule);
                 createPermissionIfNotExists("READ_USER", "Ver usuarios", userModule);
                 createPermissionIfNotExists("UPDATE_USER", "Editar usuarios", userModule);
+                createPermissionIfNotExists("DELETE_USER", "Eliminar usuarios", userModule);
 
                 // Modulo de creacion de maestros
                 PermissionModule maestrosModule = createModuleIfNotExists("Maestros", "/maestros",
@@ -192,7 +193,7 @@ public class DataSeeder implements CommandLineRunner {
                 // 4. Ventas -> Submódulos y Permisos
                 PermissionModule ventasModule = createModuleIfNotExists("Ventas", "/ventas", "bi bi-shop", 3, null);
                 
-                PermissionModule cajaModule = createModuleIfNotExists("Caja", "/caja", "bi bi-cash-register", 1, ventasModule);
+                PermissionModule cajaModule = createModuleIfNotExists("Caja", "/caja", "bi bi-wallet", 1, ventasModule);
                 createPermissionIfNotExists("READ_CAJA", "Ver caja y movimientos", cajaModule);
                 createPermissionIfNotExists("ABRIR_CAJA", "Abrir turnos de caja", cajaModule);
                 createPermissionIfNotExists("CERRAR_CAJA", "Cerrar turnos de caja", cajaModule);
@@ -262,6 +263,8 @@ public class DataSeeder implements CommandLineRunner {
                 permissionRepository.findByName("READ_USER").ifPresent(adminRestaurantePermissions::add);
                 permissionRepository.findByName("CREATE_USER").ifPresent(adminRestaurantePermissions::add);
                 permissionRepository.findByName("UPDATE_USER").ifPresent(adminRestaurantePermissions::add);
+                permissionRepository.findByName("DELETE_USER").ifPresent(adminRestaurantePermissions::add);
+                permissionRepository.findByName("READ_ROLE").ifPresent(adminRestaurantePermissions::add);
                 adminRestauranteRole.setPermissions(adminRestaurantePermissions);
                 roleRepository.save(adminRestauranteRole);
 
@@ -361,10 +364,22 @@ public class DataSeeder implements CommandLineRunner {
                 final String urlPath = finalPath;
 
                 return permissionModuleRepository.findByName(name).map(existingModule -> {
-                        // Si ya existe, verificamos si la ruta ha cambiado
+                        boolean changed = false;
                         if (!urlPath.equals(existingModule.getUrlPath())) {
                                 System.out.println("🔄 Actualizando ruta de " + name + ": " + existingModule.getUrlPath() + " -> " + urlPath);
                                 existingModule.setUrlPath(urlPath);
+                                changed = true;
+                        }
+                        if (iconName != null && !iconName.equals(existingModule.getIconName())) {
+                                System.out.println("🔄 Actualizando icono de " + name + ": " + existingModule.getIconName() + " -> " + iconName);
+                                existingModule.setIconName(iconName);
+                                changed = true;
+                        }
+                        if (order != existingModule.getDisplayOrder()) {
+                                existingModule.setDisplayOrder(order);
+                                changed = true;
+                        }
+                        if (changed) {
                                 return permissionModuleRepository.save(existingModule);
                         }
                         return existingModule;
