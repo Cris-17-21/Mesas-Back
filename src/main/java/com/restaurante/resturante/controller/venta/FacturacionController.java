@@ -64,10 +64,15 @@ public class FacturacionController {
     }
 
     @GetMapping("/comprobantes/{id}/descargar/{tipo}")
-    public ResponseEntity<byte[]> descargarArchivo(@PathVariable String id, @PathVariable String tipo) {
-        byte[] archivo = service.obtenerArchivoComprobante(id, tipo);
+    public ResponseEntity<byte[]> descargarArchivo(
+            @PathVariable String id,
+            @PathVariable String tipo,
+            @RequestParam(required = false, defaultValue = "ticket") String formato) {
+        byte[] archivo = service.obtenerArchivoComprobante(id, tipo, formato);
         String contentType = tipo.equalsIgnoreCase("pdf") ? "application/pdf" : "application/xml";
-        String extension = tipo.equalsIgnoreCase("pdf") ? ".pdf" : ".xml";
+        String extension = tipo.equalsIgnoreCase("pdf")
+                ? ("_" + formato.toLowerCase() + ".pdf")
+                : ".xml";
         
         return ResponseEntity.ok()
                 .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)

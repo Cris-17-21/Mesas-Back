@@ -170,8 +170,8 @@ public class FacturacionApiComprobanteService {
     private List<ComprobanteFacturacionDetalle> buildDetalles(List<PedidoDetalle> detalles, Boolean impresionConsumo, Pedido pedido) {
         if (Boolean.TRUE.equals(impresionConsumo)) {
             BigDecimal total = pedido.getTotalFinal();
-            BigDecimal valorUnitario = total.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
-            BigDecimal igv = total.subtract(valorUnitario);
+            BigDecimal valorUnitario = total;
+            BigDecimal igv = BigDecimal.ZERO;
 
             ComprobanteFacturacionDetalle det = new ComprobanteFacturacionDetalle(
                     "CONSUMO",
@@ -180,8 +180,8 @@ public class FacturacionApiComprobanteService {
                     BigDecimal.ONE,
                     valorUnitario,
                     total,
-                    "10",
-                    new BigDecimal("18.00"),
+                    "20",
+                    BigDecimal.ZERO,
                     igv,
                     valorUnitario,
                     valorUnitario
@@ -197,9 +197,9 @@ public class FacturacionApiComprobanteService {
                 .map(d -> {
                     BigDecimal cantidad = BigDecimal.valueOf(d.getCantidad());
                     BigDecimal precioVenta = d.getPrecioUnitario();
-                    BigDecimal valorUnitario = precioVenta.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+                    BigDecimal valorUnitario = precioVenta;
                     BigDecimal valorVenta = valorUnitario.multiply(cantidad);
-                    BigDecimal igv = valorVenta.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal igv = BigDecimal.ZERO;
 
                     String codigo = d.getProducto() != null
                             ? String.valueOf(d.getProducto().getIdProducto())
@@ -218,8 +218,8 @@ public class FacturacionApiComprobanteService {
                             cantidad,
                             valorUnitario,
                             precioVenta,
-                            "10",
-                            new BigDecimal("18.00"),
+                            "20",
+                            BigDecimal.ZERO,
                             igv,
                             valorVenta,
                             valorVenta);

@@ -328,8 +328,6 @@ public class FacturacionComprobanteService {
         int siguiente = (maxCorr != null ? maxCorr : 0) + 1;
 
         BigDecimal total = pedido.getTotalFinal();
-        BigDecimal mtoOperGravadas = total.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
-        BigDecimal mtoIgv = total.subtract(mtoOperGravadas);
 
         return new ComprobanteFacturacionResponse(
                 null, // id
@@ -339,10 +337,10 @@ public class FacturacionComprobanteService {
                 serie + "-" + String.format("%08d", siguiente),
                 fechaUsar.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 "PEN",
-                mtoOperGravadas,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                mtoIgv,
+                BigDecimal.ZERO, // mtoOperGravadas
+                total,           // mtoOperExoneradas
+                BigDecimal.ZERO, // mtoOperInafectas
+                BigDecimal.ZERO, // mtoIgv
                 total,
                 "PENDIENTE_ENVIO",
                 null, // ticketSunat
@@ -361,8 +359,6 @@ public class FacturacionComprobanteService {
         int siguiente = (maxCorr != null ? maxCorr : 0) + 1;
 
         BigDecimal total = pedido.getTotalFinal();
-        BigDecimal mtoOperGravadas = total.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
-        BigDecimal mtoIgv = total.subtract(mtoOperGravadas);
 
         return new ComprobanteFacturacionResponse(
                 null, // id
@@ -372,10 +368,10 @@ public class FacturacionComprobanteService {
                 serie + "-" + String.format("%08d", siguiente),
                 fechaUsar.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 "PEN",
-                mtoOperGravadas,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                mtoIgv,
+                BigDecimal.ZERO, // mtoOperGravadas
+                total,           // mtoOperExoneradas
+                BigDecimal.ZERO, // mtoOperInafectas
+                BigDecimal.ZERO, // mtoIgv
                 total,
                 "ACEPTADO",
                 null,
@@ -548,11 +544,8 @@ public class FacturacionComprobanteService {
         }
         
         txt.append("--------------------------------------------------------\n");
-        BigDecimal subTotalCalculado = totalVenta.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
-        BigDecimal totalIgv = totalVenta.subtract(subTotalCalculado).setScale(2, RoundingMode.HALF_UP);
-        
-        txt.append(String.format("%37s %12s\n", "Sub Total:", subTotalCalculado));
-        txt.append(String.format("%37s %12s\n", "IGV (18%):", totalIgv));
+        txt.append(String.format("%37s %12s\n", "Sub Total:", totalVenta.setScale(2, RoundingMode.HALF_UP)));
+        txt.append(String.format("%37s %12s\n", "IGV (0%):", BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)));
         txt.append(String.format("%37s %12s\n", "TOTAL:", totalVenta.setScale(2, RoundingMode.HALF_UP)));
         
         txt.append("\n");
@@ -580,6 +573,11 @@ public class FacturacionComprobanteService {
 
     @Transactional(readOnly = true)
     public byte[] obtenerArchivoComprobante(String id, String tipo) {
+        return obtenerArchivoComprobante(id, tipo, "ticket");
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] obtenerArchivoComprobante(String id, String tipo, String formato) {
         FacturacionComprobante comprobante = facturacionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Comprobante no encontrado"));
 
@@ -588,13 +586,27 @@ public class FacturacionComprobanteService {
             throw new RuntimeException("El archivo solicitado no está disponible para este comprobante");
         }
 
+        // Si es PDF y el formato solicitado es distinto, ajustamos el query parameter del urlString
+        if (tipo.equalsIgnoreCase("pdf") && formato != null) {
+            if (urlString.contains("?formato=")) {
+                urlString = urlString.substring(0, urlString.indexOf("?formato=")) + "?formato=" + formato.toLowerCase();
+            } else {
+                urlString = urlString + "?formato=" + formato.toLowerCase();
+            }
+        }
+
         // Primero intentamos buscarlo localmente en "var/comprobantes"
         java.nio.file.Path rootPath = java.nio.file.Paths.get("var", "comprobantes");
         String anio = String.valueOf(comprobante.getFechaEmision().getYear());
         String mes = String.format("%02d", comprobante.getFechaEmision().getMonthValue());
         String tipoDoc = comprobante.getTipoComprobante();
+        
+        String suffix = tipo.equalsIgnoreCase("pdf")
+                ? ("_" + formato.toLowerCase() + ".pdf")
+                : ".xml";
+
         java.nio.file.Path file = rootPath.resolve(anio).resolve(mes).resolve(tipoDoc)
-                .resolve(comprobante.getSerie() + "-" + comprobante.getCorrelativo() + (tipo.equalsIgnoreCase("pdf") ? ".pdf" : ".xml"));
+                .resolve(comprobante.getSerie() + "-" + comprobante.getCorrelativo() + suffix);
 
         if (java.nio.file.Files.exists(file)) {
             try {
