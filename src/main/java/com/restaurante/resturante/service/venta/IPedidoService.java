@@ -9,6 +9,7 @@ import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
 import com.restaurante.resturante.dto.venta.PedidoResumenDto;
 import com.restaurante.resturante.dto.venta.PreCuentaDto;
+import com.restaurante.resturante.dto.venta.PagoMixtoItemDto;
 import com.restaurante.resturante.dto.venta.RegistrarPagoDto;
 import com.restaurante.resturante.dto.venta.SepararCuentaDto;
 
@@ -32,6 +33,8 @@ public interface IPedidoService {
     // Cierre de cuenta y flujo de caja
     void registrarPago(RegistrarPagoDto dto);
 
+    void registrarPagoMixto(String pedidoId, List<PagoMixtoItemDto> pagos);
+
     // Separar cuentas (Split Bill)
     PedidoResponseDto separarCuenta(SepararCuentaDto dto);
 
@@ -46,4 +49,7 @@ public interface IPedidoService {
 
     // Cocina: Listar pedidos activos (para reutilizar en controller)
     List<Pedido> findPedidosActivos(String sucursalId);
+
+    PedidoResponseDto actualizarPreciosDetalles(String pedidoId, List<com.restaurante.resturante.dto.venta.ActualizarPrecioDetalleDto> precios);
 }
+

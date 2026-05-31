@@ -62,4 +62,27 @@ public class FacturacionController {
         service.eliminarComprobantePendiente(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/comprobantes/{id}/descargar/{tipo}")
+    public ResponseEntity<byte[]> descargarArchivo(@PathVariable String id, @PathVariable String tipo) {
+        byte[] archivo = service.obtenerArchivoComprobante(id, tipo);
+        String contentType = tipo.equalsIgnoreCase("pdf") ? "application/pdf" : "application/xml";
+        String extension = tipo.equalsIgnoreCase("pdf") ? ".pdf" : ".xml";
+        
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"comprobante-" + id + extension + "\"")
+                .body(archivo);
+    }
+
+    @PostMapping("/series/configurar")
+    public ResponseEntity<Void> configurarSeries(@RequestParam String sucursalId, @RequestParam String tipoDoc, @RequestParam String serie, @RequestParam Integer correlativo) {
+        service.configurarSerieCorrelativo(sucursalId, tipoDoc, serie, correlativo);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/series")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> obtenerSeries(@RequestParam String sucursalId) {
+        return ResponseEntity.ok(service.obtenerSeriesPorSucursal(sucursalId));
+    }
 }

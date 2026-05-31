@@ -16,5 +16,6 @@ public record ComprobanteFacturacionRequest(
         String tipDocAfectado,
         String numDocAfectado,
         String codMotivo,
-        String desMotivo) {
+        String desMotivo,
+        Boolean pendienteEnvio) {
 }

@@ -99,6 +99,9 @@ public class Empresa extends Auditable {
     @Column(name = "certificado_digital", columnDefinition = "TEXT")
     private String certificadoDigital;
 
+    @Column(name = "api_company_id", length = 36)
+    private String apiCompanyId;
+
     // ---- RELACIONES ----
     @OneToMany(mappedBy = "empresa", fetch = FetchType.LAZY)
     @ToString.Exclude

@@ -9,8 +9,8 @@ Dirección: -
 COMPROBANTE:
 Tipo: 01
 Serie: F001
-Número: 00000001
-Fecha de emisión: 2026-05-31T21:20:39
+Número: 00000005
+Fecha de emisión: 2026-05-31T13:18:37
 Moneda: PEN
 
 CLIENTE:
@@ -21,10 +21,13 @@ Razón Social: BAZAN NAVARRO CRISTOPHER HARLEY
 DETALLES:
 Cant. Descripción                  Valor Unit.  Importe
 --------------------------------------------------------
-2    Ceviche Mixto                         30.00        60.00
+1    Ceviche Mixto                         30.00        30.00
+1    Ceviche Mixto                         30.00        30.00
+1    Coca-Cola 500ml                        3.50         3.50
+1    Ceviche Mixto                         30.00        30.00
 --------------------------------------------------------
-                           Sub Total:        60.00
-                           IGV (18%):        10.80
-                               TOTAL:        70.80
+                           Sub Total:        79.24
+                           IGV (18%):        14.26
+                               TOTAL:        93.50
 
 Leyenda: Comprobante electrónico generado en sistema interno.

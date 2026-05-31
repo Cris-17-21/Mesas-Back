@@ -20,6 +20,8 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
     // 1.1 ORDENADO POR FECHA
     List<MovimientoCaja> findByCajaTurnoIdOrderByFechaDesc(String cajaTurnoId);
 
+    boolean existsByCajaTurnoIdAndDescripcionContaining(String cajaTurnoId, String pattern);
+
     // 2. CÁLCULO PARA ARQUEO: Sumar total de Ingresos o Egresos de un turno
     // El COALESCE es vital: si no hay movimientos, devuelve 0 en vez de null (evita
     // NullPointerException)

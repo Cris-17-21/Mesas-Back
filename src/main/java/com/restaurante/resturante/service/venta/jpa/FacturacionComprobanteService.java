@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,11 @@ import com.restaurante.resturante.dto.venta.FacturacionComprobanteDto;
 import com.restaurante.resturante.dto.venta.NotaCreditoRequestDto;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
 import com.restaurante.resturante.repository.venta.FacturacionComprobanteRepository;
+import com.restaurante.resturante.repository.venta.FacturacionSerieRepository;
+import com.restaurante.resturante.repository.venta.MovimientoCajaRepository;
+import com.restaurante.resturante.domain.ventas.MovimientoCaja;
+import com.restaurante.resturante.domain.ventas.TipoMovimiento;
+import com.restaurante.resturante.domain.ventas.FacturacionSerie;
 import com.restaurante.resturante.service.api_facturacion.FacturacionApiComprobanteService;
 import com.restaurante.resturante.service.maestros.jpa.ClienteService;
 
@@ -40,6 +46,20 @@ public class FacturacionComprobanteService {
     private final PedidoRepository pedidoRepository;
     private final FacturacionApiComprobanteService comprobanteApiService;
     private final ClienteService clienteService;
+    private final com.restaurante.resturante.service.api_facturacion.FacturacionSerieService serieApiService;
+    private final FacturacionSerieRepository serieLocalRepository;
+
+    @Autowired
+    private com.restaurante.resturante.repository.maestro.SucursalRepository sucursalRepository;
+
+    @Autowired
+    private com.restaurante.resturante.service.maestros.IMesaService mesaService;
+
+    @Autowired
+    private com.restaurante.resturante.repository.venta.PedidoPagoRepository pagoRepository;
+
+    @Autowired
+    private MovimientoCajaRepository movimientoRepository;
 
     @Value("${api.facturacion.url}")
     private String apiBaseUrl;
@@ -49,10 +69,19 @@ public class FacturacionComprobanteService {
         Pedido pedido = pedidoRepository.findById(dto.pedidoId())
                 .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
 
-        if (pedido.getCliente() == null && dto.rucApellidos() != null && !dto.rucApellidos().isEmpty()) {
+        String docCliente = dto.rucApellidos();
+        if (docCliente == null || docCliente.trim().isEmpty()) {
+            if (pedido.getCliente() != null) {
+                docCliente = pedido.getCliente().getNumeroDocumento();
+            } else {
+                docCliente = "00000000";
+            }
+        }
+
+        if (pedido.getCliente() == null || !docCliente.equals(pedido.getCliente().getNumeroDocumento())) {
             Cliente cliente = clienteService.getOrCreateClienteByDocument(
-                    dto.rucApellidos(),
-                    dto.razonSocialNombres(),
+                    docCliente,
+                    (dto.razonSocialNombres() != null && !dto.razonSocialNombres().trim().isEmpty()) ? dto.razonSocialNombres() : "CLIENTES VARIOS",
                     dto.direccion(),
                     pedido.getSucursal().getEmpresa());
             pedido.setCliente(cliente);
@@ -62,10 +91,14 @@ public class FacturacionComprobanteService {
         LocalDateTime fechaEmision = null;
         if (dto.fechaEmision() != null && !dto.fechaEmision().isBlank()) {
             fechaEmision = LocalDateTime.parse(dto.fechaEmision(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            long daysDiff = Math.abs(ChronoUnit.DAYS.between(fechaEmision.toLocalDate(), LocalDate.now()));
+            LocalDate emisionDate = fechaEmision.toLocalDate();
+            LocalDate today = LocalDate.now();
+            if (emisionDate.isAfter(today)) {
+                throw new IllegalArgumentException("La fecha de emisión no puede ser una fecha futura.");
+            }
+            long daysDiff = ChronoUnit.DAYS.between(emisionDate, today);
             if (daysDiff > 2) {
-                throw new IllegalArgumentException(
-                        "La fecha de emisión debe estar dentro de ±2 días de la fecha actual");
+                throw new IllegalArgumentException("La fecha de emisión no puede tener más de 2 días de antigüedad.");
             }
         }
 
@@ -100,21 +133,24 @@ public class FacturacionComprobanteService {
 
         ComprobanteFacturacionResponse apiResponse = null;
         if (!esNotaDeVenta) {
-            // Emisión diferida: Generamos localmente en estado PENDIENTE_ENVIO
-            apiResponse = generarComprobantePendienteLocal(pedido, tipoDoc, fechaEmision);
+            // Emisión diferida vía API (pendienteEnvio = true)
+            apiResponse = comprobanteApiService.emitir(pedido, tipoDoc, fechaEmision, true, Boolean.TRUE.equals(dto.impresionConsumo()));
         } else {
             // Para Nota de Venta, generar todo localmente sin llamar a SUNAT
             apiResponse = generarComprobanteNotaDeVentaLocal(pedido, fechaEmision);
         }
 
-        FacturacionComprobante comprobante = mapToEntity(apiResponse, pedido);
-        comprobante.setEstadoSunat(esNotaDeVenta ? "ACEPTADO" : "PENDIENTE_ENVIO");
+        FacturacionComprobante comprobante = mapToEntity(apiResponse, pedido, Boolean.TRUE.equals(dto.impresionConsumo()));
+        if (comprobante.getEstadoSunat() == null || comprobante.getEstadoSunat().isBlank()) {
+            comprobante.setEstadoSunat(esNotaDeVenta ? "ACEPTADO" : "PENDIENTE_ENVIO");
+        }
         comprobante = facturacionRepository.save(comprobante);
+        registrarMovimientoCajaSiAceptado(comprobante);
 
         // Guardar archivos iniciales (TXT para nota de venta, PDF local si aplica)
         guardarArchivosComprobanteLocal(comprobante, apiResponse);
 
-        return toDto(comprobante, apiResponse);
+        return toDto(comprobante);
     }
 
     @Transactional
@@ -132,7 +168,7 @@ public class FacturacionComprobanteService {
                 pedido, tipoDocAfectado, numDocAfectado,
                 dto.codMotivo(), dto.descripcion());
 
-        FacturacionComprobante nc = mapToEntity(apiResponse, pedido);
+        FacturacionComprobante nc = mapToEntity(apiResponse, pedido, false);
         nc.setComprobanteReferencia(ref);
         nc.setCodMotivoNota(dto.codMotivo());
         nc.setDescripcionMotivo(dto.descripcion());
@@ -141,7 +177,7 @@ public class FacturacionComprobanteService {
         // Guardamos los archivos electrónicos de la Nota de Crédito
         guardarArchivosComprobanteLocal(nc, apiResponse);
 
-        return toDto(nc, apiResponse);
+        return toDto(nc);
     }
 
     @Transactional
@@ -154,8 +190,20 @@ public class FacturacionComprobanteService {
             if (c.getFechaEmision().isBefore(limite)) {
                 try {
                     log.info("Enviando comprobante diferido ID: {}, Número: {}-{}", c.getId(), c.getSerie(), c.getCorrelativo());
-                    ComprobanteFacturacionResponse apiResponse = comprobanteApiService.emitir(
-                            c.getPedido(), c.getTipoComprobante(), c.getFechaEmision());
+                    ComprobanteFacturacionResponse apiResponse;
+                    if (c.getFacturadorId() != null) {
+                        try {
+                            comprobanteApiService.ensureCompanyExists(c.getEmpresa());
+                            apiResponse = comprobanteApiService.reenviar(c.getFacturadorId(), c.getEmpresa().getApiCompanyId());
+                        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+                            log.warn("Comprobante con facturadorId {} no encontrado en el facturador durante cron (posible rollback o DB limpia). Re-emitiendo desde cero...", c.getFacturadorId());
+                            apiResponse = comprobanteApiService.emitir(
+                                    c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
+                        }
+                    } else {
+                        apiResponse = comprobanteApiService.emitir(
+                                c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
+                    }
                     
                     c.setEstadoSunat(apiResponse.estadoSunat() != null ? apiResponse.estadoSunat() : "ACEPTADO");
                     c.setHashCpe(apiResponse.cdrHash());
@@ -163,6 +211,7 @@ public class FacturacionComprobanteService {
                     c.setArchivoPdf(buildDownloadUrl(apiResponse, "pdf"));
 
                     facturacionRepository.save(c);
+                    registrarMovimientoCajaSiAceptado(c);
 
                     // Descargar y guardar XML y CDR localmente
                     guardarArchivosComprobanteLocal(c, apiResponse);
@@ -187,8 +236,20 @@ public class FacturacionComprobanteService {
         }
 
         log.info("Enviando de forma manual e inmediata el comprobante ID: {}-{}.", c.getSerie(), c.getCorrelativo());
-        ComprobanteFacturacionResponse apiResponse = comprobanteApiService.emitir(
-                c.getPedido(), c.getTipoComprobante(), c.getFechaEmision());
+        ComprobanteFacturacionResponse apiResponse;
+        if (c.getFacturadorId() != null) {
+            try {
+                comprobanteApiService.ensureCompanyExists(c.getEmpresa());
+                apiResponse = comprobanteApiService.reenviar(c.getFacturadorId(), c.getEmpresa().getApiCompanyId());
+            } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+                log.warn("Comprobante con facturadorId {} no encontrado en el facturador durante envío manual (posible rollback o DB limpia). Re-emitiendo desde cero...", c.getFacturadorId());
+                apiResponse = comprobanteApiService.emitir(
+                        c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
+            }
+        } else {
+            apiResponse = comprobanteApiService.emitir(
+                    c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
+        }
 
         c.setEstadoSunat(apiResponse.estadoSunat() != null ? apiResponse.estadoSunat() : "ACEPTADO");
         c.setHashCpe(apiResponse.cdrHash());
@@ -196,10 +257,11 @@ public class FacturacionComprobanteService {
         c.setArchivoPdf(buildDownloadUrl(apiResponse, "pdf"));
 
         c = facturacionRepository.save(c);
+        registrarMovimientoCajaSiAceptado(c);
 
         guardarArchivosComprobanteLocal(c, apiResponse);
 
-        return toDto(c, apiResponse);
+        return toDto(c);
     }
 
     @Transactional
@@ -207,12 +269,28 @@ public class FacturacionComprobanteService {
         FacturacionComprobante c = facturacionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("COMPROBANTE NO ENCONTRADO"));
 
-        if (!"PENDIENTE_ENVIO".equals(c.getEstadoSunat())) {
-            throw new IllegalStateException("No se puede eliminar un comprobante que ya fue enviado o procesado.");
+        if (!"PENDIENTE_ENVIO".equals(c.getEstadoSunat()) && !"02".equals(c.getTipoComprobante())) {
+            throw new IllegalStateException("Solo se pueden eliminar comprobantes pendientes de envío o notas de venta.");
+        }
+
+        Pedido pedido = c.getPedido();
+        if (pedido != null) {
+            pedido.setEstado("ABIERTO");
+            pedido.setFechaCierre(null);
+            
+            if (pedido.getMesa() != null) {
+                mesaService.cambiarEstado(pedido.getMesa().getId(), "OCUPADA");
+            }
+            
+            if (pedido.getPagos() != null) {
+                pagoRepository.deleteAll(pedido.getPagos());
+                pedido.getPagos().clear();
+            }
+            pedidoRepository.save(pedido);
         }
 
         facturacionRepository.delete(c);
-        log.info("Comprobante pendiente ID {} eliminado físicamente de la base de datos.", id);
+        log.info("Comprobante pendiente/NV ID {} eliminado. Pedido {} ha sido reabierto.", id, pedido != null ? pedido.getId() : "N/A");
     }
 
     @Transactional(readOnly = true)
@@ -238,13 +316,7 @@ public class FacturacionComprobanteService {
                 inicio, 
                 fin
         ).stream()
-         .map(c -> new FacturacionComprobanteDto(
-                 c.getId(), c.getTipoComprobante(), c.getSerie(), c.getCorrelativo(),
-                 c.getRucEmisor(), c.getFechaEmision() != null ? c.getFechaEmision().toString() : null,
-                 c.getTotalVenta(),
-                 c.getPedido() != null ? c.getPedido().getId() : null,
-                 c.getArchivoXml(), c.getArchivoPdf(),
-                 c.getArchivoTxt()))
+         .map(this::toDto)
          .toList();
     }
 
@@ -317,17 +389,11 @@ public class FacturacionComprobanteService {
     @Transactional(readOnly = true)
     public java.util.List<FacturacionComprobanteDto> listarComprobantes(String sucursalId) {
         return facturacionRepository.findBySucursalIdOrderByFechaEmisionDesc(sucursalId).stream()
-                .map(c -> new FacturacionComprobanteDto(
-                        c.getId(), c.getTipoComprobante(), c.getSerie(), c.getCorrelativo(),
-                        c.getRucEmisor(), c.getFechaEmision() != null ? c.getFechaEmision().toString() : null,
-                        c.getTotalVenta(),
-                        c.getPedido() != null ? c.getPedido().getId() : null,
-                        c.getArchivoXml(), c.getArchivoPdf(),
-                        c.getArchivoTxt()))
+                .map(this::toDto)
                 .toList();
     }
 
-    private FacturacionComprobante mapToEntity(ComprobanteFacturacionResponse api, Pedido pedido) {
+    private FacturacionComprobante mapToEntity(ComprobanteFacturacionResponse api, Pedido pedido, Boolean impresionConsumo) {
         return FacturacionComprobante.builder()
                 .pedido(pedido)
                 .cliente(pedido.getCliente())
@@ -349,6 +415,8 @@ public class FacturacionComprobanteService {
                 .empresa(pedido.getSucursal().getEmpresa())
                 .sucursal(pedido.getSucursal())
                 .cajaTurno(pedido.getCajaTurno()) // Asociamos la caja de forma directa
+                .facturadorId(api.id())
+                .impresionConsumo(impresionConsumo)
                 .build();
     }
 
@@ -378,10 +446,11 @@ public class FacturacionComprobanteService {
             String cdrUrl = buildDownloadUrl(apiResponse, "cdr");
             if (cdrUrl != null) {
                 descargarYGuardarArchivo(cdrUrl, dir.resolve(baseName + "-cdr.xml"));
+                comprobante.setCdrSunatXml(cdrUrl);
             }
 
             // 4. Generamos y guardamos el TXT local
-            String txtContent = generarTxtNotaDeVenta(comprobante.getPedido(), apiResponse);
+            String txtContent = generarTxtNotaDeVenta(comprobante, apiResponse);
             java.nio.file.Files.writeString(dir.resolve(baseName + ".txt"), txtContent);
             comprobante.setArchivoTxt(txtContent);
 
@@ -393,8 +462,13 @@ public class FacturacionComprobanteService {
     private void descargarYGuardarArchivo(String urlString, java.nio.file.Path destinoPath) {
         if (urlString == null || urlString.isEmpty()) return;
         try {
+            String token = comprobanteApiService.getAuthServiceValidToken();
             java.net.URL url = new java.net.URL(urlString);
-            try (java.io.InputStream in = url.openStream()) {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+
+            try (java.io.InputStream in = conn.getInputStream()) {
                 java.nio.file.Files.createDirectories(destinoPath.getParent());
                 java.nio.file.Files.copy(in, destinoPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
@@ -404,22 +478,15 @@ public class FacturacionComprobanteService {
     }
 
     private String buildDownloadUrl(ComprobanteFacturacionResponse api, String tipo) {
-        if (api == null || api.archivo() == null)
+        if (api == null || api.id() == null)
             return null;
-        String token = switch (tipo) {
-            case "xml" -> api.archivo().xmlToken();
-            case "pdf" -> api.archivo().pdfToken();
-            case "cdr" -> api.archivo().cdrToken();
-            default -> null;
-        };
-        if (token == null)
-            return null;
-        String formato = tipo.equals("pdf") ? "&formato=ticket" : "";
-        return apiBaseUrl + "/api/v1/descargar/" + token + "?tipo=" + tipo + formato;
+        String formato = tipo.equalsIgnoreCase("pdf") ? "?formato=ticket" : "";
+        return apiBaseUrl + "/api/v1/comprobantes/" + api.id() + "/download/" + tipo.toLowerCase() + formato;
     }
 
-    private String generarTxtNotaDeVenta(Pedido pedido, ComprobanteFacturacionResponse apiResponse) {
+    private String generarTxtNotaDeVenta(FacturacionComprobante comprobante, ComprobanteFacturacionResponse apiResponse) {
         StringBuilder txt = new StringBuilder();
+        Pedido pedido = comprobante.getPedido();
         
         txt.append("COMPROBANTE ELECTRÓNICO\n");
         txt.append("=====================\n\n");
@@ -456,30 +523,37 @@ public class FacturacionComprobanteService {
         txt.append("--------------------------------------------------------\n");
         
         BigDecimal totalVenta = BigDecimal.ZERO;
-        List<PedidoDetalle> detalles = pedido.getPedidoDetalles();
-        if (detalles != null) {
-            for (PedidoDetalle detalle : detalles) {
-                String descripcion = detalle.getProducto() != null ? detalle.getProducto().getNombreProducto() : "Producto";
-                if (descripcion.length() > 30) {
-                    descripcion = descripcion.substring(0, 30);
+        if (Boolean.TRUE.equals(comprobante.getImpresionConsumo())) {
+            totalVenta = comprobante.getTotalVenta();
+            BigDecimal subtotal = totalVenta.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            txt.append(String.format("%-4s %-30s %12s %12s\n",
+                    "1", "CONSUMO DE ALIMENTO", subtotal.setScale(2, RoundingMode.HALF_UP), totalVenta.setScale(2, RoundingMode.HALF_UP)));
+        } else {
+            List<PedidoDetalle> detalles = pedido.getPedidoDetalles();
+            if (detalles != null) {
+                for (PedidoDetalle detalle : detalles) {
+                    String descripcion = detalle.getProducto() != null ? detalle.getProducto().getNombreProducto() : "Producto";
+                    if (descripcion.length() > 30) {
+                        descripcion = descripcion.substring(0, 30);
+                    }
+                    txt.append(String.format("%-4s %-30s %12s %12s\n", 
+                        detalle.getCantidad(),
+                        descripcion,
+                        detalle.getPrecioUnitario().setScale(2, RoundingMode.HALF_UP),
+                        detalle.getTotalLinea().setScale(2, RoundingMode.HALF_UP)));
+                    
+                    totalVenta = totalVenta.add(detalle.getTotalLinea());
                 }
-                txt.append(String.format("%-4s %-30s %12s %12s\n", 
-                    detalle.getCantidad(),
-                    descripcion,
-                    detalle.getPrecioUnitario().setScale(2, RoundingMode.HALF_UP),
-                    detalle.getTotalLinea().setScale(2, RoundingMode.HALF_UP)));
-                
-                totalVenta = totalVenta.add(detalle.getTotalLinea());
             }
         }
         
         txt.append("--------------------------------------------------------\n");
-        txt.append(String.format("%37s %12s\n", "Sub Total:", totalVenta.setScale(2, RoundingMode.HALF_UP)));
+        BigDecimal subTotalCalculado = totalVenta.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+        BigDecimal totalIgv = totalVenta.subtract(subTotalCalculado).setScale(2, RoundingMode.HALF_UP);
         
-        BigDecimal totalIgv = totalVenta.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+        txt.append(String.format("%37s %12s\n", "Sub Total:", subTotalCalculado));
         txt.append(String.format("%37s %12s\n", "IGV (18%):", totalIgv));
-        
-        txt.append(String.format("%37s %12s\n", "TOTAL:", totalVenta.add(totalIgv).setScale(2, RoundingMode.HALF_UP)));
+        txt.append(String.format("%37s %12s\n", "TOTAL:", totalVenta.setScale(2, RoundingMode.HALF_UP)));
         
         txt.append("\n");
         txt.append("Leyenda: Comprobante electrónico generado en sistema interno.\n");
@@ -487,13 +561,206 @@ public class FacturacionComprobanteService {
         return txt.toString();
     }
 
-    private FacturacionComprobanteDto toDto(FacturacionComprobante c, ComprobanteFacturacionResponse api) {
+    private FacturacionComprobanteDto toDto(FacturacionComprobante c) {
+        Long minutos = null;
+        if ("PENDIENTE_ENVIO".equals(c.getEstadoSunat()) && c.getFechaEmision() != null) {
+            long diff = java.time.temporal.ChronoUnit.MINUTES.between(c.getFechaEmision(), LocalDateTime.now());
+            long rem = 30 - diff;
+            minutos = rem < 0 ? 0L : rem;
+        }
         return new FacturacionComprobanteDto(
                 c.getId(), c.getTipoComprobante(), c.getSerie(), c.getCorrelativo(),
                 c.getRucEmisor(), c.getFechaEmision() != null ? c.getFechaEmision().toString() : null,
                 c.getTotalVenta(),
                 c.getPedido() != null ? c.getPedido().getId() : null,
-                c.getArchivoXml(), c.getArchivoPdf(),
-                c.getArchivoTxt());
+                c.getArchivoXml(), c.getArchivoPdf(), c.getArchivoTxt(),
+                c.getEstadoSunat(), c.getCdrSunatXml(), c.getSunatMensajeError(), minutos,
+                c.getImpresionConsumo());
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] obtenerArchivoComprobante(String id, String tipo) {
+        FacturacionComprobante comprobante = facturacionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Comprobante no encontrado"));
+
+        String urlString = tipo.equalsIgnoreCase("pdf") ? comprobante.getArchivoPdf() : comprobante.getArchivoXml();
+        if (urlString == null || urlString.isEmpty()) {
+            throw new RuntimeException("El archivo solicitado no está disponible para este comprobante");
+        }
+
+        // Primero intentamos buscarlo localmente en "var/comprobantes"
+        java.nio.file.Path rootPath = java.nio.file.Paths.get("var", "comprobantes");
+        String anio = String.valueOf(comprobante.getFechaEmision().getYear());
+        String mes = String.format("%02d", comprobante.getFechaEmision().getMonthValue());
+        String tipoDoc = comprobante.getTipoComprobante();
+        java.nio.file.Path file = rootPath.resolve(anio).resolve(mes).resolve(tipoDoc)
+                .resolve(comprobante.getSerie() + "-" + comprobante.getCorrelativo() + (tipo.equalsIgnoreCase("pdf") ? ".pdf" : ".xml"));
+
+        if (java.nio.file.Files.exists(file)) {
+            try {
+                return java.nio.file.Files.readAllBytes(file);
+            } catch (Exception e) {
+                log.error("Error al leer archivo local: {}", e.getMessage());
+            }
+        }
+
+        // Si no existe localmente, lo descargamos al vuelo usando el token de facturacion
+        try {
+            String token = comprobanteApiService.getAuthServiceValidToken();
+            java.net.URL url = new java.net.URL(urlString);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+
+            try (java.io.InputStream in = conn.getInputStream()) {
+                byte[] data = in.readAllBytes();
+                // Guardarlo localmente para futuros accesos
+                try {
+                    java.nio.file.Files.createDirectories(file.getParent());
+                    java.nio.file.Files.write(file, data);
+                } catch (Exception e) {
+                    log.error("Error al guardar archivo en cache local: {}", e.getMessage());
+                }
+                return data;
+            }
+        } catch (Exception e) {
+            log.error("Error al descargar archivo del facturador al vuelo: {}", e.getMessage());
+            throw new RuntimeException("Error al descargar el archivo del facturador: " + e.getMessage());
+        }
+    }
+    @Transactional
+    public void configurarSerieCorrelativo(String sucursalId, String tipoDoc, String serie, Integer correlativo) {
+        var sucursal = sucursalRepository.findById(sucursalId)
+                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada: " + sucursalId));
+
+        String apiSucursalId = sucursal.getApiSucursalId();
+
+        // Normalizar tipo doc a código SUNAT
+        String tipoDocCodigo = switch (tipoDoc.toUpperCase()) {
+            case "FACTURA", "01" -> "01";
+            case "BOLETA", "03" -> "03";
+            case "NOTA_CREDITO", "07" -> "07";
+            case "NOTA_DEBITO", "08" -> "08";
+            default -> tipoDoc;
+        };
+
+        // VALIDACIÓN LOCAL: misma empresa, distinta sucursal, mismo tipoDoc+serie
+        boolean duplicadoLocal = serieLocalRepository
+                .existsByEmpresaIdAndTipoComprobanteAndSerieAndSucursalIdNot(
+                        sucursal.getEmpresa().getId(), tipoDocCodigo, serie.toUpperCase(), sucursalId);
+        if (duplicadoLocal) {
+            throw new RuntimeException("La serie " + serie.toUpperCase() +
+                    " ya está registrada en otra sucursal de esta empresa.");
+        }
+
+        // GUARDAR O ACTUALIZAR en BD local
+        var serieExistente = serieLocalRepository
+                .findBySucursalIdAndTipoComprobanteAndSerie(sucursalId, tipoDocCodigo, serie.toUpperCase());
+
+        FacturacionSerie serieLocal;
+        if (serieExistente.isPresent()) {
+            serieLocal = serieExistente.get();
+            serieLocal.setProximoCorrelativo(correlativo);
+            serieLocal.setActivo(true);
+        } else {
+            serieLocal = FacturacionSerie.builder()
+                    .tipoComprobante(tipoDocCodigo)
+                    .serie(serie.toUpperCase())
+                    .proximoCorrelativo(correlativo)
+                    .sucursal(sucursal)
+                    .empresa(sucursal.getEmpresa())
+                    .activo(true)
+                    .build();
+        }
+        serieLocalRepository.save(serieLocal);
+        log.info("Serie guardada localmente: {} {} correlativo={}", tipoDocCodigo, serie.toUpperCase(), correlativo);
+
+        // ENVIAR A API EXTERNA (no-bloqueante ante error)
+        if (apiSucursalId != null) {
+            try {
+                String token = comprobanteApiService.getAuthServiceValidToken();
+                String companyId = sucursal.getEmpresa().getApiCompanyId();
+                if (companyId == null) {
+                    comprobanteApiService.ensureCompanyExists(sucursal.getEmpresa());
+                    companyId = sucursal.getEmpresa().getApiCompanyId();
+                }
+                if (companyId != null) {
+                    comprobanteApiService.configurarInicioSerieEnApi(
+                            companyId, apiSucursalId, tipoDoc, serie, correlativo, token);
+                    log.info("Serie enviada a API externa exitosamente: {}", serie.toUpperCase());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo enviar la serie a la API externa (ya está guardada localmente): {}", e.getMessage());
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> obtenerSeriesPorSucursal(String sucursalId) {
+        // Leer siempre desde la BD local (fuente de verdad)
+        List<FacturacionSerie> seriesLocales = serieLocalRepository.findBySucursalIdAndActivoTrue(sucursalId);
+        return seriesLocales.stream()
+                .map(s -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", s.getId());
+                    m.put("serie", s.getSerie());
+                    m.put("tipoDocCodigo", s.getTipoComprobante());
+                    m.put("tipoDoc", switch (s.getTipoComprobante()) {
+                        case "01" -> "FACTURA";
+                        case "03" -> "BOLETA";
+                        case "07" -> "NOTA_CREDITO";
+                        case "08" -> "NOTA_DEBITO";
+                        default -> s.getTipoComprobante();
+                    });
+                    m.put("ultimoCorrelativo", s.getProximoCorrelativo() - 1);
+                    m.put("proximoNumero", s.getSerie() + "-" + String.format("%08d", s.getProximoCorrelativo()));
+                    m.put("activo", s.getActivo());
+                    m.put("sucursalId", s.getSucursal() != null ? s.getSucursal().getApiSucursalId() : null);
+                    m.put("sucursalNombre", s.getSucursal() != null ? s.getSucursal().getNombre() : null);
+                    return m;
+                })
+                .toList();
+    }
+
+    private void registrarMovimientoCajaSiAceptado(FacturacionComprobante comprobante) {
+        if (!"ACEPTADO".equals(comprobante.getEstadoSunat())) {
+            return;
+        }
+        Pedido pedido = comprobante.getPedido();
+        if (pedido == null || pedido.getCajaTurno() == null) {
+            return;
+        }
+
+        // Evitar duplicar movimientos para el mismo pedido en la caja
+        String prefixDesc = "Venta " + pedido.getCodigoPedido();
+        boolean yaExiste = movimientoRepository.existsByCajaTurnoIdAndDescripcionContaining(
+                pedido.getCajaTurno().getId(), prefixDesc);
+        
+        if (yaExiste) {
+            return;
+        }
+
+        // Obtener los pagos registrados del pedido
+        List<com.restaurante.resturante.domain.ventas.PedidoPago> pagos = pedido.getPagos();
+        if (pagos == null || pagos.isEmpty()) {
+            return;
+        }
+
+        for (com.restaurante.resturante.domain.ventas.PedidoPago pago : pagos) {
+            String tipoEnt = pedido.getTipoEntrega() != null ? pedido.getTipoEntrega() : "MESA";
+            String infoMesa = (pedido.getMesa() != null) ? " - " + pedido.getMesa().getCodigoMesa() : "";
+            
+            MovimientoCaja mov = MovimientoCaja.builder()
+                    .cajaTurno(pedido.getCajaTurno())
+                    .usuario(pedido.getCajaTurno().getUser() != null ? pedido.getCajaTurno().getUser() : pedido.getUser())
+                    .tipo(TipoMovimiento.INGRESO)
+                    .monto(pago.getMonto())
+                    .descripcion("Venta " + pedido.getCodigoPedido() + " (" + tipoEnt + infoMesa + ") - Medio: " + pago.getMedioPago().getNombre())
+                    .fecha(LocalDateTime.now())
+                    .esEfectivo(pago.getMedioPago().isEsEfectivo())
+                    .build();
+            movimientoRepository.save(mov);
+        }
     }
 }
+

@@ -50,6 +50,11 @@ public class FacturacionAuthService {
         return session.getApiCompanyId();
     }
 
+    public String forceLogin() {
+        log.info("Forzando login en API de facturación por token inválido o revocado");
+        return login().getAccessToken();
+    }
+
     private ApiCredencial login() {
         LoginRequestFacturacion loginRequest = new LoginRequestFacturacion(email, password);
 
@@ -97,7 +102,7 @@ public class FacturacionAuthService {
                     newCompanyId, session.getApiCompanyId());
         }
 
-        session.setExpiryDate(LocalDateTime.now().plusHours(1));
+        session.setExpiryDate(LocalDateTime.now().plusYears(100));
         return repository.save(session);
     }
 }

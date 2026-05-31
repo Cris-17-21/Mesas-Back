@@ -53,7 +53,7 @@ public class FacturacionComprobanteServiceTest {
         public void testEmitirComprobanteExitoso() {
                 // Mock data: tipo "01" = Factura, requiere cliente con RUC de 11 dígitos
                 String pedidoId = "ped-123";
-                FacturaRequestDto requestDto = new FacturaRequestDto(pedidoId, "01", null, null, null, null);
+                FacturaRequestDto requestDto = new FacturaRequestDto(pedidoId, "01", null, null, null, null, false);
 
                 Empresa empresa = Empresa.builder()
                                 .ruc("20123456789")
@@ -96,10 +96,31 @@ public class FacturacionComprobanteServiceTest {
                                 .build();
                 pedido.getPedidoDetalles().add(detalle);
 
+                // Mock de apiResponse para el servicio inmediato
+                com.restaurante.resturante.dto.api_facturacion.ComprobanteFacturacionResponse apiResponse = new com.restaurante.resturante.dto.api_facturacion.ComprobanteFacturacionResponse(
+                                "api-id",
+                                "01",
+                                "F001",
+                                1,
+                                "F001-00000001",
+                                java.time.LocalDateTime.now().toString(),
+                                "PEN",
+                                new BigDecimal("29.66"),
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO,
+                                new BigDecimal("5.34"),
+                                new BigDecimal("35.00"),
+                                "ACEPTADO",
+                                null,
+                                null,
+                                null,
+                                "hash123",
+                                null
+                );
+                when(comprobanteApiService.emitir(any(Pedido.class), anyString(), any(), any(), any())).thenReturn(apiResponse);
+
                 // Mocks de repositorio
                 when(pedidoRepository.findById(pedidoId)).thenReturn(Optional.of(pedido));
-                when(facturacionRepository.obtenerMaxCorrelativo(anyString(), anyString(), anyString()))
-                                .thenReturn(null); // primer comprobante, correlativo = 1
                 when(facturacionRepository.save(any(FacturacionComprobante.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 

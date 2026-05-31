@@ -65,6 +65,12 @@ public class EmpresaService implements IEmpresaService {
     @Transactional(readOnly = true)
     public EmpresaDto findById(String id) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !empresaId.equals(idSeguro)) {
+                throw new org.springframework.security.access.AccessDeniedException("No tienes permiso para acceder a esta empresa.");
+            }
+        }
         return empresaRepository.findById(idSeguro)
                 .map(empresaMapper::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada con ID: " + id));
@@ -112,7 +118,37 @@ public class EmpresaService implements IEmpresaService {
     public EmpresaDto update(String id, CreateEmpresaDto dto) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
 
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !empresaId.equals(idSeguro)) {
+                throw new org.springframework.security.access.AccessDeniedException("No tienes permiso para modificar esta empresa.");
+            }
+        }
+
         Empresa existing = findExistingEmpresa(idSeguro);
+
+        // Si el usuario es ROLE_SUPER_ADMIN, ignoramos cualquier valor de SUNAT enviado para no sobreescribir/modificar datos confidenciales
+        if (isAuthenticatedUserSuperAdmin()) {
+            dto = new CreateEmpresaDto(
+                dto.ruc(),
+                dto.razonSocial(),
+                dto.nombreComercial(),
+                dto.direccionFiscal(),
+                dto.ubigeo(),
+                dto.provincia(),
+                dto.departamento(),
+                dto.distrito(),
+                dto.telefono(),
+                dto.email(),
+                dto.logoUrl(),
+                dto.fechaAfiliacion(),
+                null, // usuarioSol
+                null, // claveSol
+                null, // claveCertificado
+                existing.getEntorno(), // mantener el entorno actual de la base de datos
+                null // certificadoDigital
+            );
+        }
 
         if (dto.ruc() != null && !existing.getRuc().equals(dto.ruc())) {
             Optional<Empresa> rucEnUso = empresaRepository.findByRuc(dto.ruc());
@@ -175,6 +211,12 @@ public class EmpresaService implements IEmpresaService {
     @Transactional
     public EmpresaDto uploadLogo(String id, MultipartFile file) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !empresaId.equals(idSeguro)) {
+                throw new org.springframework.security.access.AccessDeniedException("No tienes permiso para modificar esta empresa.");
+            }
+        }
         Empresa empresa = findExistingEmpresa(idSeguro);
         try {
             empresa.setLogoUrl(file.getBytes());
@@ -194,6 +236,15 @@ public class EmpresaService implements IEmpresaService {
     @Transactional
     public EmpresaDto uploadCertificado(String id, MultipartFile file) {
         String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (isAuthenticatedUserSuperAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException("El Super Administrador no puede modificar el certificado digital de la empresa.");
+        }
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !empresaId.equals(idSeguro)) {
+                throw new org.springframework.security.access.AccessDeniedException("No tienes permiso para modificar esta empresa.");
+            }
+        }
         Empresa empresa = findExistingEmpresa(idSeguro);
         try {
             String base64Cert = Base64.getEncoder().encodeToString(file.getBytes());
@@ -240,5 +291,37 @@ public class EmpresaService implements IEmpresaService {
     private Empresa findExistingEmpresa(String id) {
         return empresaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Empresa no encontrada"));
+    }
+
+    private boolean isAuthenticatedUserRestaurantAdmin() {
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN_RESTAURANTE"));
+    }
+
+    private String getAuthenticatedUserEmpresaIdOrNull() {
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        String username = auth.getName();
+        List<UserAccess> accesses = userAccessRepository.findByUserUsername(username);
+        return accesses.stream()
+                .filter(UserAccess::getActive)
+                .map(acc -> acc.getEmpresa().getId())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isAuthenticatedUserSuperAdmin() {
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
     }
 }

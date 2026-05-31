@@ -20,6 +20,7 @@ import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
 import com.restaurante.resturante.dto.venta.PedidoResumenDto;
 import com.restaurante.resturante.dto.venta.PreCuentaDto;
+import com.restaurante.resturante.dto.venta.PagoMixtoItemDto;
 import com.restaurante.resturante.dto.venta.RegistrarPagoDto;
 import com.restaurante.resturante.dto.venta.SepararCuentaDto;
 import com.restaurante.resturante.mapper.venta.PedidoDetalleMapper;
@@ -30,6 +31,7 @@ import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.repository.venta.CajaTurnoRepository;
 import com.restaurante.resturante.repository.venta.PedidoRepository;
+import com.restaurante.resturante.repository.venta.MovimientoCajaRepository;
 import com.restaurante.resturante.service.maestros.IMesaService;
 import com.restaurante.resturante.service.venta.IPedidoService;
 import com.restaurante.resturante.service.inventario.IInventarioService;
@@ -54,10 +56,19 @@ public class PedidoService implements IPedidoService {
         private final com.restaurante.resturante.repository.venta.PedidoPagoRepository pagoRepository;
         private final com.restaurante.resturante.repository.maestro.MedioPagoRepository medioPagoRepository;
         private final IInventarioService inventarioService;
+        private final MovimientoCajaRepository movimientoRepository;
+        private final com.restaurante.resturante.repository.venta.FacturacionComprobanteRepository facturacionRepository;
 
         @Override
         @Transactional
         public PedidoResponseDto crearPedido(PedidoRequestDto dto) {
+                // 0. Validar Teléfono (hasta 9 dígitos numéricos)
+                if (dto.telefono() != null && !dto.telefono().isBlank()) {
+                        if (!dto.telefono().matches("^[0-9]{1,9}$")) {
+                                throw new RuntimeException("EL TELÉFONO DEBE TENER HASTA 9 DÍGITOS Y CONTENER SOLO NÚMEROS");
+                        }
+                }
+
                 // 1. Validar Caja Abierta
                 var caja = cajaRepository
                                 .findByUserIdAndSucursalIdAndEstado(dto.usuarioId(), dto.sucursalId(), "ABIERTA")
@@ -253,6 +264,22 @@ public class PedidoService implements IPedidoService {
                                                 .cajaTurno(pedido.getCajaTurno())
                                                 .build();
                                 pagoRepository.save(pago);
+
+                                // Registrar movimiento en caja
+                                if (pedido.getCajaTurno() != null && debeRegistrarMovimientoCaja(pedido.getId())) {
+                                        String tipoEnt = pedido.getTipoEntrega() != null ? pedido.getTipoEntrega() : "MESA";
+                                        String infoMesa = (pedido.getMesa() != null) ? " - " + pedido.getMesa().getCodigoMesa() : "";
+                                        com.restaurante.resturante.domain.ventas.MovimientoCaja mov = com.restaurante.resturante.domain.ventas.MovimientoCaja.builder()
+                                                        .cajaTurno(pedido.getCajaTurno())
+                                                        .usuario(pedido.getCajaTurno().getUser() != null ? pedido.getCajaTurno().getUser() : pedido.getUser())
+                                                        .tipo(com.restaurante.resturante.domain.ventas.TipoMovimiento.INGRESO)
+                                                        .monto(montoFinal)
+                                                        .descripcion("Venta " + pedido.getCodigoPedido() + " (" + tipoEnt + infoMesa + ") - Medio: " + medioPago.getNombre())
+                                                        .fecha(LocalDateTime.now())
+                                                        .esEfectivo(medioPago.isEsEfectivo())
+                                                        .build();
+                                        movimientoRepository.save(mov);
+                                }
                         }
                 } else {
                         // Pago Simple
@@ -271,6 +298,90 @@ public class PedidoService implements IPedidoService {
                                         .cajaTurno(pedido.getCajaTurno())
                                         .build();
                         pagoRepository.save(pago);
+
+                        // Registrar movimiento en caja
+                        if (pedido.getCajaTurno() != null && debeRegistrarMovimientoCaja(pedido.getId())) {
+                                String tipoEnt = pedido.getTipoEntrega() != null ? pedido.getTipoEntrega() : "MESA";
+                                String infoMesa = (pedido.getMesa() != null) ? " - " + pedido.getMesa().getCodigoMesa() : "";
+                                com.restaurante.resturante.domain.ventas.MovimientoCaja mov = com.restaurante.resturante.domain.ventas.MovimientoCaja.builder()
+                                                .cajaTurno(pedido.getCajaTurno())
+                                                .usuario(pedido.getCajaTurno().getUser() != null ? pedido.getCajaTurno().getUser() : pedido.getUser())
+                                                .tipo(com.restaurante.resturante.domain.ventas.TipoMovimiento.INGRESO)
+                                                .monto(montoARegistrar)
+                                                .descripcion("Venta " + pedido.getCodigoPedido() + " (" + tipoEnt + infoMesa + ") - Medio: " + medioPago.getNombre())
+                                                .fecha(LocalDateTime.now())
+                                                .esEfectivo(medioPago.isEsEfectivo())
+                                                .build();
+                                        movimientoRepository.save(mov);
+                        }
+                }
+
+                // 2. Verificar si el pedido está pagado completamente
+                if (pedido.estaTotalmentePagado() || pedido.estaPagadoCompletamente()) {
+                        pedido.setEstado("PAGADO");
+                        pedido.setFechaCierre(LocalDateTime.now());
+
+                        // 3. Liberar Mesas
+                        if (pedido.getMesa() != null) {
+                                String mesaId = pedido.getMesa().getId();
+                                mesaService.separarMesas(mesaId);
+                                mesaService.cambiarEstado(mesaId, "LIBRE");
+                        }
+                }
+
+                pedidoRepository.save(pedido);
+        }
+
+        @Override
+        @Transactional
+        public void registrarPagoMixto(String pedidoId, List<PagoMixtoItemDto> pagos) {
+                Pedido pedido = pedidoRepository.findById(pedidoId)
+                                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
+
+                if (pedido.estaTotalmentePagado()) {
+                        throw new RuntimeException("EL PEDIDO YA SE ENCUENTRA TOTALMENTE PAGADO");
+                }
+
+                if (pedido.getPagos() == null) {
+                        pedido.setPagos(new java.util.ArrayList<>());
+                }
+
+                for (PagoMixtoItemDto item : pagos) {
+                        if (item.monto() == null || item.monto().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                                continue;
+                        }
+                        com.restaurante.resturante.domain.maestros.MedioPago medioPago = medioPagoRepository
+                                        .findByIdAndEmpresaIdAndIsActiveTrue(item.medioPagoId(), pedido.getSucursal().getEmpresa().getId())
+                                        .orElseThrow(() -> new RuntimeException("MEDIO DE PAGO NO ENCONTRADO O INACTIVO"));
+
+                        com.restaurante.resturante.domain.ventas.PedidoPago pago = com.restaurante.resturante.domain.ventas.PedidoPago
+                                        .builder()
+                                        .pedido(pedido)
+                                        .medioPago(medioPago)
+                                        .monto(item.monto())
+                                        .fechaPago(LocalDateTime.now())
+                                        .cajaTurno(pedido.getCajaTurno())
+                                        .build();
+
+                        pagoRepository.save(pago);
+
+                        // Registrar movimiento en caja
+                        if (pedido.getCajaTurno() != null && debeRegistrarMovimientoCaja(pedido.getId())) {
+                                String tipoEnt = pedido.getTipoEntrega() != null ? pedido.getTipoEntrega() : "MESA";
+                                String infoMesa = (pedido.getMesa() != null) ? " - " + pedido.getMesa().getCodigoMesa() : "";
+                                com.restaurante.resturante.domain.ventas.MovimientoCaja mov = com.restaurante.resturante.domain.ventas.MovimientoCaja.builder()
+                                                .cajaTurno(pedido.getCajaTurno())
+                                                .usuario(pedido.getCajaTurno().getUser() != null ? pedido.getCajaTurno().getUser() : pedido.getUser())
+                                                .tipo(com.restaurante.resturante.domain.ventas.TipoMovimiento.INGRESO)
+                                                .monto(item.monto())
+                                                .descripcion("Venta " + pedido.getCodigoPedido() + " (" + tipoEnt + infoMesa + ") - Medio: " + medioPago.getNombre())
+                                                .fecha(LocalDateTime.now())
+                                                .esEfectivo(medioPago.isEsEfectivo())
+                                                .build();
+                                movimientoRepository.save(mov);
+                        }
+
+                        pedido.getPagos().add(pago);
                 }
 
                 // 2. Verificar si el pedido está pagado completamente
@@ -463,4 +574,38 @@ public class PedidoService implements IPedidoService {
         public List<Pedido> findBySucursalIdAndDetallesEstadoPreparacion(String sucursalId, String estadoPreparacion) {
                 return pedidoRepository.findBySucursalIdAndDetallesEstadoPreparacion(sucursalId, estadoPreparacion);
         }
+
+        @Override
+        @Transactional
+        public PedidoResponseDto actualizarPreciosDetalles(String pedidoId, List<com.restaurante.resturante.dto.venta.ActualizarPrecioDetalleDto> precios) {
+                Pedido pedido = pedidoRepository.findById(pedidoId)
+                                .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
+
+                if (!"ABIERTO".equals(pedido.getEstado())) {
+                        throw new RuntimeException("EL PEDIDO YA NO ESTÁ ABIERTO");
+                }
+
+                for (com.restaurante.resturante.dto.venta.ActualizarPrecioDetalleDto item : precios) {
+                        PedidoDetalle detalle = pedido.getPedidoDetalles().stream()
+                                        .filter(d -> d.getId().equals(item.detalleId()))
+                                        .findFirst()
+                                        .orElseThrow(() -> new RuntimeException("DETALLE NO ENCONTRADO: " + item.detalleId()));
+
+                        detalle.setPrecioUnitario(item.precioUnitario());
+                        detalle.setTotalLinea(item.precioUnitario().multiply(new java.math.BigDecimal(detalle.getCantidad())));
+                }
+
+                pedido.calcularTotales();
+                Pedido savedPedido = pedidoRepository.save(pedido);
+                return pedidoMapper.toDto(savedPedido);
+        }
+
+        private boolean debeRegistrarMovimientoCaja(String pedidoId) {
+                var compOpt = facturacionRepository.findByPedidoId(pedidoId);
+                if (compOpt.isEmpty()) {
+                        return true;
+                }
+                return "ACEPTADO".equals(compOpt.get().getEstadoSunat());
+        }
 }
+

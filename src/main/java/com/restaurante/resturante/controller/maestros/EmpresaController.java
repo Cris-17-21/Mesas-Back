@@ -42,7 +42,6 @@ public class EmpresaController {
         return ResponseEntity.ok(empresaService.findAllActive());
     }
 
-    @PreAuthorize("hasAuthority('READ_EMPRESA')")
     @GetMapping("/{id}")
     public ResponseEntity<EmpresaDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(empresaService.findById(id));
@@ -55,7 +54,7 @@ public class EmpresaController {
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
-    @PreAuthorize("hasAuthority('UPDATE_EMPRESA')")
+    @PreAuthorize("hasAuthority('UPDATE_EMPRESA') or hasRole('ROLE_ADMIN_RESTAURANTE')")
     @PutMapping("/{id}")
     public ResponseEntity<EmpresaDto> update(@PathVariable String id, @Valid @RequestBody CreateEmpresaDto dto) {
         return ResponseEntity.ok(empresaService.update(id, dto));
@@ -68,11 +67,13 @@ public class EmpresaController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAuthority('UPDATE_EMPRESA') or hasRole('ROLE_ADMIN_RESTAURANTE')")
     @PostMapping("/{id}/logo")
     public ResponseEntity<EmpresaDto> uploadLogo(@PathVariable String id, @RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(empresaService.uploadLogo(id, file));
     }
 
+    @PreAuthorize("hasAuthority('UPDATE_EMPRESA') or hasRole('ROLE_ADMIN_RESTAURANTE')")
     @PostMapping("/{id}/certificado")
     public ResponseEntity<EmpresaDto> uploadCertificado(@PathVariable String id,
             @RequestParam("file") MultipartFile file) {

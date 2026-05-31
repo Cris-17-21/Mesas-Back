@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 public record FacturacionComprobanteDto(
         String id,
-        String tipoComprobante, // BOLETA, FACTURA, NOTA_DE_VENTA
+        String tipoComprobante,
         String serie,
         String correlativo,
         String rucEmisor,
@@ -13,5 +13,10 @@ public record FacturacionComprobanteDto(
         String pedidoId,
         String archivoXml,
         String archivoPdf,
-        String archivoTxt) {
+        String archivoTxt,
+        String estadoSunat,
+        String cdrSunatXml,
+        String sunatMensajeError,
+        Long minutosHastaEnvio,
+        Boolean impresionConsumo) {
 }

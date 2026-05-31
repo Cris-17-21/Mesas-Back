@@ -96,7 +96,7 @@ public class FacturacionComprobante {
     @Column(name = "archivo_pdf")
     private String archivoPdf;
 
-    @Column(name = "archivo_txt")
+    @Column(name = "archivo_txt", columnDefinition = "TEXT")
     private String archivoTxt;
 
     @Column(name = "hash")
@@ -104,6 +104,9 @@ public class FacturacionComprobante {
 
     @Column(name = "archivo_xml")
     private String archivoXml;
+
+    @Column(name = "facturador_id", length = 36)
+    private String facturadorId;
 
     // Nota de Crédito/Débito
     @ManyToOne(fetch = FetchType.LAZY)
@@ -143,4 +146,6 @@ public class FacturacionComprobante {
     @ToString.Exclude
     private Cliente cliente;
 
+    @Column(name = "impresion_consumo")
+    private Boolean impresionConsumo;
 }

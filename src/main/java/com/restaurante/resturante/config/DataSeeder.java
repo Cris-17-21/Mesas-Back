@@ -329,6 +329,27 @@ public class DataSeeder implements CommandLineRunner {
                         return tipoDocumentoRepository.save(nuevo);
                 });
 
+                tipoDocumentoRepository.findByName("RUC").orElseGet(() -> {
+                        TipoDocumento nuevo = new TipoDocumento();
+                        nuevo.setName("RUC");
+                        nuevo.setCreatedBy("SYSTEM");
+                        return tipoDocumentoRepository.save(nuevo);
+                });
+
+                tipoDocumentoRepository.findByName("CE").orElseGet(() -> {
+                        TipoDocumento nuevo = new TipoDocumento();
+                        nuevo.setName("CE");
+                        nuevo.setCreatedBy("SYSTEM");
+                        return tipoDocumentoRepository.save(nuevo);
+                });
+
+                tipoDocumentoRepository.findByName("PASAPORTE").orElseGet(() -> {
+                        TipoDocumento nuevo = new TipoDocumento();
+                        nuevo.setName("PASAPORTE");
+                        nuevo.setCreatedBy("SYSTEM");
+                        return tipoDocumentoRepository.save(nuevo);
+                });
+
                 // --- 4. Crear el Usuario Super Admin (solo si no existe) ---
                 if (isFirstRun) {
                         Role rolSuperAdmin = roleRepository.findByName("ROLE_SUPER_ADMIN").orElseThrow();

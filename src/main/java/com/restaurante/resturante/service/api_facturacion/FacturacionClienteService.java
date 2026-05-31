@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 import com.restaurante.resturante.domain.maestros.Cliente;
 import com.restaurante.resturante.dto.api_facturacion.ClienteFacturacionRequest;
 import com.restaurante.resturante.repository.maestro.ClienteRepository;
+import com.restaurante.resturante.service.api_facturacion.FacturacionEmpresaService.FacturacionEmpresaService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,14 +23,20 @@ public class FacturacionClienteService {
     private final RestClient restClient;
     private final FacturacionAuthService authService;
     private final ClienteRepository clienteRepository;
+    private final FacturacionEmpresaService facturacionEmpresaService;
 
     public String syncCliente(Cliente cliente) {
         String token = authService.getValidToken();
-        String companyId = authService.getApiCompanyId();
+        String companyId = cliente.getEmpresa().getApiCompanyId();
 
         if (companyId == null) {
-            log.warn("No hay companyId, no se puede sincronizar cliente");
-            return null;
+            log.info("Sincronizando empresa {} con la API antes de sincronizar cliente...", cliente.getEmpresa().getRuc());
+            facturacionEmpresaService.crearEmpresa(cliente.getEmpresa());
+            companyId = cliente.getEmpresa().getApiCompanyId();
+            if (companyId == null) {
+                log.warn("No hay companyId, no se puede sincronizar cliente");
+                return null;
+            }
         }
 
         String apiClienteId = tryCreate(cliente, companyId, token);
@@ -91,7 +98,7 @@ public class FacturacionClienteService {
 
             Map<String, Object> response = restClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/api/v1/clientes")
+                            .path("/api/v1/clientes/por-empresa")
                             .queryParam("idCompany", companyId)
                             .build())
                     .header("Authorization", "Bearer " + token)

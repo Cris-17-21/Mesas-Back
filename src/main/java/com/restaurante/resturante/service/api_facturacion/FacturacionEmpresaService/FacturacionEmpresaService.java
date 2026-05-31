@@ -15,6 +15,7 @@ import com.restaurante.resturante.domain.maestros.Empresa;
 import com.restaurante.resturante.dto.api_facturacion.empresa_facturacion.FacturacionEmpresaRequest;
 import com.restaurante.resturante.dto.api_facturacion.empresa_facturacion.FacturacionEmpresaResponse;
 import com.restaurante.resturante.repository.api_facturacion.ApiCredencialRepository;
+import com.restaurante.resturante.repository.maestro.EmpresaRepository;
 import com.restaurante.resturante.service.api_facturacion.FacturacionAuthService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class FacturacionEmpresaService {
     private final RestClient restClient;
     private final FacturacionAuthService authService;
     private final ApiCredencialRepository credencialRepository;
+    private final EmpresaRepository empresaRepository;
 
     public FacturacionEmpresaResponse crearEmpresa(Empresa saved) {
         String token = authService.getValidToken();
@@ -42,12 +44,12 @@ public class FacturacionEmpresaService {
 
     public void actualizarEmpresa(Empresa updated) {
         String token = authService.getValidToken();
-        String companyId = authService.getApiCompanyId();
+        String companyId = updated.getApiCompanyId();
 
         if (companyId == null) {
-            log.warn("companyId no encontrado en credenciales, intentando crear/buscar la empresa en la API primero.");
+            log.warn("companyId no encontrado en la empresa local, intentando crear/buscar la empresa en la API primero.");
             crearEmpresa(updated);
-            companyId = authService.getApiCompanyId();
+            companyId = updated.getApiCompanyId();
             if (companyId == null) {
                 log.error("No se pudo obtener el companyId de la API para el RUC {}", updated.getRuc());
                 return;
@@ -59,8 +61,8 @@ public class FacturacionEmpresaService {
                 : null;
 
         FacturacionEmpresaRequest request = new FacturacionEmpresaRequest(
-                updated.getRuc(),
-                updated.getRazonSocial(),
+                null, // RUC no se actualiza (evita errores de unicidad/validación en PATCH)
+                null, // Razón Social no se actualiza (evita errores de unicidad/validación en PATCH)
                 updated.getNombreComercial(),
                 updated.getDireccionFiscal(),
                 updated.getUbigeo(),
@@ -76,10 +78,10 @@ public class FacturacionEmpresaService {
                 updated.getEntorno());
 
         try {
-            log.info("Actualizando empresa en API facturacion: ruc={}, companyId={}", updated.getRuc(), companyId);
+            log.info("Actualizando empresa en API facturacion (PATCH): ruc={}, companyId={}", updated.getRuc(), companyId);
 
             final String finalCompanyId = companyId;
-            restClient.put()
+            restClient.patch()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/v1/companies/me")
                             .queryParam("idCompany", finalCompanyId)
@@ -90,7 +92,7 @@ public class FacturacionEmpresaService {
                     .retrieve()
                     .toBodilessEntity();
 
-            log.info("Empresa actualizada exitosamente en API, companyId={}", companyId);
+            log.info("Empresa actualizada exitosamente en API con PATCH, companyId={}", companyId);
         } catch (Exception e) {
             log.error("Error al actualizar empresa en API facturacion: {}", e.getMessage(), e);
         }
@@ -98,11 +100,16 @@ public class FacturacionEmpresaService {
 
     public void actualizarLogo(Empresa empresa, MultipartFile file) {
         String token = authService.getValidToken();
-        String companyId = authService.getApiCompanyId();
+        String companyId = empresa.getApiCompanyId();
 
         if (companyId == null) {
-            log.warn("companyId no encontrado en credenciales al actualizar logo.");
-            return;
+            log.warn("companyId no encontrado en la empresa local al actualizar logo. Intentando crear la empresa...");
+            crearEmpresa(empresa);
+            companyId = empresa.getApiCompanyId();
+            if (companyId == null) {
+                log.warn("companyId no encontrado al actualizar logo, abortando.");
+                return;
+            }
         }
 
         try {
@@ -131,11 +138,16 @@ public class FacturacionEmpresaService {
 
     public void actualizarCertificado(Empresa empresa, MultipartFile file, String clave) {
         String token = authService.getValidToken();
-        String companyId = authService.getApiCompanyId();
+        String companyId = empresa.getApiCompanyId();
 
         if (companyId == null) {
-            log.warn("companyId no encontrado en credenciales al actualizar certificado.");
-            return;
+            log.warn("companyId no encontrado en la empresa local al actualizar certificado. Intentando crear la empresa...");
+            crearEmpresa(empresa);
+            companyId = empresa.getApiCompanyId();
+            if (companyId == null) {
+                log.warn("companyId no encontrado al actualizar certificado, abortando.");
+                return;
+            }
         }
 
         try {
@@ -197,7 +209,9 @@ public class FacturacionEmpresaService {
                     .body(FacturacionEmpresaResponse.class);
 
             if (response != null && response.id() != null) {
-                saveCredentials(response);
+                saveSessionTokens(response);
+                saved.setApiCompanyId(response.id().toString());
+                empresaRepository.save(saved);
                 log.info("Empresa creada exitosamente en API, companyId={}", response.id());
                 return response;
             }
@@ -228,8 +242,28 @@ public class FacturacionEmpresaService {
 
                         if (companyId != null && activo) {
                             log.info("Empresa encontrada en API, companyId={}", companyId);
-                            saveCompanyId(companyId);
-                            return null;
+                            saved.setApiCompanyId(companyId);
+                            empresaRepository.save(saved);
+
+                            return new FacturacionEmpresaResponse(
+                                    java.util.UUID.fromString(companyId),
+                                    ruc,
+                                    saved.getRazonSocial(),
+                                    saved.getNombreComercial(),
+                                    saved.getDireccionFiscal(),
+                                    saved.getUbigeo(),
+                                    saved.getDepartamento(),
+                                    saved.getProvincia(),
+                                    saved.getDistrito(),
+                                    saved.getLogoUrl() != null ? Base64.getEncoder().encodeToString(saved.getLogoUrl()) : null,
+                                    saved.getEntorno(),
+                                    "FREE",
+                                    true,
+                                    LocalDateTime.now(),
+                                    LocalDateTime.now(),
+                                    token,
+                                    null
+                            );
                         }
                     }
                 }
@@ -243,21 +277,13 @@ public class FacturacionEmpresaService {
         return null;
     }
 
-    private void saveCredentials(FacturacionEmpresaResponse response) {
+    private void saveSessionTokens(FacturacionEmpresaResponse response) {
         ApiCredencial session = getOrCreateSession();
         session.setAccessToken(response.accessToken());
         session.setRefreshToken(response.refreshToken());
-        session.setApiCompanyId(response.id().toString());
-        session.setExpiryDate(LocalDateTime.now().plusHours(1));
+        session.setExpiryDate(LocalDateTime.now().plusYears(100));
         credencialRepository.save(session);
-        log.info("Credenciales actualizadas con companyId={}", response.id());
-    }
-
-    private void saveCompanyId(String companyId) {
-        ApiCredencial session = getOrCreateSession();
-        session.setApiCompanyId(companyId);
-        credencialRepository.save(session);
-        log.info("CompanyId {} almacenado en credenciales", companyId);
+        log.info("Tokens de sesión de facturación actualizados");
     }
 
     private ApiCredencial getOrCreateSession() {

@@ -7,24 +7,25 @@ Razón Social: BAZAN NAVARRO CRISTOPHER HARLEY
 Dirección: -
 
 COMPROBANTE:
-Tipo: 01
-Serie: F001
-Número: 00000001
-Fecha de emisión: 2026-05-31T21:20:39
+Tipo: 03
+Serie: B001
+Número: 00000009
+Fecha de emisión: 2026-05-31T13:11:48
 Moneda: PEN
 
 CLIENTE:
-Tipo doc: RUC
-Número doc: 10714268495
-Razón Social: BAZAN NAVARRO CRISTOPHER HARLEY
+Tipo doc: DNI
+Número doc: 00000000
+Razón Social: CLIENTES VARIOS
+Dirección: 
 
 DETALLES:
 Cant. Descripción                  Valor Unit.  Importe
 --------------------------------------------------------
-2    Ceviche Mixto                         30.00        60.00
+1    Coca-Cola 500ml                        3.50         3.50
 --------------------------------------------------------
-                           Sub Total:        60.00
-                           IGV (18%):        10.80
-                               TOTAL:        70.80
+                           Sub Total:         2.97
+                           IGV (18%):         0.53
+                               TOTAL:         3.50
 
 Leyenda: Comprobante electrónico generado en sistema interno.

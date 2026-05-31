@@ -40,7 +40,6 @@ public class SucursalController {
         return ResponseEntity.ok(sucursalService.findAllActive());
     }
 
-    @PreAuthorize("hasAuthority('READ_SUCURSAL')")
     @GetMapping("/{id}")
     public ResponseEntity<SucursalDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(sucursalService.findById(id));

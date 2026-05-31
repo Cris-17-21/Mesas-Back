@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 import com.restaurante.resturante.domain.maestros.Sucursal;
 import com.restaurante.resturante.dto.api_facturacion.SucursalFacturacionRequest;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
+import com.restaurante.resturante.service.api_facturacion.FacturacionEmpresaService.FacturacionEmpresaService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,14 +24,20 @@ public class FacturacionSucursalService {
     private final FacturacionAuthService authService;
     private final SucursalRepository sucursalRepository;
     private final FacturacionSerieService serieService;
+    private final FacturacionEmpresaService facturacionEmpresaService;
 
     public String syncSucursal(Sucursal sucursal) {
         String token = authService.getValidToken();
-        String companyId = authService.getApiCompanyId();
+        String companyId = sucursal.getEmpresa().getApiCompanyId();
 
         if (companyId == null) {
-            log.warn("No hay companyId, no se puede sincronizar sucursal");
-            return null;
+            log.info("Sincronizando empresa {} con la API antes de sincronizar sucursal...", sucursal.getEmpresa().getRuc());
+            facturacionEmpresaService.crearEmpresa(sucursal.getEmpresa());
+            companyId = sucursal.getEmpresa().getApiCompanyId();
+            if (companyId == null) {
+                log.warn("No hay companyId, no se puede sincronizar sucursal");
+                return null;
+            }
         }
 
         String apiSucursalId = tryCreate(sucursal, companyId, token);
@@ -67,7 +74,7 @@ public class FacturacionSucursalService {
                 String id = response.get("id").toString();
                 log.info("Sucursal creada en API: id={}", id);
                 saveApiSucursalId(sucursal, id);
-                serieService.crearSeriesPorDefecto(id);
+                serieService.crearSeriesPorDefecto(id, companyId);
                 return id;
             }
         } catch (Exception e) {
@@ -100,7 +107,7 @@ public class FacturacionSucursalService {
                         if (id != null && activo) {
                             log.info("Sucursal encontrada en API: id={}", id);
                             saveApiSucursalId(sucursal, id);
-                            serieService.crearSeriesPorDefecto(id);
+                            serieService.crearSeriesPorDefecto(id, companyId);
                             return id;
                         }
                     }

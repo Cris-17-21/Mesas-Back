@@ -6,5 +6,6 @@ public record FacturaRequestDto(
         String rucApellidos, // RUC para factura, DNI/Apellidos para boleta
         String razonSocialNombres,
         String direccion,
-        String fechaEmision) {
+        String fechaEmision,
+        Boolean impresionConsumo) {
 }

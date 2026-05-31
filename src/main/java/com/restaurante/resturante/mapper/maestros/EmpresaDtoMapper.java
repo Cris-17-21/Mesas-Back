@@ -24,6 +24,12 @@ public class EmpresaDtoMapper {
         if (empresa == null)
             return null;
 
+        String logoBase64 = null;
+        if (empresa.getLogoUrl() != null) {
+            String mimeType = getMimeType(empresa.getLogoUrl());
+            logoBase64 = "data:" + mimeType + ";base64," + java.util.Base64.getEncoder().encodeToString(empresa.getLogoUrl());
+        }
+
         return new EmpresaDto(
                 empresa.getId(),
                 empresa.getRuc(),
@@ -36,8 +42,7 @@ public class EmpresaDtoMapper {
                 empresa.getDistrito(),
                 empresa.getTelefono(),
                 empresa.getEmail(),
-                empresa.getLogoUrl() != null ? new String(empresa.getLogoUrl(), java.nio.charset.StandardCharsets.UTF_8)
-                        : null,
+                logoBase64,
                 empresa.getFechaAfiliacion() != null ? empresa.getFechaAfiliacion().toString() : null,
                 empresa.getUsuarioSol(),
                 empresa.getClaveSol(),
@@ -69,7 +74,7 @@ public class EmpresaDtoMapper {
                 .distrito(dto.distrito())
                 .telefono(dto.telefono())
                 .email(dto.email())
-                .logoUrl(dto.logoUrl() != null ? dto.logoUrl().getBytes(java.nio.charset.StandardCharsets.UTF_8) : null)
+                .logoUrl(parseLogoUrl(dto.logoUrl()))
                 .fechaAfiliacion(
                         dto.fechaAfiliacion() != null ? LocalDate.parse(dto.fechaAfiliacion()) : LocalDate.now())
                 .usuarioSol(dto.usuarioSol())
@@ -111,7 +116,7 @@ public class EmpresaDtoMapper {
         if (dto.email() != null)
             entity.setEmail(dto.email());
         if (dto.logoUrl() != null)
-            entity.setLogoUrl(dto.logoUrl().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            entity.setLogoUrl(parseLogoUrl(dto.logoUrl()));
 
         if (dto.usuarioSol() != null)
             entity.setUsuarioSol(dto.usuarioSol());
@@ -123,5 +128,50 @@ public class EmpresaDtoMapper {
             entity.setEntorno(dto.entorno());
         if (dto.certificadoDigital() != null)
             entity.setCertificadoDigital(dto.certificadoDigital());
+    }
+
+    private String getMimeType(byte[] data) {
+        if (data == null || data.length < 4) {
+            return "image/png"; // default fallback
+        }
+        // PNG magic bytes: 89 50 4E 47
+        if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
+            return "image/png";
+        }
+        // JPEG magic bytes: FF D8 FF
+        if (data[0] == (byte) 0xFF && data[1] == (byte) 0xD8 && data[2] == (byte) 0xFF) {
+            return "image/jpeg";
+        }
+        // GIF magic bytes: 47 49 46 38 ('GIF8')
+        if (data[0] == (byte) 0x47 && data[1] == (byte) 0x49 && data[2] == (byte) 0x46 && data[3] == (byte) 0x38) {
+            return "image/gif";
+        }
+        // SVG starts with '<' (0x3C)
+        if (data[0] == (byte) 0x3C) {
+            return "image/svg+xml";
+        }
+        return "image/png"; // fallback
+    }
+
+    private byte[] parseLogoUrl(String logoUrl) {
+        if (logoUrl == null || logoUrl.isEmpty()) {
+            return null;
+        }
+        if (logoUrl.startsWith("data:image/")) {
+            int commaIndex = logoUrl.indexOf(",");
+            if (commaIndex != -1) {
+                String base64Data = logoUrl.substring(commaIndex + 1);
+                try {
+                    return java.util.Base64.getDecoder().decode(base64Data);
+                } catch (IllegalArgumentException e) {
+                    return logoUrl.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                }
+            }
+        }
+        try {
+            return java.util.Base64.getDecoder().decode(logoUrl);
+        } catch (IllegalArgumentException e) {
+            return logoUrl.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
     }
 }

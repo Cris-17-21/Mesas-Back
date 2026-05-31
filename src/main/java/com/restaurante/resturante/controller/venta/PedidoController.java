@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,7 @@ import com.restaurante.resturante.dto.venta.PedidoDetalleRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoRequestDto;
 import com.restaurante.resturante.dto.venta.PedidoResponseDto;
 import com.restaurante.resturante.dto.venta.PedidoResumenDto;
+import com.restaurante.resturante.dto.venta.PagoMixtoItemDto;
 import com.restaurante.resturante.dto.venta.PreCuentaDto;
 import com.restaurante.resturante.dto.venta.RegistrarPagoDto;
 import com.restaurante.resturante.dto.venta.SepararCuentaDto;
@@ -85,9 +87,8 @@ public class PedidoController {
     @PostMapping("/{pedidoId}/pagar")
     public ResponseEntity<Void> registrarPagoPath(
             @PathVariable String pedidoId,
-            @RequestParam String metodoPago) {
-        RegistrarPagoDto dto = new RegistrarPagoDto(pedidoId, null, metodoPago, "Pago Completo", null);
-        pedidoService.registrarPago(dto);
+            @RequestBody List<PagoMixtoItemDto> pagos) {
+        pedidoService.registrarPagoMixto(pedidoId, pagos);
         return ResponseEntity.noContent().build();
     }
 
@@ -124,5 +125,12 @@ public class PedidoController {
     @PostMapping("/separar-cuenta")
     public ResponseEntity<PedidoResponseDto> separarCuenta(@RequestBody SepararCuentaDto dto) {
         return ResponseEntity.ok(pedidoService.separarCuenta(dto));
+    }
+
+    @PutMapping("/{id}/precios")
+    public ResponseEntity<PedidoResponseDto> actualizarPrecios(
+            @PathVariable String id,
+            @RequestBody List<com.restaurante.resturante.dto.venta.ActualizarPrecioDetalleDto> precios) {
+        return ResponseEntity.ok(pedidoService.actualizarPreciosDetalles(id, precios));
     }
 }
