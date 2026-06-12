@@ -115,8 +115,13 @@ public class EmpresaDtoMapper {
             entity.setTelefono(dto.telefono());
         if (dto.email() != null)
             entity.setEmail(dto.email());
-        if (dto.logoUrl() != null)
-            entity.setLogoUrl(parseLogoUrl(dto.logoUrl()));
+        if (dto.logoUrl() != null) {
+            String url = dto.logoUrl();
+            // Solo actualizar si es un Base64 de imagen o si es una cadena vacía (para borrar el logo)
+            if (url.startsWith("data:image/") || url.isEmpty()) {
+                entity.setLogoUrl(parseLogoUrl(url));
+            }
+        }
 
         if (dto.usuarioSol() != null)
             entity.setUsuarioSol(dto.usuarioSol());
@@ -162,14 +167,16 @@ public class EmpresaDtoMapper {
             if (commaIndex != -1) {
                 String base64Data = logoUrl.substring(commaIndex + 1);
                 try {
-                    return java.util.Base64.getDecoder().decode(base64Data);
+                    // Reemplazar espacios por + (por decodificación URL) y decodificar de forma leniente
+                    String cleaned = base64Data.replaceAll(" ", "+");
+                    return java.util.Base64.getMimeDecoder().decode(cleaned);
                 } catch (IllegalArgumentException e) {
                     return logoUrl.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                 }
             }
         }
         try {
-            return java.util.Base64.getDecoder().decode(logoUrl);
+            return java.util.Base64.getMimeDecoder().decode(logoUrl);
         } catch (IllegalArgumentException e) {
             return logoUrl.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         }
