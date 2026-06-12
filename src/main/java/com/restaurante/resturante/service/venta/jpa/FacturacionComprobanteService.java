@@ -521,7 +521,7 @@ public class FacturacionComprobanteService {
         BigDecimal totalVenta = BigDecimal.ZERO;
         if (Boolean.TRUE.equals(comprobante.getImpresionConsumo())) {
             totalVenta = comprobante.getTotalVenta();
-            BigDecimal subtotal = totalVenta.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            BigDecimal subtotal = totalVenta;
             txt.append(String.format("%-4s %-30s %12s %12s\n",
                     "1", "CONSUMO DE ALIMENTO", subtotal.setScale(2, RoundingMode.HALF_UP), totalVenta.setScale(2, RoundingMode.HALF_UP)));
         } else {
@@ -707,9 +707,42 @@ public class FacturacionComprobanteService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<java.util.Map<String, Object>> obtenerSeriesPorSucursal(String sucursalId) {
-        // Leer siempre desde la BD local (fuente de verdad)
+        var sucursalOpt = sucursalRepository.findById(sucursalId);
+        if (sucursalOpt.isPresent()) {
+            var sucursal = sucursalOpt.get();
+            String apiSucursalId = sucursal.getApiSucursalId();
+            String companyId = sucursal.getEmpresa().getApiCompanyId();
+            if (apiSucursalId != null && companyId != null) {
+                try {
+                    String token = comprobanteApiService.getAuthServiceValidToken();
+                    List<java.util.Map<String, Object>> seriesApi = comprobanteApiService.listarSeriesEnApi(companyId, apiSucursalId, token);
+                    if (seriesApi != null && !seriesApi.isEmpty()) {
+                        for (java.util.Map<String, Object> sApi : seriesApi) {
+                            String codSerie = (String) sApi.get("serie");
+                            String codTipoDoc = (String) sApi.get("tipoDocCodigo");
+                            Integer ultimoCorr = (Integer) sApi.get("ultimoCorrelativo");
+                            if (codSerie != null && codTipoDoc != null && ultimoCorr != null) {
+                                var serieExistente = serieLocalRepository.findBySucursalIdAndTipoComprobanteAndSerie(
+                                        sucursalId, codTipoDoc, codSerie.toUpperCase());
+                                if (serieExistente.isPresent()) {
+                                    var sLocal = serieExistente.get();
+                                    sLocal.setProximoCorrelativo(ultimoCorr + 1);
+                                    serieLocalRepository.save(sLocal);
+                                }
+                            }
+                        }
+                        serieLocalRepository.flush();
+                        log.info("Correlativos sincronizados exitosamente con API de Facturación para sucursal {}", sucursalId);
+                    }
+                } catch (Exception e) {
+                    log.warn("API de facturación externa no disponible (offline). Usando correlativos locales. Detalle: {}", e.getMessage());
+                }
+            }
+        }
+
+        // Leer siempre desde la BD local (fuente de verdad sincronizada o fallback local)
         List<FacturacionSerie> seriesLocales = serieLocalRepository.findBySucursalIdAndActivoTrue(sucursalId);
         return seriesLocales.stream()
                 .map(s -> {

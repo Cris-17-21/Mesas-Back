@@ -4,12 +4,19 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import com.restaurante.resturante.domain.maestros.Mesa;
 
 public interface MesaRepository extends JpaRepository<Mesa, String> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Mesa m WHERE m.id = :id")
+    Optional<Mesa> findByIdForUpdate(@Param("id") String id);
 
     // Buscar mesas por piso
     List<Mesa> findByPisoId(String pisoId);

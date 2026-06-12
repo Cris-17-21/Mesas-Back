@@ -90,9 +90,45 @@ public class MesaService implements IMesaService {
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
 
+        String actual = mesa.getEstado().toUpperCase();
+        String destino = nuevoEstado.toUpperCase();
+
+        if (!esTransicionValida(actual, destino)) {
+            throw new IllegalArgumentException("TRANSICIÓN DE ESTADO NO VÁLIDA: DE " + actual + " A " + destino);
+        }
+
         // El estado siempre debe persistirse en MAYÚSCULAS
-        mesa.setEstado(nuevoEstado.toUpperCase());
+        mesa.setEstado(destino);
         return mesaMapper.toDto(mesaRepository.save(mesa));
+    }
+
+    private boolean esTransicionValida(String estadoActual, String estadoNuevo) {
+        if (estadoActual.equals(estadoNuevo)) {
+            return true;
+        }
+        
+        switch (estadoActual) {
+            case "LIBRE":
+                return "OCUPADA".equals(estadoNuevo) || "OCUPADA_UNION".equals(estadoNuevo) || "RESERVADA".equals(estadoNuevo);
+            case "RESERVADA":
+                return "OCUPADA".equals(estadoNuevo) || "LIBRE".equals(estadoNuevo);
+            case "OCUPADA":
+                return "PEDIENDO".equals(estadoNuevo) || "PRE_CUENTA".equals(estadoNuevo) || "LIBRE".equals(estadoNuevo);
+            case "PEDIENDO":
+            case "ATENDIENDO":
+                return "PRE_CUENTA".equals(estadoNuevo) || "OCUPADA".equals(estadoNuevo) || "LIBRE".equals(estadoNuevo);
+            case "PRE_CUENTA":
+                return "PAGADA".equals(estadoNuevo) || "OCUPADA".equals(estadoNuevo) || "PEDIENDO".equals(estadoNuevo);
+            case "PAGADA":
+                return "SUCIA".equals(estadoNuevo) || "LIBRE".equals(estadoNuevo);
+            case "SUCIA":
+            case "LIMPIEZA":
+                return "LIBRE".equals(estadoNuevo);
+            case "OCUPADA_UNION":
+                return "LIBRE".equals(estadoNuevo);
+            default:
+                return true;
+        }
     }
 
     @Override
@@ -108,7 +144,7 @@ public class MesaService implements IMesaService {
         List<Mesa> secundarias = mesaRepository.findAllById(idsSecundarios);
 
         for (Mesa secundaria : secundarias) {
-            if (secundaria.getId().equals(idPrincipal))
+            if (secondaryIsPrincipal(secundaria, idPrincipal))
                 continue;
 
             // REGLA: Solo unir mesas que estén LIBRES
@@ -121,6 +157,10 @@ public class MesaService implements IMesaService {
         }
 
         mesaRepository.saveAll(secundarias);
+    }
+
+    private boolean secondaryIsPrincipal(Mesa sec, String pId) {
+        return sec.getId().equals(pId);
     }
 
     @Override

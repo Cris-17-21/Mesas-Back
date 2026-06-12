@@ -109,14 +109,19 @@ public class PedidoService implements IPedidoService {
                 pedido.setPedidoDetalles(detalles);
                 pedido.calcularTotales();
 
-                // 4. Cambiar estado de mesa y asociarla
+                // 4. Cambiar estado de mesa y asociarla con bloqueo de concurrencia
                 if (dto.mesaId() != null && !dto.mesaId().isBlank()) {
-                        Mesa mesa = mesaRepository.findById(dto.mesaId())
+                        Mesa mesa = mesaRepository.findByIdForUpdate(dto.mesaId())
                                         .orElseThrow(() -> new RuntimeException("Mesa no encontrada: " + dto.mesaId()));
                         
                         // Si la mesa seleccionada es una mesa secundaria (unida), asociamos el pedido a la principal
                         if (mesa.getPrincipal() != null) {
-                                mesa = mesa.getPrincipal();
+                                mesa = mesaRepository.findByIdForUpdate(mesa.getPrincipal().getId())
+                                                .orElseThrow(() -> new RuntimeException("Mesa principal no encontrada"));
+                        }
+
+                        if (!"LIBRE".equals(mesa.getEstado())) {
+                                throw new RuntimeException("LA MESA " + mesa.getCodigoMesa() + " NO ESTÁ LIBRE (ESTADO ACTUAL: " + mesa.getEstado() + ")");
                         }
                         
                         pedido.setMesa(mesa);
@@ -147,7 +152,7 @@ public class PedidoService implements IPedidoService {
         @Override
         @Transactional
         public PedidoResponseDto actualizarDetalles(String pedidoId, List<PedidoDetalleRequestDto> nuevosDetalles) {
-                Pedido pedido = pedidoRepository.findById(pedidoId)
+                Pedido pedido = pedidoRepository.findByIdForUpdate(pedidoId)
                                 .orElseThrow(() -> new RuntimeException("PEDIDO NO ENCONTRADO"));
 
                 if (!"ABIERTO".equals(pedido.getEstado())) {

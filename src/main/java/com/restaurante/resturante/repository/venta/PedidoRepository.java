@@ -4,12 +4,20 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import com.restaurante.resturante.domain.ventas.Pedido;
 import com.restaurante.resturante.domain.ventas.PedidoDetalle;
 
 public interface PedidoRepository extends JpaRepository<Pedido, String> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> findByIdForUpdate(@Param("id") String id);
 
     // Buscar pedido por código corto (ej: "A-123")
     Optional<Pedido> findByCodigoPedido(String codigo);
