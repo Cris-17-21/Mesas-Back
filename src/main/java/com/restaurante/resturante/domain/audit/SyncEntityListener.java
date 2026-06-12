@@ -1,15 +1,15 @@
 package com.restaurante.resturante.domain.audit;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostUpdate;
 import jakarta.persistence.Table;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import com.restaurante.resturante.config.SpringContextHelper;
-import com.restaurante.resturante.domain.sincronizacion.RegistroSincronizacion;
-import com.restaurante.resturante.repository.sincronizacion.RegistroSincronizacionRepository;
 import com.restaurante.resturante.service.sincronizacion.SyncContext;
+import com.restaurante.resturante.service.sincronizacion.SyncQueueService;
 
 public class SyncEntityListener {
 
@@ -32,7 +32,6 @@ public class SyncEntityListener {
             // Obtener el ID de la entidad dinámicamente usando reflexión
             String id = null;
             try {
-                // Primero buscamos el método annotated o el campo annotated con @Id
                 Class<?> current = entity.getClass();
                 while (current != null && current != Object.class) {
                     for (java.lang.reflect.Field field : current.getDeclaredFields()) {
@@ -54,19 +53,30 @@ public class SyncEntityListener {
             }
 
             if (id != null) {
+                final String finalId = id;
+                final String finalTableName = tableName;
+
                 try {
-                    RegistroSincronizacionRepository syncRepo = SpringContextHelper.getBean(RegistroSincronizacionRepository.class);
-                    
-                    RegistroSincronizacion reg = new RegistroSincronizacion();
-                    reg.setTablaNombre(tableName);
-                    reg.setRegistroId(id);
-                    reg.setEstado("PENDIENTE");
-                    reg.setFechaModificacion(LocalDateTime.now());
-                    
-                    syncRepo.save(reg);
+                    // Si hay una transacción activa, encolamos el registro justo después del commit exitoso
+                    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                try {
+                                    SyncQueueService queueService = SpringContextHelper.getBean(SyncQueueService.class);
+                                    queueService.queue(finalTableName, finalId);
+                                } catch (Exception e) {
+                                    System.err.println("Error encolando sincronización en afterCommit: " + e.getMessage());
+                                }
+                            }
+                        });
+                    } else {
+                        // Si no hay transacción activa (ej. scripts o seeder directo), ejecutamos de inmediato
+                        SyncQueueService queueService = SpringContextHelper.getBean(SyncQueueService.class);
+                        queueService.queue(finalTableName, finalId);
+                    }
                 } catch (Exception e) {
-                    // Fail silently para no causar rollback en la transacción de negocio
-                    System.err.println("Error encolando sincronización: " + e.getMessage());
+                    System.err.println("Error al registrar sincronización de transacción: " + e.getMessage());
                 }
             }
         }
