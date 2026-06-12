@@ -18,7 +18,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class, SyncEntityListener.class})
 public class Auditable {
 
     // ----- AUDITORIA -----
