@@ -36,7 +36,9 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**",
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/sync/**").permitAll()
+                        .requestMatchers(
                                 "/v2/api-docs",
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
@@ -46,9 +48,10 @@ public class SecurityConfig {
                                 "/configuration/security",
                                 "/swagger-ui/**",
                                 "/webjars/**",
-                                "/swagger-ui.html")
-                        .permitAll()
-                        .anyRequest().authenticated());
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll());
 
         return http.build();
     }
@@ -56,7 +59,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200")); // Cambiar cuando este para produccion
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:4200",
+                "https://*.acmingenieros.com",
+                "http://*.acmingenieros.com"
+        ));
         config.setAllowedMethods(List.of(
                 "GET",
                 "POST",
