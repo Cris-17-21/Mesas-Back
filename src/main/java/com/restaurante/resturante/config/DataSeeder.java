@@ -108,8 +108,8 @@ public class DataSeeder implements CommandLineRunner {
                 PermissionModule metodosModule = createModuleIfNotExists("Métodos de Pago", "/metodos", "bi bi-credit-card", 6,
                                 maestrosModule);
 
-                // Módulo de Reportes
-                PermissionModule reportesModule = createModuleIfNotExists("Reportes", "/reportes", "bi bi-bar-chart-line", 3,
+                // Módulo de Reportes (después de Almacén, orden 6)
+                PermissionModule reportesModule = createModuleIfNotExists("Reportes", "/reportes", "bi bi-bar-chart-line", 6,
                                  null);
                 createPermissionIfNotExists("read:admin-reports", "Ver reportes del sistema", reportesModule);
                 createPermissionIfNotExists("export:admin-reports", "Exportar reportes a PDF/Excel", reportesModule);
