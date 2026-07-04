@@ -108,7 +108,12 @@ public class DataSeeder implements CommandLineRunner {
                 PermissionModule metodosModule = createModuleIfNotExists("Métodos de Pago", "/metodos", "bi bi-credit-card", 6,
                                 maestrosModule);
 
-                // Permisos de Maestros -> empresas
+                // Módulo de Reportes
+                PermissionModule reportesModule = createModuleIfNotExists("Reportes", "/reportes", "bi bi-bar-chart-line", 3,
+                                 null);
+                createPermissionIfNotExists("read:admin-reports", "Ver reportes del sistema", reportesModule);
+                createPermissionIfNotExists("export:admin-reports", "Exportar reportes a PDF/Excel", reportesModule);
+
                 // Permisos de Maestros -> empresas
                 createPermissionIfNotExists("READ_EMPRESA", "Ver empresas", empresaModule);
                 createPermissionIfNotExists("CREATE_EMPRESA", "Crear empresas", empresaModule);
@@ -239,7 +244,8 @@ public class DataSeeder implements CommandLineRunner {
                                      p.getModule().getName().equals("Roles") ||
                                      p.getModule().getName().equals("Usuarios") ||
                                      p.getModule().getName().equals("Empresas") ||
-                                     p.getModule().getName().equals("Sucursales")))
+                                     p.getModule().getName().equals("Sucursales") ||
+                                     p.getModule().getName().equals("Reportes")))
                         .collect(java.util.stream.Collectors.toSet());
                 superAdminRole.setPermissions(superAdminPermissions);
                 roleRepository.save(superAdminRole);
