@@ -1,0 +1,31 @@
+COMPROBANTE ELECTRÓNICO
+=====================
+
+EMISOR:
+RUC: 10714268495
+Razón Social: BAZAN NAVARRO CRISTOPHER HARLEY
+Dirección: -
+
+COMPROBANTE:
+Tipo: 03
+Serie: B001
+Número: 00000025
+Fecha de emisión: 2026-06-26T23:25:17.497046
+Moneda: PEN
+
+CLIENTE:
+Tipo doc: DNI
+Número doc: 76543210
+Razón Social: Carlos QA Tester
+Dirección: Av. Las Pruebas 123
+
+DETALLES:
+Cant. Descripción                  Valor Unit.  Importe
+--------------------------------------------------------
+2    Coca-Cola 500ml                        2.00         4.00
+--------------------------------------------------------
+                           Sub Total:         4.00
+                            IGV (0%):         0.00
+                               TOTAL:         4.00
+
+Leyenda: Comprobante electrónico generado en sistema interno.

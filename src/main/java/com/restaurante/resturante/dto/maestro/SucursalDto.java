@@ -5,5 +5,6 @@ public record SucursalDto(
     String nombre,
     String direccion,
     String telefono,
-    String empresa
+    String empresa,
+    Boolean estado
 ) {}

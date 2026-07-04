@@ -21,5 +21,6 @@ public record EmpresaDto(
                 String claveCertificado,
                 Boolean entorno,
                 String certificadoDigital,
+                Boolean active,
                 List<SucursalDto> sucursales) {
 }

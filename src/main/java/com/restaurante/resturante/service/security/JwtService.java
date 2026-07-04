@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
+import com.restaurante.resturante.domain.security.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -87,6 +88,13 @@ public class JwtService {
                     .orElseThrow(() -> new MalformedJwtException("El token no contiene username"));
             final String tokenIpAddress = extractIpAddress(token)
                     .orElseThrow(() -> new MalformedJwtException("El token no contiene dirección IP"));
+            
+            if (userDetails instanceof User user) {
+                if (user.getTokenActivo() != null && !token.equals(user.getTokenActivo())) {
+                    logger.warn("El token no coincide con el token activo para el usuario {}", username);
+                    return false;
+                }
+            }
             
             return username.equals(userDetails.getUsername()) &&
                    !isTokenExpired(token) &&

@@ -49,6 +49,7 @@ public class EmpresaDtoMapper {
                 empresa.getClaveCertificado(),
                 empresa.getEntorno(),
                 empresa.getCertificadoDigital(),
+                empresa.getActive(),
                 empresa.getSucursales() != null
                         ? empresa.getSucursales().stream().map(sucursalMapper::toDto).collect(Collectors.toList())
                         : Collections.emptyList());

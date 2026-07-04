@@ -69,4 +69,10 @@ public class SucursalController {
     public ResponseEntity<List<SucursalDto>> getSucursalesByEmpresa(@PathVariable String empresaId) {
         return ResponseEntity.ok(sucursalService.findSucursalesByEmpresaId(empresaId));
     }
+
+    @PreAuthorize("hasAuthority('UPDATE_SUCURSAL') or hasRole('ROLE_ADMIN_RESTAURANTE')")
+    @PutMapping("/{id}/toggle-status")
+    public ResponseEntity<SucursalDto> toggleStatus(@PathVariable String id) {
+        return ResponseEntity.ok(sucursalService.toggleStatus(id));
+    }
 }

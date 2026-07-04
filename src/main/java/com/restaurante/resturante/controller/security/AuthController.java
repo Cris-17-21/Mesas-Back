@@ -32,6 +32,7 @@ import com.restaurante.resturante.mapper.maestros.SucursalDtoMapper;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.RefreshTokenRepository;
 import com.restaurante.resturante.repository.security.UserAccessRepository;
+import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.service.maestros.ISucursalService;
 import com.restaurante.resturante.service.security.JwtService;
 import com.restaurante.resturante.service.security.RefreshTokenService;
@@ -52,6 +53,7 @@ public class AuthController {
         private final UserAccessRepository userAccessRepository;
         private final SucursalDtoMapper sucursalDtoMapper;
         private final SucursalRepository sucursalRepository;
+        private final UserRepository userRepository;
 
         @Value("${security.jwt.access-token.expiration}")
         private long accessTokenExpiration;
@@ -185,11 +187,13 @@ public class AuthController {
                                 List.of()));
         }
 
-        // El método de apoyo permanece igual para centralizar la creación de tokens
         private AuthResponse createAuthResponse(User user, String ip, String empresaId, String sucursalId,
                         boolean requiresSelection, List<SucursalDto> sucursales) {
                 String accessToken = jwtService.generateAccessToken(user, ip, empresaId, sucursalId);
                 String refreshToken = refreshTokenService.createRefreshToken(user.getUsername()).getToken();
+
+                user.setTokenActivo(accessToken);
+                userRepository.save(user);
 
                 return new AuthResponse(
                                 accessToken,

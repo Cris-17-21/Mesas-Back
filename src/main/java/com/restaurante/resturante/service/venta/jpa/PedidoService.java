@@ -269,6 +269,10 @@ public class PedidoService implements IPedidoService {
                                                 .cajaTurno(pedido.getCajaTurno())
                                                 .build();
                                 pagoRepository.save(pago);
+                                if (pedido.getPagos() == null) {
+                                        pedido.setPagos(new java.util.ArrayList<>());
+                                }
+                                pedido.getPagos().add(pago);
 
                                 // Registrar movimiento en caja
                                 if (pedido.getCajaTurno() != null && debeRegistrarMovimientoCaja(pedido.getId())) {
@@ -303,6 +307,10 @@ public class PedidoService implements IPedidoService {
                                         .cajaTurno(pedido.getCajaTurno())
                                         .build();
                         pagoRepository.save(pago);
+                        if (pedido.getPagos() == null) {
+                                pedido.setPagos(new java.util.ArrayList<>());
+                        }
+                        pedido.getPagos().add(pago);
 
                         // Registrar movimiento en caja
                         if (pedido.getCajaTurno() != null && debeRegistrarMovimientoCaja(pedido.getId())) {

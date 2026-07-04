@@ -82,7 +82,7 @@ class EmpresaServiceTest {
                 .thenReturn(new EmpresaDto("1", "20123456789", "RESTAURANTE MI SAZÓN", "Nombre Comercial",
                         "Calle Real 123", "010101", "Prov", "Dep", "Dist", "987654321",
                         "contacto@sazon.com", "logo.png", "2026-02-26", null, null, null, null, null,
-                        java.util.Collections.emptyList()));
+                        true, java.util.Collections.emptyList()));
 
         // WHEN: Ejecutamos la acción
         EmpresaDto result = empresaService.create(dto);

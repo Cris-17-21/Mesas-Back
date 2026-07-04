@@ -93,6 +93,9 @@ public class User extends Auditable implements UserDetails {
     @JsonBackReference
     private Set<Pedido> pedidos;
 
+    @Column(name = "token_activo", columnDefinition = "TEXT")
+    private String tokenActivo;
+
     // ------METODO DE SPRING SECURITY------
 
     @Override

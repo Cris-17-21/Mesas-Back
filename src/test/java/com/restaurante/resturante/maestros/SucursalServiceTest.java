@@ -61,7 +61,7 @@ class SucursalServiceTest {
         when(sucursalMapper.toEntity(any(CreateSucursalDto.class))).thenReturn(sucursalEntity);
         when(sucursalRepository.save(any(Sucursal.class))).thenReturn(sucursalEntity);
         when(sucursalMapper.toDto(any(Sucursal.class)))
-                .thenReturn(new SucursalDto("suc-1", "SEDE CENTRAL", "Dir", "123", "EMPRESA TEST"));
+                .thenReturn(new SucursalDto("suc-1", "SEDE CENTRAL", "Dir", "123", "EMPRESA TEST", true));
 
         // WHEN
         SucursalDto result = sucursalService.create(dto);

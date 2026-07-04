@@ -45,7 +45,7 @@ public class SucursalService implements ISucursalService {
         if (isAuthenticatedUserRestaurantAdmin()) {
             String empresaId = getAuthenticatedUserEmpresaIdOrNull();
             if (empresaId != null) {
-                return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
+                return sucursalRepository.findByEmpresaId(empresaId).stream()
                         .map(sucursalMapper::toDto)
                         .toList();
             }
@@ -194,6 +194,18 @@ public class SucursalService implements ISucursalService {
             }
         }
 
+        // Validar si existen datos registrados asociados a esta sucursal
+        long productos = sucursalRepository.countProductosBySucursalId(idSeguro);
+        long pedidos = sucursalRepository.countPedidosBySucursalId(idSeguro);
+        long compras = sucursalRepository.countPedidosCompraBySucursalId(idSeguro);
+        long comprobantes = sucursalRepository.countComprobantesBySucursalId(idSeguro);
+        long cajas = sucursalRepository.countCajasBySucursalId(idSeguro);
+        long pisos = sucursalRepository.countPisosBySucursalId(idSeguro);
+
+        if (productos > 0 || pedidos > 0 || compras > 0 || comprobantes > 0 || cajas > 0 || pisos > 0) {
+            throw new IllegalStateException("No se puede eliminar la sucursal porque tiene datos registrados asociados (productos, pedidos, compras o movimientos de caja).");
+        }
+
         // 1. Apagamos la sucursal
         sucursal.setEstado(false);
         sucursalRepository.save(sucursal);
@@ -212,6 +224,31 @@ public class SucursalService implements ISucursalService {
                 .stream()
                 .map(sucursalMapper::toDto)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public SucursalDto toggleStatus(String id) {
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Sucursal sucursal = findExistingSucursal(idSeguro);
+
+        if (isAuthenticatedUserRestaurantAdmin()) {
+            String empresaId = getAuthenticatedUserEmpresaIdOrNull();
+            if (empresaId == null || !sucursal.getEmpresa().getId().equals(empresaId)) {
+                throw new AccessDeniedException("No tienes permiso para modificar esta sucursal.");
+            }
+        }
+
+        boolean newStatus = !sucursal.getEstado();
+
+        if (newStatus && !sucursal.getEmpresa().getActive()) {
+            throw new IllegalStateException("No se puede activar una sucursal si su empresa está inactiva.");
+        }
+
+        sucursal.setEstado(newStatus);
+        Sucursal saved = sucursalRepository.save(sucursal);
+        syncWithApi(saved);
+        return sucursalMapper.toDto(saved);
     }
 
     // -------- MÉTODOS AUXILIARES --------

@@ -79,4 +79,10 @@ public class EmpresaController {
             @RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(empresaService.uploadCertificado(id, file));
     }
+
+    @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
+    @PutMapping("/{id}/toggle-status")
+    public ResponseEntity<EmpresaDto> toggleStatus(@PathVariable String id) {
+        return ResponseEntity.ok(empresaService.toggleStatus(id));
+    }
 }

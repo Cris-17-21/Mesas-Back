@@ -186,6 +186,20 @@ public class EmpresaService implements IEmpresaService {
             throw new EntityNotFoundException("No se puede eliminar: Empresa no encontrada");
         }
         Empresa empresa = findExistingEmpresa(idSeguro);
+
+        // Validar si existen datos registrados asociados a esta empresa
+        long clientes = empresaRepository.countClientesByEmpresaId(idSeguro);
+        long proveedores = empresaRepository.countProveedoresByEmpresaId(idSeguro);
+        long productos = empresaRepository.countProductosByEmpresaId(idSeguro);
+        long pedidos = empresaRepository.countPedidosByEmpresaId(idSeguro);
+        long compras = empresaRepository.countPedidosCompraByEmpresaId(idSeguro);
+        long comprobantes = empresaRepository.countComprobantesByEmpresaId(idSeguro);
+        long cajas = empresaRepository.countCajasByEmpresaId(idSeguro);
+
+        if (clientes > 0 || proveedores > 0 || productos > 0 || pedidos > 0 || compras > 0 || comprobantes > 0 || cajas > 0) {
+            throw new IllegalStateException("No se puede eliminar la empresa porque tiene datos registrados asociados (clientes, proveedores, productos, pedidos, compras o comprobantes de pago).");
+        }
+
         empresa.setActive(false);
         empresaRepository.save(empresa);
 
@@ -259,6 +273,50 @@ public class EmpresaService implements IEmpresaService {
         } catch (IOException e) {
             throw new RuntimeException("Error al leer el archivo de certificado", e);
         }
+    }
+
+    @Override
+    @Transactional
+    public EmpresaDto toggleStatus(String id) {
+        String idSeguro = Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (!isAuthenticatedUserSuperAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException("Solo el Super Administrador puede activar o desactivar empresas.");
+        }
+        Empresa empresa = findExistingEmpresa(idSeguro);
+        boolean newStatus = !empresa.getActive();
+        empresa.setActive(newStatus);
+        Empresa saved = empresaRepository.save(empresa);
+
+        if (!newStatus) {
+            List<Sucursal> sucursales = sucursalRepository.findByEmpresaIdAndEstadoTrue(empresa.getId());
+            sucursales.forEach(sucursal -> sucursal.setEstado(false));
+            sucursalRepository.saveAll(sucursales);
+
+            List<UserAccess> accesos = userAccessRepository.findByEmpresaId(empresa.getId());
+            accesos.forEach(acceso -> {
+                acceso.setActive(false);
+                User user = acceso.getUser();
+                user.setActive(false);
+                userRepository.save(user);
+            });
+            userAccessRepository.saveAll(accesos);
+        } else {
+            List<UserAccess> accesos = userAccessRepository.findByEmpresaId(empresa.getId());
+            accesos.forEach(acceso -> {
+                acceso.setActive(true);
+                User user = acceso.getUser();
+                user.setActive(true);
+                userRepository.save(user);
+            });
+            userAccessRepository.saveAll(accesos);
+
+            List<Sucursal> sucursales = sucursalRepository.findByEmpresaId(empresa.getId());
+            sucursales.forEach(sucursal -> sucursal.setEstado(true));
+            sucursalRepository.saveAll(sucursales);
+        }
+
+        syncUpdateWithApi(saved);
+        return empresaMapper.toDto(saved);
     }
 
     // -------- MÉTODOS AUXILIARES --------

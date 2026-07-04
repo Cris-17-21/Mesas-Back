@@ -24,7 +24,8 @@ public class SucursalDtoMapper {
                 sucursal.getNombre(),
                 sucursal.getDireccion(),
                 sucursal.getTelefono(),
-                sucursal.getEmpresa() != null ? sucursal.getEmpresa().getRazonSocial() : null);
+                sucursal.getEmpresa() != null ? sucursal.getEmpresa().getRazonSocial() : null,
+                sucursal.getEstado());
     }
 
     // Convierte de CreateSucursalDto a Entidad (Para guardar)

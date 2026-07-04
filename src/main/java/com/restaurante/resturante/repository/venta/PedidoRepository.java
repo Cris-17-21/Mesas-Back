@@ -35,7 +35,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, String> {
     boolean existsByMesaIdAndEstado(String mesaId, String estado);
 
     // Buscar un detalle de pedido por su ID
-    Optional<PedidoDetalle> findDetalleById(String id);
+    @Query("SELECT pd FROM PedidoDetalle pd WHERE pd.id = :id")
+    Optional<PedidoDetalle> findDetalleById(@Param("id") String id);
 
     // Buscar pedidos por sucursal y estado de preparación de sus detalles
     @Query("SELECT DISTINCT p FROM Pedido p JOIN p.pedidoDetalles pd WHERE p.sucursal.id = :sucursalId AND p.estado = 'ABIERTO' AND pd.estadoPreparacion = :estadoPreparacion")

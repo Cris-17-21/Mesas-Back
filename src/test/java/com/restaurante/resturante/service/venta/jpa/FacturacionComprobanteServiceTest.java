@@ -46,6 +46,12 @@ public class FacturacionComprobanteServiceTest {
         @Mock
         private ClienteService clienteService;
 
+        @Mock
+        private com.restaurante.resturante.repository.venta.FacturacionSerieRepository serieLocalRepository;
+
+        @Mock
+        private com.restaurante.resturante.service.maestros.IMesaService mesaService;
+
         @InjectMocks
         private FacturacionComprobanteService facturacionService;
 
@@ -130,5 +136,86 @@ public class FacturacionComprobanteServiceTest {
                 // Verification
                 assertNotNull(result);
                 assertEquals("20123456789", result.rucEmisor());
+        }
+
+        @Test
+        public void testEmitirComprobanteFallbackLocal() {
+                String pedidoId = "ped-123";
+                FacturaRequestDto requestDto = new FacturaRequestDto(pedidoId, "01", null, null, null, null, false);
+
+                Empresa empresa = Empresa.builder()
+                                .ruc("20123456789")
+                                .razonSocial("Test Empresa")
+                                .direccionFiscal("Av. Lima 123")
+                                .build();
+                Sucursal sucursal = Sucursal.builder()
+                                .id("suc-001")
+                                .empresa(empresa)
+                                .nombre("Sede Central")
+                                .build();
+
+                TipoDocumento tipoDoc = TipoDocumento.builder().name("RUC").build();
+                Cliente cliente = Cliente.builder()
+                                .tipoDocumento(tipoDoc)
+                                .numeroDocumento("20987654321")
+                                .nombreRazonSocial("Empresa Compradora SAC")
+                                .build();
+
+                Producto producto = Producto.builder()
+                                .idProducto(1)
+                                .nombreProducto("Lomo Saltado")
+                                .precioVenta(new BigDecimal("35.00"))
+                                .build();
+
+                PedidoDetalle detalle = PedidoDetalle.builder()
+                                .producto(producto)
+                                .cantidad(1)
+                                .precioUnitario(new BigDecimal("35.00"))
+                                .totalLinea(new BigDecimal("35.00"))
+                                .build();
+
+                Pedido pedido = Pedido.builder()
+                                .id(pedidoId)
+                                .sucursal(sucursal)
+                                .cliente(cliente)
+                                .totalFinal(new BigDecimal("35.00"))
+                                .pedidoDetalles(new ArrayList<>())
+                                .build();
+                pedido.getPedidoDetalles().add(detalle);
+
+                com.restaurante.resturante.domain.ventas.FacturacionSerie serieLocal = com.restaurante.resturante.domain.ventas.FacturacionSerie.builder()
+                                .tipoComprobante("01")
+                                .serie("F001")
+                                .proximoCorrelativo(5)
+                                .activo(true)
+                                .sucursal(sucursal)
+                                .empresa(empresa)
+                                .build();
+
+                // Mock API to throw an exception
+                when(comprobanteApiService.emitir(any(Pedido.class), anyString(), any(), any(), any()))
+                                .thenThrow(new RuntimeException("Connection Timeout"));
+
+                // Mock Local Series and Max Correlativo
+                when(serieLocalRepository.findBySucursalIdAndTipoComprobanteAndActivoTrue("suc-001", "01"))
+                                .thenReturn(Optional.of(serieLocal));
+                when(facturacionRepository.obtenerMaxCorrelativo("suc-001", "01", "F001"))
+                                .thenReturn(3);
+
+                // Mock Repositories
+                when(pedidoRepository.findById(pedidoId)).thenReturn(Optional.of(pedido));
+                when(facturacionRepository.save(any(FacturacionComprobante.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
+
+                // Execution
+                FacturacionComprobanteDto result = facturacionService.emitirComprobante(requestDto);
+
+                // Verification
+                assertNotNull(result);
+                assertEquals("20123456789", result.rucEmisor());
+                assertEquals("PENDIENTE_ENVIO", result.estadoSunat());
+                assertEquals("F001", result.serie());
+                assertEquals("00000005", result.correlativo()); // max(3+1, 5) = 5
+                assertEquals(6, serieLocal.getProximoCorrelativo()); // incremented to 6
         }
 }

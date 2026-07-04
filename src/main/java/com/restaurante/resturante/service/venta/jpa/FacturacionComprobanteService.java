@@ -134,7 +134,12 @@ public class FacturacionComprobanteService {
         ComprobanteFacturacionResponse apiResponse = null;
         if (!esNotaDeVenta) {
             // Emisión diferida vía API (pendienteEnvio = true)
-            apiResponse = comprobanteApiService.emitir(pedido, tipoDoc, fechaEmision, true, Boolean.TRUE.equals(dto.impresionConsumo()));
+            try {
+                apiResponse = comprobanteApiService.emitir(pedido, tipoDoc, fechaEmision, true, Boolean.TRUE.equals(dto.impresionConsumo()));
+            } catch (Exception e) {
+                log.warn("Error al emitir comprobante vía API, procediendo con fallback local: {}", e.getMessage(), e);
+                apiResponse = generarComprobantePendienteLocal(pedido, tipoDoc, fechaEmision);
+            }
         } else {
             // Para Nota de Venta, generar todo localmente sin llamar a SUNAT
             apiResponse = generarComprobanteNotaDeVentaLocal(pedido, fechaEmision);
@@ -149,6 +154,15 @@ public class FacturacionComprobanteService {
 
         // Guardar archivos iniciales (TXT para nota de venta, PDF local si aplica)
         guardarArchivosComprobanteLocal(comprobante, apiResponse);
+
+        if (pedido.getMesa() != null) {
+            mesaService.cambiarEstado(pedido.getMesa().getId(), "LIBRE");
+        }
+        if (!"PAGADO".equals(pedido.getEstado())) {
+            pedido.setEstado("PAGADO");
+            pedido.setFechaCierre(LocalDateTime.now());
+            pedidoRepository.save(pedido);
+        }
 
         return toDto(comprobante);
     }
@@ -205,6 +219,10 @@ public class FacturacionComprobanteService {
                                 c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
                     }
                     
+                    c.setFacturadorId(apiResponse.id());
+                    c.setSerie(apiResponse.serie());
+                    c.setCorrelativo(String.format("%08d", apiResponse.correlativo()));
+
                     c.setEstadoSunat(apiResponse.estadoSunat() != null ? apiResponse.estadoSunat() : "ACEPTADO");
                     c.setHashCpe(apiResponse.cdrHash());
                     c.setArchivoXml(buildDownloadUrl(apiResponse, "xml"));
@@ -250,6 +268,10 @@ public class FacturacionComprobanteService {
             apiResponse = comprobanteApiService.emitir(
                     c.getPedido(), c.getTipoComprobante(), c.getFechaEmision(), false, c.getImpresionConsumo());
         }
+
+        c.setFacturadorId(apiResponse.id());
+        c.setSerie(apiResponse.serie());
+        c.setCorrelativo(String.format("%08d", apiResponse.correlativo()));
 
         c.setEstadoSunat(apiResponse.estadoSunat() != null ? apiResponse.estadoSunat() : "ACEPTADO");
         c.setHashCpe(apiResponse.cdrHash());
@@ -322,10 +344,18 @@ public class FacturacionComprobanteService {
 
     private ComprobanteFacturacionResponse generarComprobantePendienteLocal(Pedido pedido, String tipoDoc, LocalDateTime fechaEmision) {
         LocalDateTime fechaUsar = fechaEmision != null ? fechaEmision : LocalDateTime.now();
-        String serie = "01".equals(tipoDoc) ? "F001" : "B001";
         
+        FacturacionSerie serieLocal = serieLocalRepository.findBySucursalIdAndTipoComprobanteAndActivoTrue(pedido.getSucursal().getId(), tipoDoc)
+                .orElseThrow(() -> new RuntimeException("No se encontró una serie activa para la sucursal y tipo de comprobante especificados."));
+        String serie = serieLocal.getSerie();
+
         Integer maxCorr = facturacionRepository.obtenerMaxCorrelativo(pedido.getSucursal().getId(), tipoDoc, serie);
-        int siguiente = (maxCorr != null ? maxCorr : 0) + 1;
+        int maxExistente = maxCorr != null ? maxCorr : 0;
+        int proximoConfigurado = serieLocal.getProximoCorrelativo() != null ? serieLocal.getProximoCorrelativo() : 1;
+        int siguiente = Math.max(maxExistente + 1, proximoConfigurado);
+
+        serieLocal.setProximoCorrelativo(siguiente + 1);
+        serieLocalRepository.save(serieLocal);
 
         BigDecimal total = pedido.getTotalFinal();
 

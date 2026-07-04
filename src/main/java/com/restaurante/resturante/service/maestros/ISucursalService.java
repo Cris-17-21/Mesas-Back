@@ -21,4 +21,6 @@ public interface ISucursalService {
 
     List<SucursalDto> findSucursalesByEmpresaId(String empresaId);
 
+    SucursalDto toggleStatus(String id);
+
 }

@@ -24,4 +24,6 @@ public interface IEmpresaService {
     EmpresaDto uploadLogo(String id, MultipartFile file);
 
     EmpresaDto uploadCertificado(String id, MultipartFile file);
+
+    EmpresaDto toggleStatus(String id);
 }
