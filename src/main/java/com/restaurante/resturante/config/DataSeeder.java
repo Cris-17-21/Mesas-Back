@@ -244,8 +244,7 @@ public class DataSeeder implements CommandLineRunner {
                                      p.getModule().getName().equals("Roles") ||
                                      p.getModule().getName().equals("Usuarios") ||
                                      p.getModule().getName().equals("Empresas") ||
-                                     p.getModule().getName().equals("Sucursales") ||
-                                     p.getModule().getName().equals("Reportes")))
+                                     p.getModule().getName().equals("Sucursales")))
                         .collect(java.util.stream.Collectors.toSet());
                 superAdminRole.setPermissions(superAdminPermissions);
                 roleRepository.save(superAdminRole);
