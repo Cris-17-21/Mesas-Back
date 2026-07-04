@@ -39,18 +39,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
-        final String username = jwtService.extractUsername(jwt).orElse(null);
+        try {
+            final String username = jwtService.extractUsername(jwt).orElse(null);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            String clientIp = getClientIp(request);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+                String clientIp = getClientIp(request);
 
-            if (jwtService.isTokenValid(jwt, userDetails, clientIp)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtService.isTokenValid(jwt, userDetails, clientIp)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            logger.warn("Usuario no encontrado en la base de datos durante validación de JWT: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error inesperado en filtro de autenticación JWT: " + e.getMessage(), e);
         }
         filterChain.doFilter(request, response);
     }
