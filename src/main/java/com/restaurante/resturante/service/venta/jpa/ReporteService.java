@@ -102,8 +102,8 @@ public class ReporteService implements IReporteService {
         Object[] summaryRow = sumQuery.getSingleResult();
         BigDecimal totalVentas = (BigDecimal) summaryRow[0];
         long cantidadPedidos = ((Number) summaryRow[1]).longValue();
-        BigDecimal promedioTicket = cantidadPedidos > 0 
-                ? totalVentas.divide(BigDecimal.valueOf(cantidadPedidos), 2, RoundingMode.HALF_UP) 
+        BigDecimal promedioTicket = cantidadPedidos > 0
+                ? totalVentas.divide(BigDecimal.valueOf(cantidadPedidos), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         // 2. Desglose de pagos
@@ -271,7 +271,7 @@ public class ReporteService implements IReporteService {
 
         List<CajaAuditDto> list = new ArrayList<>();
         for (CajaTurno ct : cajaTurnos) {
-            String usuarioNombre = ct.getUser().getNombres() != null 
+            String usuarioNombre = ct.getUser().getNombres() != null
                     ? ct.getUser().getNombres() + " " + (ct.getUser().getApellidoPaterno() != null ? ct.getUser().getApellidoPaterno() : "")
                     : ct.getUser().getUsername();
             BigDecimal ing = ingresosMap.getOrDefault(ct.getId(), BigDecimal.ZERO);
@@ -366,7 +366,7 @@ public class ReporteService implements IReporteService {
             long count = ((Number) row[1]).longValue();
             BigDecimal total = (BigDecimal) row[2];
 
-            String waiterNombre = u.getNombres() != null 
+            String waiterNombre = u.getNombres() != null
                     ? u.getNombres() + " " + (u.getApellidoPaterno() != null ? u.getApellidoPaterno() : "")
                     : u.getUsername();
 
@@ -376,308 +376,504 @@ public class ReporteService implements IReporteService {
         return list;
     }
 
+    // ─── PDF ────────────────────────────────────────────────────────────────────
+
     @Override
     public byte[] exportToPdf(String reportType, List<String> sucursalIds, LocalDate fechaInicio, LocalDate fechaFin) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document document = new Document(PageSize.A4, 36, 36, 36, 36);
-            PdfWriter.getInstance(document, out);
-            document.open();
+            Document doc = new Document(PageSize.A4, 40, 40, 50, 40);
+            PdfWriter.getInstance(doc, out);
+            doc.open();
 
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
-            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
-            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
-            Font bodyFont = FontFactory.getFont(FontFactory.HELVETICA, 9);
+            // ── Color palette ────────────────────────────────────────────────
+            java.awt.Color BRAND_DARK  = new java.awt.Color(24, 24, 27);
+            java.awt.Color BRAND_LIGHT = new java.awt.Color(244, 244, 245);
+            java.awt.Color ACCENT      = new java.awt.Color(99, 102, 241);
+            java.awt.Color ROW_ALT     = new java.awt.Color(249, 250, 251);
+            java.awt.Color BORDER_CLR  = new java.awt.Color(228, 228, 231);
+            java.awt.Color DANGER_BG   = new java.awt.Color(254, 242, 242);
+            java.awt.Color SUCCESS_BG  = new java.awt.Color(240, 253, 244);
+            java.awt.Color WARNING_BG  = new java.awt.Color(255, 247, 237);
 
-            // Título principal
-            String displayTitle = "Reporte de " + reportType.toUpperCase();
-            document.add(new Paragraph(displayTitle, titleFont));
-            document.add(new Paragraph("Generado el: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")), bodyFont));
-            if (fechaInicio != null && fechaFin != null) {
-                document.add(new Paragraph("Rango: " + fechaInicio.toString() + " al " + fechaFin.toString(), bodyFont));
-            }
-            document.add(new Paragraph("\n"));
+            // ── Fonts ────────────────────────────────────────────────────────
+            Font fTitle    = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20, java.awt.Color.WHITE);
+            Font fSubtitle = FontFactory.getFont(FontFactory.HELVETICA,       9, new java.awt.Color(161, 161, 170));
+            Font fSection  = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, BRAND_DARK);
+            Font fHeader   = FontFactory.getFont(FontFactory.HELVETICA_BOLD,  9, java.awt.Color.WHITE);
+            Font fBody     = FontFactory.getFont(FontFactory.HELVETICA,       9, BRAND_DARK);
+            Font fBodySm   = FontFactory.getFont(FontFactory.HELVETICA,       8, new java.awt.Color(113, 113, 122));
+            Font fMono     = FontFactory.getFont(FontFactory.COURIER,         9, BRAND_DARK);
+            Font fKpi      = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, ACCENT);
 
+            DateTimeFormatter dtFmt  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            DateTimeFormatter dtDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String now = LocalDateTime.now().format(dtFmt);
+
+            String displayTitle = switch (reportType.toLowerCase()) {
+                case "sales"              -> "Ventas y Facturación";
+                case "menu-ranking"       -> "Ranking del Menú";
+                case "caja-audit"         -> "Arqueo y Cierre de Caja";
+                case "stock-critical"     -> "Alertas de Stock Crítico";
+                case "waiter-performance" -> "Desempeño del Personal";
+                default                   -> "Reporte";
+            };
+            String rangoText = (fechaInicio != null && fechaFin != null)
+                    ? fechaInicio.format(dtDate) + "  →  " + fechaFin.format(dtDate)
+                    : "Todos los períodos";
+
+            // ── Header band ──────────────────────────────────────────────────
+            PdfPTable headerTable = new PdfPTable(1);
+            headerTable.setWidthPercentage(100);
+            headerTable.setSpacingAfter(20);
+            PdfPCell hCell = new PdfPCell();
+            hCell.setBackgroundColor(BRAND_DARK);
+            hCell.setPadding(18);
+            hCell.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
+            Paragraph pTitle = new Paragraph(displayTitle, fTitle);
+            pTitle.setSpacingAfter(5);
+            Paragraph pMeta = new Paragraph("Período: " + rangoText + "   •   Generado: " + now, fSubtitle);
+            hCell.addElement(pTitle);
+            hCell.addElement(pMeta);
+            headerTable.addCell(hCell);
+            doc.add(headerTable);
+
+            // ── Cell builders ────────────────────────────────────────────────
+            java.util.function.Function<String, PdfPCell> hdrCell = col -> {
+                PdfPCell c = new PdfPCell(new Phrase(col, fHeader));
+                c.setBackgroundColor(ACCENT);
+                c.setPadding(7);
+                c.setBorderColor(BORDER_CLR);
+                c.setHorizontalAlignment(Element.ALIGN_CENTER);
+                return c;
+            };
+            java.util.function.BiFunction<String, java.awt.Color, PdfPCell> bodyCell = (val, bg) -> {
+                PdfPCell c = new PdfPCell(new Phrase(val, fBody));
+                c.setPadding(6); c.setBorderColor(BORDER_CLR); c.setBackgroundColor(bg);
+                return c;
+            };
+            java.util.function.BiFunction<String, java.awt.Color, PdfPCell> numCell = (val, bg) -> {
+                PdfPCell c = new PdfPCell(new Phrase(val, fMono));
+                c.setPadding(6); c.setBorderColor(BORDER_CLR);
+                c.setBackgroundColor(bg);
+                c.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                return c;
+            };
+            java.util.function.Consumer<String> addSection = title -> {
+                try {
+                    Paragraph p = new Paragraph(title, fSection);
+                    p.setSpacingBefore(14); p.setSpacingAfter(6);
+                    doc.add(p);
+                } catch (DocumentException ignored) {}
+            };
+
+            // ── Report content ───────────────────────────────────────────────
             if ("sales".equalsIgnoreCase(reportType)) {
                 SalesSummaryDto dto = getSalesSummary(sucursalIds, fechaInicio, fechaFin);
-                document.add(new Paragraph("Resumen de Ventas", sectionFont));
-                document.add(new Paragraph("\n"));
 
-                PdfPTable table = new PdfPTable(2);
-                table.setWidthPercentage(100);
-                
-                table.addCell(new PdfPCell(new Phrase("Concepto", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Monto (S/.)", headerFont)));
+                addSection.accept("Resumen General");
+                PdfPTable kpi = new PdfPTable(new float[]{3, 2});
+                kpi.setWidthPercentage(55);
+                kpi.setSpacingAfter(16);
+                for (String col : new String[]{"Concepto", "Monto (S/.)"}) kpi.addCell(hdrCell.apply(col));
 
-                table.addCell("Total Ventas");
-                table.addCell(dto.totalVentas().toString());
-
-                table.addCell("Ticket Promedio");
-                table.addCell(dto.promedioTicket().toString());
-
-                table.addCell("Total Efectivo");
-                table.addCell(dto.totalEfectivo().toString());
-
-                table.addCell("Total Tarjeta");
-                table.addCell(dto.totalTarjeta().toString());
-
-                table.addCell("Total Yape");
-                table.addCell(dto.totalYape().toString());
-
-                table.addCell("Total Plin");
-                table.addCell(dto.totalPlin().toString());
-
-                table.addCell("Total Otros");
-                table.addCell(dto.totalOtros().toString());
-
-                document.add(table);
-
-                document.add(new Paragraph("\nDetalle de Ventas Diarias", sectionFont));
-                document.add(new Paragraph("\n"));
-
-                PdfPTable dTable = new PdfPTable(3);
-                dTable.setWidthPercentage(100);
-                dTable.addCell(new PdfPCell(new Phrase("Fecha", headerFont)));
-                dTable.addCell(new PdfPCell(new Phrase("Cantidad Pedidos", headerFont)));
-                dTable.addCell(new PdfPCell(new Phrase("Total Diario (S/.)", headerFont)));
-
-                for (VentaDiariaDto v : dto.ventasDiarias()) {
-                    dTable.addCell(v.fecha().toString());
-                    dTable.addCell(String.valueOf(v.cantidadPedidos()));
-                    dTable.addCell(v.total().toString());
+                String[][] kpiRows = {
+                    {"Total Ventas",    "S/. " + dto.totalVentas()},
+                    {"Ticket Promedio", "S/. " + dto.promedioTicket()},
+                    {"Efectivo",        "S/. " + dto.totalEfectivo()},
+                    {"Tarjeta",         "S/. " + dto.totalTarjeta()},
+                    {"Yape",            "S/. " + dto.totalYape()},
+                    {"Plin",            "S/. " + dto.totalPlin()},
+                    {"Otros",           "S/. " + dto.totalOtros()},
+                };
+                boolean alt = false;
+                for (String[] row : kpiRows) {
+                    java.awt.Color bg = alt ? ROW_ALT : java.awt.Color.WHITE;
+                    kpi.addCell(bodyCell.apply(row[0], bg));
+                    kpi.addCell(numCell.apply(row[1], bg));
+                    alt = !alt;
                 }
-                document.add(dTable);
+                doc.add(kpi);
+
+                addSection.accept("Detalle de Ventas Diarias");
+                PdfPTable dt = new PdfPTable(new float[]{2, 1.5f, 2});
+                dt.setWidthPercentage(100);
+                for (String col : new String[]{"Fecha", "Pedidos", "Total (S/.)"}) dt.addCell(hdrCell.apply(col));
+                alt = false;
+                for (VentaDiariaDto v : dto.ventasDiarias()) {
+                    java.awt.Color bg = alt ? ROW_ALT : java.awt.Color.WHITE;
+                    dt.addCell(bodyCell.apply(v.fecha().format(dtDate), bg));
+                    dt.addCell(numCell.apply(String.valueOf(v.cantidadPedidos()), bg));
+                    dt.addCell(numCell.apply("S/. " + v.total(), bg));
+                    alt = !alt;
+                }
+                doc.add(dt);
 
             } else if ("menu-ranking".equalsIgnoreCase(reportType)) {
                 List<MenuRankingDto> list = getMenuRanking(sucursalIds, fechaInicio, fechaFin);
-                PdfPTable table = new PdfPTable(4);
+                addSection.accept("Top 10 Platos Más Vendidos");
+                PdfPTable table = new PdfPTable(new float[]{0.5f, 3, 1.2f, 2});
                 table.setWidthPercentage(100);
-
-                table.addCell(new PdfPCell(new Phrase("Puesto", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Plato", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Cantidad", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Ingresos (S/.)", headerFont)));
-
-                int idx = 1;
+                for (String col : new String[]{"#", "Plato", "Cantidad", "Ingresos (S/.)"}) table.addCell(hdrCell.apply(col));
+                int idx = 1; boolean alt = false;
                 for (MenuRankingDto r : list) {
-                    table.addCell(String.valueOf(idx++));
-                    table.addCell(r.nombrePlato());
-                    table.addCell(String.valueOf(r.cantidad()));
-                    table.addCell(r.ingresos().toString());
+                    java.awt.Color bg = alt ? ROW_ALT : java.awt.Color.WHITE;
+                    String badge = idx == 1 ? "1" : idx == 2 ? "2" : idx == 3 ? "3" : String.valueOf(idx);
+                    table.addCell(bodyCell.apply(badge, bg));
+                    table.addCell(bodyCell.apply(r.nombrePlato(), bg));
+                    table.addCell(numCell.apply(String.valueOf(r.cantidad()), bg));
+                    table.addCell(numCell.apply("S/. " + r.ingresos(), bg));
+                    idx++; alt = !alt;
                 }
-                document.add(table);
+                doc.add(table);
 
             } else if ("caja-audit".equalsIgnoreCase(reportType)) {
                 List<CajaAuditDto> list = getCajaAudit(sucursalIds, fechaInicio, fechaFin);
-                PdfPTable table = new PdfPTable(8);
+                addSection.accept("Arqueo de Turnos de Caja");
+                PdfPTable table = new PdfPTable(new float[]{2, 2, 1.8f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f});
                 table.setWidthPercentage(100);
-
-                table.addCell(new PdfPCell(new Phrase("Sucursal", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Usuario", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Apertura", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Inicial", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Ingresos", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Egresos", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Esperado", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Real", headerFont)));
-
-                for (CajaAuditDto c : list) {
-                    table.addCell(c.sucursalNombre());
-                    table.addCell(c.usuarioNombre());
-                    table.addCell(c.fechaApertura().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")));
-                    table.addCell(c.montoInicial().toString());
-                    table.addCell(c.ingresosCajaChica().toString());
-                    table.addCell(c.egresosCajaChica().toString());
-                    table.addCell(c.saldoEsperado().toString());
-                    table.addCell(c.saldoReal().toString());
+                for (String col : new String[]{"Sucursal", "Usuario", "Apertura", "Inicial", "Ingresos", "Egresos", "Esperado", "Real"}) {
+                    table.addCell(hdrCell.apply(col));
                 }
-                document.add(table);
+                boolean alt = false;
+                for (CajaAuditDto c : list) {
+                    java.awt.Color bg = alt ? ROW_ALT : java.awt.Color.WHITE;
+                    boolean discrepancy = c.diferencia().compareTo(BigDecimal.ZERO) != 0;
+                    java.awt.Color realBg = discrepancy ? DANGER_BG : SUCCESS_BG;
+                    table.addCell(bodyCell.apply(c.sucursalNombre(), bg));
+                    table.addCell(bodyCell.apply(c.usuarioNombre(), bg));
+                    table.addCell(bodyCell.apply(c.fechaApertura().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")), bg));
+                    table.addCell(numCell.apply("S/. " + c.montoInicial(), bg));
+                    table.addCell(numCell.apply("S/. " + c.ingresosCajaChica(), bg));
+                    table.addCell(numCell.apply("S/. " + c.egresosCajaChica(), bg));
+                    table.addCell(numCell.apply("S/. " + c.saldoEsperado(), bg));
+                    table.addCell(numCell.apply("S/. " + c.saldoReal(), realBg));
+                    alt = !alt;
+                }
+                doc.add(table);
 
             } else if ("stock-critical".equalsIgnoreCase(reportType)) {
                 StockCriticalDto dto = getStockCritical(sucursalIds);
-                document.add(new Paragraph("Valoración Total Inventario: S/. " + dto.valoracionTotalInventario().toString(), sectionFont));
-                document.add(new Paragraph("\n"));
 
-                PdfPTable table = new PdfPTable(6);
+                addSection.accept("Valoración Total del Inventario");
+                PdfPTable kpi = new PdfPTable(1);
+                kpi.setWidthPercentage(45);
+                kpi.setSpacingAfter(14);
+                PdfPCell kpiCell = new PdfPCell(new Phrase("S/. " + dto.valoracionTotalInventario(), fKpi));
+                kpiCell.setBackgroundColor(BRAND_LIGHT);
+                kpiCell.setPadding(12);
+                kpiCell.setBorderColor(BORDER_CLR);
+                kpiCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                kpi.addCell(kpiCell);
+                doc.add(kpi);
+
+                addSection.accept("Productos Bajo Stock Mínimo");
+                PdfPTable table = new PdfPTable(new float[]{2.5f, 2, 1.2f, 1.2f, 1.2f});
                 table.setWidthPercentage(100);
-
-                table.addCell(new PdfPCell(new Phrase("ID", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Producto", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Sucursal", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Stock Act", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Stock Min", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Medida", headerFont)));
-
+                for (String col : new String[]{"Producto", "Sucursal", "Stock Act.", "Stock Mín.", "Medida"}) table.addCell(hdrCell.apply(col));
                 for (ProductoBajoStockDto p : dto.productosBajoStock()) {
-                    table.addCell(p.productoId().toString());
-                    table.addCell(p.nombreProducto());
-                    table.addCell(p.sucursalNombre());
-                    table.addCell(p.stockActual().toString());
-                    table.addCell(p.stockMinimo().toString());
-                    table.addCell(p.unidadMedida());
+                    double ratio = p.stockActual().doubleValue() / Math.max(p.stockMinimo().doubleValue(), 1);
+                    java.awt.Color rowBg = ratio <= 0.25 ? DANGER_BG : WARNING_BG;
+                    table.addCell(bodyCell.apply(p.nombreProducto(), rowBg));
+                    table.addCell(bodyCell.apply(p.sucursalNombre(), rowBg));
+                    table.addCell(numCell.apply(p.stockActual().toString(), rowBg));
+                    table.addCell(numCell.apply(p.stockMinimo().toString(), rowBg));
+                    table.addCell(bodyCell.apply(p.unidadMedida(), rowBg));
                 }
-                document.add(table);
+                doc.add(table);
 
             } else if ("waiter-performance".equalsIgnoreCase(reportType)) {
                 List<WaiterPerformanceDto> list = getWaiterPerformance(sucursalIds, fechaInicio, fechaFin);
-                PdfPTable table = new PdfPTable(3);
+                addSection.accept("Ranking de Desempeño del Personal");
+                PdfPTable table = new PdfPTable(new float[]{0.5f, 3, 1.5f, 2});
                 table.setWidthPercentage(100);
-
-                table.addCell(new PdfPCell(new Phrase("Mozo / Waiter", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Cantidad Pedidos", headerFont)));
-                table.addCell(new PdfPCell(new Phrase("Total Vendido (S/.)", headerFont)));
-
+                for (String col : new String[]{"#", "Mozo / Personal", "Pedidos", "Total Vendido (S/.)"}) table.addCell(hdrCell.apply(col));
+                int idx = 1; boolean alt = false;
                 for (WaiterPerformanceDto w : list) {
-                    table.addCell(w.waiterNombre());
-                    table.addCell(String.valueOf(w.cantidadPedidos()));
-                    table.addCell(w.totalVendido().toString());
+                    java.awt.Color bg = alt ? ROW_ALT : java.awt.Color.WHITE;
+                    table.addCell(bodyCell.apply(String.valueOf(idx), bg));
+                    table.addCell(bodyCell.apply(w.waiterNombre(), bg));
+                    table.addCell(numCell.apply(String.valueOf(w.cantidadPedidos()), bg));
+                    table.addCell(numCell.apply("S/. " + w.totalVendido(), bg));
+                    idx++; alt = !alt;
                 }
-                document.add(table);
+                doc.add(table);
             }
 
-            document.close();
+            // ── Footer ───────────────────────────────────────────────────────
+            doc.add(new Paragraph("\n"));
+            Paragraph footer = new Paragraph("Documento generado automáticamente por NoirPos  •  " + now, fBodySm);
+            footer.setAlignment(Element.ALIGN_RIGHT);
+            doc.add(footer);
+
+            doc.close();
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Error al generar PDF: " + e.getMessage(), e);
         }
     }
 
+    // ─── EXCEL ──────────────────────────────────────────────────────────────────
+
     @Override
     public byte[] exportToExcel(String reportType, List<String> sucursalIds, LocalDate fechaInicio, LocalDate fechaFin) {
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = workbook.createSheet("Reporte");
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-            CellStyle headerStyle = workbook.createCellStyle();
-            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
+            // ── Color helper ─────────────────────────────────────────────────
+            java.util.function.Function<int[], org.apache.poi.xssf.usermodel.XSSFColor> rgb = arr ->
+                new org.apache.poi.xssf.usermodel.XSSFColor(new byte[]{(byte) arr[0], (byte) arr[1], (byte) arr[2]}, null);
 
+            // ── Title style (dark background, large white bold) ──────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle titleStyle = wb.createCellStyle();
+            titleStyle.setFillForegroundColor(rgb.apply(new int[]{24, 24, 27}));
+            titleStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            titleStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+            org.apache.poi.xssf.usermodel.XSSFFont tFont = wb.createFont();
+            tFont.setBold(true); tFont.setFontHeightInPoints((short) 14);
+            tFont.setColor(rgb.apply(new int[]{255, 255, 255}));
+            titleStyle.setFont(tFont);
+
+            // ── Meta style (dark, small gray) ────────────────────────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle metaStyle = wb.createCellStyle();
+            metaStyle.setFillForegroundColor(rgb.apply(new int[]{24, 24, 27}));
+            metaStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            org.apache.poi.xssf.usermodel.XSSFFont mFont = wb.createFont();
+            mFont.setFontHeightInPoints((short) 9);
+            mFont.setColor(rgb.apply(new int[]{161, 161, 170}));
+            metaStyle.setFont(mFont);
+
+            // ── Header style (indigo, white bold, centered) ──────────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle hStyle = wb.createCellStyle();
+            hStyle.setFillForegroundColor(rgb.apply(new int[]{99, 102, 241}));
+            hStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            hStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+            hStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            hStyle.setBottomBorderColor(rgb.apply(new int[]{79, 82, 221}));
+            org.apache.poi.xssf.usermodel.XSSFFont hFont = wb.createFont();
+            hFont.setBold(true); hFont.setFontHeightInPoints((short) 10);
+            hFont.setColor(rgb.apply(new int[]{255, 255, 255}));
+            hStyle.setFont(hFont);
+
+            // ── Body styles (alternating white / gray-50) ────────────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle bodyEven = wb.createCellStyle();
+            bodyEven.setFillForegroundColor(rgb.apply(new int[]{255, 255, 255}));
+            bodyEven.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            bodyEven.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            bodyEven.setBottomBorderColor(rgb.apply(new int[]{228, 228, 231}));
+
+            org.apache.poi.xssf.usermodel.XSSFCellStyle bodyOdd = wb.createCellStyle();
+            bodyOdd.setFillForegroundColor(rgb.apply(new int[]{249, 250, 251}));
+            bodyOdd.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            bodyOdd.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            bodyOdd.setBottomBorderColor(rgb.apply(new int[]{228, 228, 231}));
+
+            // ── Numeric styles (right-aligned) ───────────────────────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle numEven = wb.createCellStyle();
+            numEven.cloneStyleFrom(bodyEven);
+            numEven.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+
+            org.apache.poi.xssf.usermodel.XSSFCellStyle numOdd = wb.createCellStyle();
+            numOdd.cloneStyleFrom(bodyOdd);
+            numOdd.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+
+            // ── Status-aware styles ──────────────────────────────────────────
+            org.apache.poi.xssf.usermodel.XSSFCellStyle dangerStyle = wb.createCellStyle();
+            dangerStyle.setFillForegroundColor(rgb.apply(new int[]{254, 242, 242}));
+            dangerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            dangerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+            dangerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            dangerStyle.setBottomBorderColor(rgb.apply(new int[]{228, 228, 231}));
+
+            org.apache.poi.xssf.usermodel.XSSFCellStyle successStyle = wb.createCellStyle();
+            successStyle.setFillForegroundColor(rgb.apply(new int[]{240, 253, 244}));
+            successStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            successStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+            successStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            successStyle.setBottomBorderColor(rgb.apply(new int[]{228, 228, 231}));
+
+            DateTimeFormatter dtDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dtFmt  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            String now = LocalDateTime.now().format(dtFmt);
+
+            // ── Write banner (returns next row index after meta rows) ─────────
+            java.util.function.BiFunction<Sheet, String, int[]> writeBanner = (sheet, title) -> {
+                Row r0 = sheet.createRow(0);
+                r0.setHeightInPoints(28);
+                Cell c0 = r0.createCell(0);
+                c0.setCellValue(title);
+                c0.setCellStyle(titleStyle);
+
+                Row r1 = sheet.createRow(1);
+                r1.setHeightInPoints(15);
+                Cell c1 = r1.createCell(0);
+                c1.setCellValue("Generado: " + now);
+                c1.setCellStyle(metaStyle);
+                return new int[]{3}; // header row at index 3
+            };
+
+            // ── Write column headers ─────────────────────────────────────────
+            java.util.function.BiConsumer<Row, String[]> writeHdr = (row, cols) -> {
+                row.setHeightInPoints(20);
+                for (int i = 0; i < cols.length; i++) {
+                    Cell c = row.createCell(i);
+                    c.setCellValue(cols[i]);
+                    c.setCellStyle(hStyle);
+                }
+            };
+
+            // ── Auto-size columns ────────────────────────────────────────────
+            java.util.function.BiConsumer<Sheet, Integer> autoSize = (sheet, count) -> {
+                for (int i = 0; i < count; i++) sheet.autoSizeColumn(i);
+            };
+
+            // ── Report content ───────────────────────────────────────────────
             if ("sales".equalsIgnoreCase(reportType)) {
                 SalesSummaryDto dto = getSalesSummary(sucursalIds, fechaInicio, fechaFin);
-                
-                // Resumen
-                Row r0 = sheet.createRow(0);
-                r0.createCell(0).setCellValue("Concepto");
-                r0.createCell(1).setCellValue("Valor (S/.)");
-                r0.getCell(0).setCellStyle(headerStyle);
-                r0.getCell(1).setCellStyle(headerStyle);
 
-                String[] concepts = {"Total Ventas", "Ticket Promedio", "Total Efectivo", "Total Tarjeta", "Total Yape", "Total Plin", "Total Otros"};
-                BigDecimal[] values = {dto.totalVentas(), dto.promedioTicket(), dto.totalEfectivo(), dto.totalTarjeta(), dto.totalYape(), dto.totalPlin(), dto.totalOtros()};
+                Sheet s = wb.createSheet("Resumen");
+                writeBanner.apply(s, "Ventas y Facturación");
+                Row hr = s.createRow(3);
+                writeHdr.accept(hr, new String[]{"Concepto", "Valor (S/.)"});
 
-                for (int i = 0; i < concepts.length; i++) {
-                    Row r = sheet.createRow(i + 1);
-                    r.createCell(0).setCellValue(concepts[i]);
-                    r.createCell(1).setCellValue(values[i].doubleValue());
+                Object[][] kpiData = {
+                    {"Total Ventas",    dto.totalVentas().doubleValue()},
+                    {"Ticket Promedio", dto.promedioTicket().doubleValue()},
+                    {"Efectivo",        dto.totalEfectivo().doubleValue()},
+                    {"Tarjeta",         dto.totalTarjeta().doubleValue()},
+                    {"Yape",            dto.totalYape().doubleValue()},
+                    {"Plin",            dto.totalPlin().doubleValue()},
+                    {"Otros",           dto.totalOtros().doubleValue()},
+                };
+                boolean alt = false;
+                int ri = 4;
+                for (Object[] kRow : kpiData) {
+                    Row r = s.createRow(ri++);
+                    Cell cL = r.createCell(0); cL.setCellValue((String) kRow[0]); cL.setCellStyle(alt ? bodyOdd : bodyEven);
+                    Cell cR = r.createCell(1); cR.setCellValue((double) kRow[1]); cR.setCellStyle(alt ? numOdd : numEven);
+                    alt = !alt;
                 }
+                autoSize.accept(s, 2);
 
-                // Ventas diarias
-                Sheet dSheet = workbook.createSheet("Ventas Diarias");
-                Row dr0 = dSheet.createRow(0);
-                dr0.createCell(0).setCellValue("Fecha");
-                dr0.createCell(1).setCellValue("Pedidos");
-                dr0.createCell(2).setCellValue("Total (S/.)");
-                dr0.getCell(0).setCellStyle(headerStyle);
-                dr0.getCell(1).setCellStyle(headerStyle);
-                dr0.getCell(2).setCellStyle(headerStyle);
-
-                int idx = 1;
+                Sheet ds = wb.createSheet("Ventas Diarias");
+                writeBanner.apply(ds, "Detalle de Ventas Diarias");
+                Row dhr = ds.createRow(3);
+                writeHdr.accept(dhr, new String[]{"Fecha", "Pedidos", "Total (S/.)"});
+                alt = false; ri = 4;
                 for (VentaDiariaDto v : dto.ventasDiarias()) {
-                    Row r = dSheet.createRow(idx++);
-                    r.createCell(0).setCellValue(v.fecha().toString());
-                    r.createCell(1).setCellValue(v.cantidadPedidos());
-                    r.createCell(2).setCellValue(v.total().doubleValue());
+                    Row r = ds.createRow(ri++);
+                    Cell c0 = r.createCell(0); c0.setCellValue(v.fecha().format(dtDate)); c0.setCellStyle(alt ? bodyOdd : bodyEven);
+                    Cell c1 = r.createCell(1); c1.setCellValue(v.cantidadPedidos()); c1.setCellStyle(alt ? numOdd : numEven);
+                    Cell c2 = r.createCell(2); c2.setCellValue(v.total().doubleValue()); c2.setCellStyle(alt ? numOdd : numEven);
+                    alt = !alt;
                 }
+                autoSize.accept(ds, 3);
 
             } else if ("menu-ranking".equalsIgnoreCase(reportType)) {
                 List<MenuRankingDto> list = getMenuRanking(sucursalIds, fechaInicio, fechaFin);
-                Row r0 = sheet.createRow(0);
-                r0.createCell(0).setCellValue("Puesto");
-                r0.createCell(1).setCellValue("Plato");
-                r0.createCell(2).setCellValue("Cantidad");
-                r0.createCell(3).setCellValue("Ingresos (S/.)");
-                for (int i = 0; i < 4; i++) r0.getCell(i).setCellStyle(headerStyle);
-
-                int idx = 1;
+                Sheet s = wb.createSheet("Ranking Menú");
+                writeBanner.apply(s, "Ranking del Menú — Top 10");
+                Row hr = s.createRow(3);
+                writeHdr.accept(hr, new String[]{"#", "Plato", "Cantidad", "Ingresos (S/.)"});
+                int idx = 1; boolean alt = false; int ri = 4;
                 for (MenuRankingDto r : list) {
-                    Row row = sheet.createRow(idx);
-                    row.createCell(0).setCellValue(idx);
-                    row.createCell(1).setCellValue(r.nombrePlato());
-                    row.createCell(2).setCellValue(r.cantidad());
-                    row.createCell(3).setCellValue(r.ingresos().doubleValue());
-                    idx++;
+                    Row row = s.createRow(ri++);
+                    row.createCell(0).setCellValue(idx); row.getCell(0).setCellStyle(alt ? bodyOdd : bodyEven);
+                    row.createCell(1).setCellValue(r.nombrePlato()); row.getCell(1).setCellStyle(alt ? bodyOdd : bodyEven);
+                    row.createCell(2).setCellValue(r.cantidad()); row.getCell(2).setCellStyle(alt ? numOdd : numEven);
+                    row.createCell(3).setCellValue(r.ingresos().doubleValue()); row.getCell(3).setCellStyle(alt ? numOdd : numEven);
+                    idx++; alt = !alt;
                 }
+                autoSize.accept(s, 4);
 
             } else if ("caja-audit".equalsIgnoreCase(reportType)) {
                 List<CajaAuditDto> list = getCajaAudit(sucursalIds, fechaInicio, fechaFin);
-                Row r0 = sheet.createRow(0);
-                String[] headers = {"Sucursal", "Usuario", "Apertura", "Cierre", "Monto Inicial", "Ingresos Chica", "Egresos Chica", "Esperado", "Real", "Diferencia", "Estado"};
-                for (int i = 0; i < headers.length; i++) {
-                    Cell c = r0.createCell(i);
-                    c.setCellValue(headers[i]);
-                    c.setCellStyle(headerStyle);
-                }
-
-                int idx = 1;
+                Sheet s = wb.createSheet("Arqueo de Caja");
+                writeBanner.apply(s, "Arqueo y Cierre de Caja");
+                Row hr = s.createRow(3);
+                writeHdr.accept(hr, new String[]{"Sucursal", "Usuario", "Apertura", "Cierre", "Inicial", "Ingresos", "Egresos", "Esperado", "Real", "Diferencia", "Estado"});
+                boolean alt = false; int ri = 4;
                 for (CajaAuditDto c : list) {
-                    Row row = sheet.createRow(idx++);
-                    row.createCell(0).setCellValue(c.sucursalNombre());
-                    row.createCell(1).setCellValue(c.usuarioNombre());
-                    row.createCell(2).setCellValue(c.fechaApertura().toString());
-                    row.createCell(3).setCellValue(c.fechaCierre() != null ? c.fechaCierre().toString() : "-");
-                    row.createCell(4).setCellValue(c.montoInicial().doubleValue());
-                    row.createCell(5).setCellValue(c.ingresosCajaChica().doubleValue());
-                    row.createCell(6).setCellValue(c.egresosCajaChica().doubleValue());
-                    row.createCell(7).setCellValue(c.saldoEsperado().doubleValue());
-                    row.createCell(8).setCellValue(c.saldoReal().doubleValue());
-                    row.createCell(9).setCellValue(c.diferencia().doubleValue());
-                    row.createCell(10).setCellValue(c.estado());
+                    Row row = s.createRow(ri++);
+                    boolean disc = c.diferencia().compareTo(BigDecimal.ZERO) != 0;
+                    org.apache.poi.ss.usermodel.CellStyle bStyle = alt ? bodyOdd : bodyEven;
+                    org.apache.poi.ss.usermodel.CellStyle nStyle = alt ? numOdd  : numEven;
+                    org.apache.poi.ss.usermodel.CellStyle dStyle = disc ? dangerStyle : successStyle;
+
+                    row.createCell(0).setCellValue(c.sucursalNombre()); row.getCell(0).setCellStyle(bStyle);
+                    row.createCell(1).setCellValue(c.usuarioNombre());  row.getCell(1).setCellStyle(bStyle);
+                    row.createCell(2).setCellValue(c.fechaApertura().format(dtFmt)); row.getCell(2).setCellStyle(bStyle);
+                    row.createCell(3).setCellValue(c.fechaCierre() != null ? c.fechaCierre().format(dtFmt) : "—"); row.getCell(3).setCellStyle(bStyle);
+                    row.createCell(4).setCellValue(c.montoInicial().doubleValue());      row.getCell(4).setCellStyle(nStyle);
+                    row.createCell(5).setCellValue(c.ingresosCajaChica().doubleValue()); row.getCell(5).setCellStyle(nStyle);
+                    row.createCell(6).setCellValue(c.egresosCajaChica().doubleValue());  row.getCell(6).setCellStyle(nStyle);
+                    row.createCell(7).setCellValue(c.saldoEsperado().doubleValue());     row.getCell(7).setCellStyle(nStyle);
+                    row.createCell(8).setCellValue(c.saldoReal().doubleValue());         row.getCell(8).setCellStyle(dStyle);
+                    row.createCell(9).setCellValue(c.diferencia().doubleValue());        row.getCell(9).setCellStyle(dStyle);
+                    row.createCell(10).setCellValue(c.estado());                         row.getCell(10).setCellStyle(bStyle);
+                    alt = !alt;
                 }
+                autoSize.accept(s, 11);
 
             } else if ("stock-critical".equalsIgnoreCase(reportType)) {
                 StockCriticalDto dto = getStockCritical(sucursalIds);
-                
-                Row vRow = sheet.createRow(0);
-                vRow.createCell(0).setCellValue("Valoración Total Inventario:");
-                vRow.createCell(1).setCellValue(dto.valoracionTotalInventario().doubleValue());
-                vRow.getCell(0).setCellStyle(headerStyle);
+                Sheet s = wb.createSheet("Stock Crítico");
+                writeBanner.apply(s, "Alertas de Stock Crítico");
 
-                Row r0 = sheet.createRow(2);
-                String[] headers = {"ID Producto", "Producto", "Sucursal", "Stock Actual", "Stock Mínimo", "Medida"};
-                for (int i = 0; i < headers.length; i++) {
-                    Cell c = r0.createCell(i);
-                    c.setCellValue(headers[i]);
-                    c.setCellStyle(headerStyle);
-                }
+                // KPI valuation row
+                org.apache.poi.xssf.usermodel.XSSFCellStyle kpiStyle = wb.createCellStyle();
+                kpiStyle.setFillForegroundColor(rgb.apply(new int[]{237, 233, 254}));
+                kpiStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+                org.apache.poi.xssf.usermodel.XSSFFont kpiFont = wb.createFont();
+                kpiFont.setBold(true); kpiFont.setFontHeightInPoints((short) 11);
+                kpiFont.setColor(rgb.apply(new int[]{99, 102, 241}));
+                kpiStyle.setFont(kpiFont);
 
-                int idx = 3;
+                Row kRow = s.createRow(3);
+                kRow.createCell(0).setCellValue("Valoración Total del Inventario:"); kRow.getCell(0).setCellStyle(kpiStyle);
+                kRow.createCell(1).setCellValue(dto.valoracionTotalInventario().doubleValue()); kRow.getCell(1).setCellStyle(kpiStyle);
+
+                Row hr = s.createRow(5);
+                writeHdr.accept(hr, new String[]{"Producto", "Sucursal", "Stock Actual", "Stock Mínimo", "Medida"});
+                int ri = 6;
                 for (ProductoBajoStockDto p : dto.productosBajoStock()) {
-                    Row row = sheet.createRow(idx++);
-                    row.createCell(0).setCellValue(p.productoId());
-                    row.createCell(1).setCellValue(p.nombreProducto());
-                    row.createCell(2).setCellValue(p.sucursalNombre());
-                    row.createCell(3).setCellValue(p.stockActual().doubleValue());
-                    row.createCell(4).setCellValue(p.stockMinimo().doubleValue());
-                    row.createCell(5).setCellValue(p.unidadMedida());
+                    double ratio = p.stockActual().doubleValue() / Math.max(p.stockMinimo().doubleValue(), 1);
+                    org.apache.poi.xssf.usermodel.XSSFCellStyle rowBg = wb.createCellStyle();
+                    rowBg.setFillForegroundColor(ratio <= 0.25
+                        ? rgb.apply(new int[]{254, 242, 242})
+                        : rgb.apply(new int[]{255, 247, 237}));
+                    rowBg.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+                    rowBg.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+                    rowBg.setBottomBorderColor(rgb.apply(new int[]{228, 228, 231}));
+
+                    Row row = s.createRow(ri++);
+                    for (int i = 0; i < 5; i++) { row.createCell(i).setCellStyle(rowBg); }
+                    row.getCell(0).setCellValue(p.nombreProducto());
+                    row.getCell(1).setCellValue(p.sucursalNombre());
+                    row.getCell(2).setCellValue(p.stockActual().doubleValue());
+                    row.getCell(3).setCellValue(p.stockMinimo().doubleValue());
+                    row.getCell(4).setCellValue(p.unidadMedida());
                 }
+                autoSize.accept(s, 5);
 
             } else if ("waiter-performance".equalsIgnoreCase(reportType)) {
                 List<WaiterPerformanceDto> list = getWaiterPerformance(sucursalIds, fechaInicio, fechaFin);
-                Row r0 = sheet.createRow(0);
-                r0.createCell(0).setCellValue("Mozo / Waiter");
-                r0.createCell(1).setCellValue("Cantidad Pedidos");
-                r0.createCell(2).setCellValue("Total Vendido (S/.)");
-                for (int i = 0; i < 3; i++) r0.getCell(i).setCellStyle(headerStyle);
-
-                int idx = 1;
+                Sheet s = wb.createSheet("Desempeño Personal");
+                writeBanner.apply(s, "Desempeño del Personal");
+                Row hr = s.createRow(3);
+                writeHdr.accept(hr, new String[]{"#", "Mozo / Personal", "Pedidos", "Total Vendido (S/.)"});
+                int idx = 1; boolean alt = false; int ri = 4;
                 for (WaiterPerformanceDto w : list) {
-                    Row row = sheet.createRow(idx++);
-                    row.createCell(0).setCellValue(w.waiterNombre());
-                    row.createCell(1).setCellValue(w.cantidadPedidos());
-                    row.createCell(2).setCellValue(w.totalVendido().doubleValue());
+                    Row row = s.createRow(ri++);
+                    row.createCell(0).setCellValue(idx); row.getCell(0).setCellStyle(alt ? bodyOdd : bodyEven);
+                    row.createCell(1).setCellValue(w.waiterNombre()); row.getCell(1).setCellStyle(alt ? bodyOdd : bodyEven);
+                    row.createCell(2).setCellValue(w.cantidadPedidos()); row.getCell(2).setCellStyle(alt ? numOdd : numEven);
+                    row.createCell(3).setCellValue(w.totalVendido().doubleValue()); row.getCell(3).setCellStyle(alt ? numOdd : numEven);
+                    idx++; alt = !alt;
                 }
+                autoSize.accept(s, 4);
             }
 
-            workbook.write(out);
+            wb.write(out);
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Error al generar Excel: " + e.getMessage(), e);
