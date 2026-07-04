@@ -32,6 +32,7 @@ import com.restaurante.resturante.mapper.maestros.SucursalDtoMapper;
 import com.restaurante.resturante.repository.maestro.SucursalRepository;
 import com.restaurante.resturante.repository.security.RefreshTokenRepository;
 import com.restaurante.resturante.repository.security.UserAccessRepository;
+import com.restaurante.resturante.repository.maestro.EmpresaRepository;
 import com.restaurante.resturante.repository.security.UserRepository;
 import com.restaurante.resturante.service.maestros.ISucursalService;
 import com.restaurante.resturante.service.security.JwtService;
@@ -54,6 +55,7 @@ public class AuthController {
         private final SucursalDtoMapper sucursalDtoMapper;
         private final SucursalRepository sucursalRepository;
         private final UserRepository userRepository;
+        private final EmpresaRepository empresaRepository;
 
         @Value("${security.jwt.access-token.expiration}")
         private long accessTokenExpiration;
@@ -189,7 +191,13 @@ public class AuthController {
 
         private AuthResponse createAuthResponse(User user, String ip, String empresaId, String sucursalId,
                         boolean requiresSelection, List<SucursalDto> sucursales) {
-                String accessToken = jwtService.generateAccessToken(user, ip, empresaId, sucursalId);
+                String empresaNombre = null;
+                if (empresaId != null) {
+                        empresaNombre = empresaRepository.findById(empresaId)
+                                        .map(emp -> emp.getNombreComercial() != null ? emp.getNombreComercial() : emp.getRazonSocial())
+                                        .orElse(null);
+                }
+                String accessToken = jwtService.generateAccessToken(user, ip, empresaId, sucursalId, empresaNombre);
                 String refreshToken = refreshTokenService.createRefreshToken(user.getUsername()).getToken();
 
                 user.setTokenActivo(accessToken);

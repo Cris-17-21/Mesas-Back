@@ -36,7 +36,7 @@ public class JwtServiceTest {
         user.setActive(true);
 
         String ip = "127.0.0.1";
-        String token = jwtService.generateAccessToken(user, ip, null, null);
+        String token = jwtService.generateAccessToken(user, ip, null, null, null);
 
         // Set a different active token on user
         user.setTokenActivo("differentToken");
@@ -57,7 +57,7 @@ public class JwtServiceTest {
         user.setActive(true);
 
         String ip = "127.0.0.1";
-        String token = jwtService.generateAccessToken(user, ip, null, null);
+        String token = jwtService.generateAccessToken(user, ip, null, null, null);
 
         // Scenario 1: Active token matches
         user.setTokenActivo(token);
