@@ -17,5 +17,6 @@ public record MeUserDto(
         String email,
         String role,
         String empresaId,
-        String sucursalId) {
+        String sucursalId,
+        String empresaLogo) {
 }

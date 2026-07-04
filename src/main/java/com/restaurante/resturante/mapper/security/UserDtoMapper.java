@@ -113,6 +113,7 @@ public class UserDtoMapper {
 
         String empresaId = null;
         String sucursalId = null;
+        String empresaLogo = null;
 
         if (user.getUsersAccess() != null && !user.getUsersAccess().isEmpty()) {
             UserAccess access = user.getUsersAccess().stream()
@@ -120,8 +121,12 @@ public class UserDtoMapper {
                     .findFirst()
                     .orElse(user.getUsersAccess().iterator().next());
 
-            if (access.getEmpresa() != null)
+            if (access.getEmpresa() != null) {
                 empresaId = access.getEmpresa().getId();
+                if (access.getEmpresa().getLogoUrl() != null) {
+                    empresaLogo = java.util.Base64.getEncoder().encodeToString(access.getEmpresa().getLogoUrl());
+                }
+            }
             if (access.getSucursal() != null)
                 sucursalId = access.getSucursal().getId();
         }
@@ -138,6 +143,7 @@ public class UserDtoMapper {
                 user.getEmail(),
                 user.getRole().getName(),
                 empresaId,
-                sucursalId);
+                sucursalId,
+                empresaLogo);
     }
 }
