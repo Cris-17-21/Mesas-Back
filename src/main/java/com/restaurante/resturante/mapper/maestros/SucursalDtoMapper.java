@@ -25,6 +25,7 @@ public class SucursalDtoMapper {
                 sucursal.getDireccion(),
                 sucursal.getTelefono(),
                 sucursal.getEmpresa() != null ? sucursal.getEmpresa().getRazonSocial() : null,
+                sucursal.getEmpresa() != null ? sucursal.getEmpresa().getId() : null,
                 sucursal.getEstado());
     }
 
