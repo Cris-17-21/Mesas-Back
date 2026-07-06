@@ -702,6 +702,10 @@ public class FacturacionComprobanteService {
         FacturacionSerie serieLocal;
         if (serieExistente.isPresent()) {
             serieLocal = serieExistente.get();
+            Integer maxCorrelativo = facturacionRepository.obtenerMaxCorrelativo(sucursalId, tipoDocCodigo, serie.toUpperCase());
+            if (maxCorrelativo != null && correlativo <= maxCorrelativo) {
+                throw new RuntimeException("El correlativo no puede ser menor o igual al último comprobante emitido (Debe ser mayor a " + maxCorrelativo + ").");
+            }
             serieLocal.setProximoCorrelativo(correlativo);
             serieLocal.setActivo(true);
         } else {
@@ -795,6 +799,22 @@ public class FacturacionComprobanteService {
                     return m;
                 })
                 .toList();
+    }
+
+    @Transactional
+    public void eliminarSerie(String id) {
+        FacturacionSerie serie = serieLocalRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Serie no encontrada con ID: " + id));
+
+        Integer maxCorrelativo = facturacionRepository.obtenerMaxCorrelativo(
+                serie.getSucursal().getId(), serie.getTipoComprobante(), serie.getSerie());
+        if (maxCorrelativo != null && maxCorrelativo > 0) {
+            throw new RuntimeException("No se puede eliminar la serie porque ya tiene comprobantes electrónicos emitidos.");
+        }
+
+        serie.setActivo(false);
+        serieLocalRepository.save(serie);
+        log.info("Serie eliminada lógicamente: {} {}", serie.getTipoComprobante(), serie.getSerie());
     }
 
     private void registrarMovimientoCajaSiAceptado(FacturacionComprobante comprobante) {

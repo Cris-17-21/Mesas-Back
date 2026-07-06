@@ -61,12 +61,12 @@ public class SucursalService implements ISucursalService {
         if (isAuthenticatedUserRestaurantAdmin()) {
             String empresaId = getAuthenticatedUserEmpresaIdOrNull();
             if (empresaId != null) {
-                return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId).stream()
+                return sucursalRepository.findByEmpresaIdAndEstadoTrueOrderByCreatedDateAsc(empresaId).stream()
                         .map(sucursalMapper::toDto)
                         .toList();
             }
         }
-        return sucursalRepository.findAllByEstadoTrue().stream()
+        return sucursalRepository.findAllByEstadoTrueOrderByCreatedDateAsc().stream()
                 .map(sucursalMapper::toDto)
                 .toList();
     }
@@ -220,7 +220,7 @@ public class SucursalService implements ISucursalService {
                 throw new AccessDeniedException("No tienes permiso para consultar las sucursales de esta empresa.");
             }
         }
-        return sucursalRepository.findByEmpresaIdAndEstadoTrue(empresaId)
+        return sucursalRepository.findByEmpresaIdAndEstadoTrueOrderByCreatedDateAsc(empresaId)
                 .stream()
                 .map(sucursalMapper::toDto)
                 .toList();

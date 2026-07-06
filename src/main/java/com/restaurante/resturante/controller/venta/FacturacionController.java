@@ -90,4 +90,10 @@ public class FacturacionController {
     public ResponseEntity<java.util.List<java.util.Map<String, Object>>> obtenerSeries(@RequestParam String sucursalId) {
         return ResponseEntity.ok(service.obtenerSeriesPorSucursal(sucursalId));
     }
+
+    @DeleteMapping("/series/{id}")
+    public ResponseEntity<Void> eliminarSerie(@PathVariable String id) {
+        service.eliminarSerie(id);
+        return ResponseEntity.ok().build();
+    }
 }

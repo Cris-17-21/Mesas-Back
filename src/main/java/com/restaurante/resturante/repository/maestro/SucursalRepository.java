@@ -11,10 +11,10 @@ import com.restaurante.resturante.domain.maestros.Sucursal;
 
 public interface SucursalRepository extends JpaRepository<Sucursal, String> {
 
-    // Listar todas las empresas activas
-    List<Sucursal> findAllByEstadoTrue();
+    // Listar todas las empresas activas ordenadas por fecha de creación
+    List<Sucursal> findAllByEstadoTrueOrderByCreatedDateAsc();
 
-    List<Sucursal> findByEmpresaIdAndEstadoTrue(String empresaId);
+    List<Sucursal> findByEmpresaIdAndEstadoTrueOrderByCreatedDateAsc(String empresaId);
 
     List<Sucursal> findByEmpresaId(String empresaId);
 
